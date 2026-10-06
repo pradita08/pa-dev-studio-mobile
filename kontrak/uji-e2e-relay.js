@@ -169,7 +169,10 @@ async function pasang(hp, { jawab = 'ya', rusakAtestasi = false, atestasi } = {}
     const halo = await tunggu(async () => { const r = await klienHp(hp).panggil('POST', 'hp/halo', { body: { aktif: true, versiApk: VERSI_APK }, klien: KLIEN_APK }); return r.status === 200 && r.data.mac.tersambung && r.data.status ? r.data : null; }, 20000, 1000);
     const st = halo && H.bukaKabar(hp, qr, halo.status.amplop);
     const ids = st && st.ok ? st.isi.status.proyek.map(p => `${p.id}:${p.hp}`).join(',') : '';
-    cek('status lewat halo (bertanda, proyek HP saja)', ids === 'uji:rencana,dua:kerjakan', JSON.stringify(st && st.isi));
+    // v2 §9.2: proyek hp:false ikut sebagai penanda nama untuk tab Sesi (cermin ringkas), tanpa akun/batas → tidak bisa diperintah
+    const penanda = st && st.ok ? st.isi.status.proyek.find(p => p.id === 'tutup') : null;
+    cek('status lewat halo (bertanda, proyek HP + penanda v2)', ids === 'uji:rencana,dua:kerjakan,tutup:false' &&
+      !!penanda && penanda.akun === undefined && penanda.batasMenit === undefined, JSON.stringify(st && st.isi));
 
     // 5. Rencana sah → diterima, mulai, kabar teks/alat, selesai
     const tugas = () => 't-hp-' + crypto.randomBytes(8).toString('hex');
