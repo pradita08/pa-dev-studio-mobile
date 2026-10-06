@@ -24,6 +24,9 @@ class _LayarKantorState extends State<LayarKantor> {
   String? _pilih;
   bool _tampil3d = true;
 
+  /// WebView 3D baru dibuat setelah tab Kantor pertama kali dibuka (IndexedStack membangun semua tab saat aplikasi mulai).
+  bool _pernahAktif = false;
+
   @override
   void initState() {
     super.initState();
@@ -36,6 +39,7 @@ class _LayarKantorState extends State<LayarKantor> {
   Widget build(BuildContext context) {
     final w = WarnaPadev.dari(context);
     final s = widget.sumber;
+    if (widget.aktif) _pernahAktif = true;
     final daftarProyek = s.proyek;
     final Proyek? p = (_pilih == null ? null : s.cariProyek(_pilih!)) ??
         daftarProyek.where((x) => (x.divisi ?? const []).any((d) => d.status != 'diam')).firstOrNull ??
@@ -94,7 +98,7 @@ class _LayarKantorState extends State<LayarKantor> {
               borderRadius: BorderRadius.circular(14),
               child: SizedBox(
                 height: (MediaQuery.sizeOf(context).height * .5).clamp(300.0, 520.0),
-                child: Kantor3d(proyek: p.nama, divisi: divisi, aktif: widget.aktif),
+                child: _pernahAktif ? Kantor3d(proyek: p.nama, divisi: divisi, aktif: widget.aktif) : ColoredBox(color: w.panel),
               ),
             ),
             const SizedBox(height: 12),
