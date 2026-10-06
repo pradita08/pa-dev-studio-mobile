@@ -36,7 +36,8 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          # 21 = sama dengan image build Mac (cirruslabs/flutter); EcdsaTest Wycheproof gagal 1 kasus di JDK 17 (SunEC lama)
+          java-version: '21'
 
       - name: Cache Flutter SDK
         id: cache-flutter
@@ -101,6 +102,15 @@ jobs:
       - name: Unit test JVM (kripto, vektor kontrak)
         working-directory: android
         run: ./gradlew --console=plain -Ptarget-platform=android-arm64 :app:testDebugUnitTest
+
+      - name: Laporan uji JVM (bila gagal)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: laporan-uji-jvm
+          path: build/app/reports/tests/
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Build APK debug & profile (arm64)
         run: |
