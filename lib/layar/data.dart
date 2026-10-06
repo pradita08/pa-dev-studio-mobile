@@ -16,8 +16,21 @@ import '../kunci/kunci.dart';
 enum StatusProyek { bekerja, menungguIzin, selesai, diam, gagal, tidakDiketahui }
 
 class Divisi {
-  const Divisi({required this.nama, required this.peran, required this.status, this.ringkas});
-  final String nama, peran;
+  const Divisi({this.namaMac, required this.peran, required this.status, this.ringkas, this.ke = 1});
+
+  /// Nama yang dikirim Mac (opsional; Mac v2 tidak mengirim).
+  final String? namaMac;
+  final String peran;
+
+  /// Urutan anggota berperan sama (1 = ketua, maks 3 = slot kantor 3D).
+  final int ke;
+
+  /// Nama dari Mac bila ada; Mac v2 hanya mengirim peran + ke → nama pegawai dari aset pegawai-nama.json (F2), lalu peran.
+  String get nama => namaMac ?? NamaPegawai.cari(peran, ke) ?? _kapital(peranTampil);
+
+  /// 'divisi-programmer' → 'programmer'.
+  String get peranTampil => NamaPegawai.peranPendek(peran);
+  static String _kapital(String t) => t.isEmpty ? 'Divisi' : t.length <= 3 ? t.toUpperCase() : t[0].toUpperCase() + t.substring(1);
 
   /// 'bekerja' | 'diam' | 'menunggu_izin'
   final String status;
@@ -603,10 +616,11 @@ abstract class SumberData extends ChangeNotifier {
         for (final d in _daftar(v))
           if (_peta(d) case final m?)
             Divisi(
-              nama: _teks(m['nama']) ?? '?',
+              namaMac: _teks(m['nama']),
               peran: _teks(m['peran']) ?? '',
               status: _teks(m['status']) ?? 'diam',
               ringkas: _teks(m['ringkas']),
+              ke: switch (_angka(m['ke'])?.toInt()) { final k? when k >= 1 && k <= 3 => k, _ => 1 },
             ),
       ];
 

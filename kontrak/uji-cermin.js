@@ -360,7 +360,19 @@ const cm = C.buatCermin({ cfg, log: () => {}, folder: folderPel, rumah: tmp });
   cm3.terimaHook(evB({ kind: 'agent_start', who: 'divisi-qa', agentId: 'ag1' }));
   cm3.terimaHook(evB({ kind: 'notify', type: 'permission_prompt' }));
   cek('hook → status menunggu_izin + ringkasStatus', cm3.statusSesi(s1) === 'menunggu_izin' && cm3.ringkasStatus().sesiAktif === 1 && cm3.ringkasStatus().divisi.get('proj') === 1);
+  // F2 tab Kantor: tim = daftar {peran, status, ke} saja (tanpa teks/alat/agentId), yang bekerja dapat slot dulu
+  let tim = cm3.ringkasStatus().tim.get('proj');
+  cek('ringkasStatus.tim: menunggu_izin + bentuk tetap', JSON.stringify(tim) === JSON.stringify([{ peran: 'divisi-qa', status: 'menunggu_izin', ke: 1 }]), JSON.stringify(tim));
   cm3.terimaHook(evB({ kind: 'tool_done', tool: 'Bash' }));
+  cm3.terimaHook(evB({ kind: 'agent_stop', who: 'divisi-qa', agentId: 'ag1' }));
+  cm3.terimaHook(evB({ kind: 'agent_start', who: 'divisi-qa', agentId: 'ag2' }));
+  cm3.terimaHook(evB({ kind: 'agent_start', who: 'divisi-programmer', agentId: 'ag3', text: 'RAHASIA tugas' }));
+  tim = cm3.ringkasStatus().tim.get('proj');
+  cek('ringkasStatus.tim: QA baru di slot 1, QA selesai di slot 2 (diam), tanpa teks',
+    JSON.stringify(tim) === JSON.stringify([{ peran: 'divisi-qa', status: 'bekerja', ke: 1 }, { peran: 'divisi-programmer', status: 'bekerja', ke: 1 },
+      { peran: 'divisi-qa', status: 'diam', ke: 2 }]) && !JSON.stringify(tim).includes('RAHASIA'), JSON.stringify(tim));
+  cm3.terimaHook(evB({ kind: 'agent_stop', who: 'divisi-qa', agentId: 'ag2' }));
+  cm3.terimaHook(evB({ kind: 'agent_stop', who: 'divisi-programmer', agentId: 'ag3' }));
   cm3.terimaHook(evB({ kind: 'stop' }));
   cek('hook stop → tidak bekerja', !['bekerja', 'menunggu_izin'].includes(cm3.statusSesi(s1)), cm3.statusSesi(s1));
   const evHp = cm3.kejadianUntukHp(evB({ kind: 'tool', tool: 'Bash', detail: 'ls' }));
@@ -470,7 +482,7 @@ const cm = C.buatCermin({ cfg, log: () => {}, folder: folderPel, rumah: tmp });
   // §9.2: proyek hp:false ber-cermin ikut (id+nama+penanda, tanpa akun/batas); hp:false + cermin mati tidak dikirim
   const prB = st && st.isi.status.proyek.find(p => p.id === 'projb');
   cek('status: proyek hp:false ber-cermin dikirim hanya sebagai penanda', prB && prB.hp === false && prB.nama === 'ProjB' && prB.cermin === 'ringkas'
-    && prB.akun === undefined && prB.batasMenit === undefined && prB.sibuk === undefined && Number.isSafeInteger(prB.divisi), JSON.stringify(prB));
+    && prB.akun === undefined && prB.batasMenit === undefined && prB.sibuk === undefined && Array.isArray(prB.divisi), JSON.stringify(prB));   // F2: divisi = daftar tim (DESAIN-apk §5)
   cek('status: hp:false + cermin mati tidak dikirim; hp rencana + cermin mati tetap (v1)', st && !st.isi.status.proyek.some(p => p.id === 'projoff')
     && st.isi.status.proyek.find(p => p.id === 'projmati').hp === 'rencana' && st.isi.status.proyek.find(p => p.id === 'projmati').cermin === false);
   cek('status: setiap entri lolos bentuk Kotlin (id+nama teks; hp ∈ {rencana,kerjakan,false}; yang bisa diperintah punya akun)', st && st.isi.status.proyek.every(p =>

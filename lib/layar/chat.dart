@@ -473,14 +473,14 @@ class _BarisTim extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(right: 14),
                 child: Semantics(
-                  label: '${d.nama}, ${d.peran}, ${d.status == 'menunggu_izin' ? 'menunggu izin' : d.status}',
+                  label: '${d.nama}, ${d.peranTampil}, ${d.status == 'menunggu_izin' ? 'menunggu izin' : d.status}',
                   excludeSemantics: true,
                   child: Row(children: [
                     AvatarDivisi(nama: d.nama, aktif: d.status == 'bekerja', ukuran: 30),
                     const SizedBox(width: 6),
                     Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(d.nama, style: TextStyle(color: w.ink, fontSize: 12.5, fontWeight: FontWeight.w700)),
-                      Text(d.peran, style: TeksPadev.redup(w, ukuran: 11)),
+                      Text(d.peranTampil, style: TeksPadev.redup(w, ukuran: 11)),
                     ]),
                   ]),
                 ),

@@ -57,6 +57,33 @@ void main() {
     expect(namaAkun('akun2'), 'Akun 2');
   });
 
+  test('F2: divisi dari Mac v2 [{peran, status, ke}] → nama dari pegawai-nama.json; angka lama → daftar kosong', () {
+    NamaPegawai.atur({'div:programmer#1': 'Bima', 'div:programmer#2': 'Rizky'});
+    final s = _SumberUji()
+      ..status({
+        'status': {
+          'proyek': [
+            {
+              'id': 'a', 'nama': 'A', 'akun': [], 'hp': 'rencana', 'sibuk': true,
+              'divisi': [
+                {'peran': 'divisi-programmer', 'status': 'bekerja', 'ke': 1},
+                {'peran': 'divisi-programmer', 'status': 'diam', 'ke': 2},
+                {'peran': 'divisi-qa', 'status': 'bekerja', 'ke': 9},
+                {'peran': 'general-purpose', 'status': 'bekerja'},
+              ],
+            },
+            {'id': 'b', 'nama': 'B', 'akun': [], 'hp': 'rencana', 'sibuk': false, 'divisi': 2},
+          ],
+        },
+      });
+    final d = s.proyek.first.divisi!;
+    expect(d.map((x) => x.nama), ['Bima', 'Rizky', 'QA', 'General-purpose']);
+    expect(d.map((x) => x.ke), [1, 2, 1, 1]);
+    expect(d.first.peranTampil, 'programmer');
+    expect(s.proyek.last.divisi, isEmpty);
+    NamaPegawai.atur(const {});
+  });
+
   test('kabar chat & tanda_terima memperbarui tugas; urut lama dibuang', () {
     final s = _SumberUji();
     final t = s.tambah(Tugas(tugas: 't1', proyek: 'a', akun: 'akun1', mode: 'rencana', pesan: 'halo', baru: false, dibuat: DateTime.now()))

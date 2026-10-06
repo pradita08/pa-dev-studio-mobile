@@ -35,7 +35,7 @@ class _CangkangState extends State<Cangkang> {
     final halaman = [
       LayarBeranda(sumber: s, onBukaChat: bukaChat),
       LayarSesi(sumber: s, aktif: _tab == 1),
-      LayarKantor(sumber: s, onBukaChat: bukaChat),
+      LayarKantor(sumber: s, onBukaChat: bukaChat, aktif: _tab == 2),
       LayarKabar(sumber: s, onBukaChat: bukaChat),
       LayarPengaturan(sumber: s, onLepas: widget.onLepas),
     ];

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<!-- Kantor 3D untuk tab Kantor APK (F2). Disalin ke APK oleh buat-kantor-apk.js; dibuka di WebView terkunci (tanpa jaringan,
+     tanpa jembatan native). CSP: hanya berkas sendiri, tanpa skrip/gaya sebaris, tanpa koneksi keluar. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Kantor 3D</title>
+<link rel="stylesheet" href="kantor-hp.css">
+<!-- Urutan wajib (desain/API.md): three-kantor.js → orang3d.js → kantor3d.js; peta.js = tabel divisi dari office.html -->
+<script src="three-kantor.js"></script>
+<script src="orang3d.js"></script>
+<script src="kantor3d.js"></script>
+<script src="peta.js"></script>
+</head>
+<body>
+<div id="stage"></div>
+<div id="info" class="chip" hidden><span id="titik" class="titik"></span><span id="judul"></span></div>
+<div class="lantai" role="group" aria-label="Pilih lantai">
+  <button type="button" data-m="l1" aria-pressed="false">Lt 1</button>
+  <button type="button" data-m="l2" aria-pressed="false">Lt 2</button>
+  <button type="button" data-m="terpisah" aria-pressed="true">Semua</button>
+</div>
+<div id="kartu" class="kartu" hidden role="dialog" aria-live="polite">
+  <button type="button" id="tutup" class="tutup" aria-label="Tutup">×</button>
+  <b id="kNama"></b>
+  <span id="kPeran"></span>
+  <span id="kStatus" class="status"></span>
+  <p id="kRingkas"></p>
+</div>
+<p id="pesan" class="pesan" hidden></p>
+<script src="kantor-hp.js"></script>
+</body>
+</html>

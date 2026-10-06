@@ -227,7 +227,7 @@ class _KartuProyek extends StatelessWidget {
     } else if (p.status == StatusProyek.menungguIzin) {
       sub = 'Claude butuh izin menjalankan perintah (setujui di laptop)';
     } else if (bekerja.isNotEmpty) {
-      sub = bekerja.map((d) => d.peran.isEmpty ? d.nama : '${d.nama} (${d.peran})').join(', ');
+      sub = bekerja.map((d) => d.peran.isEmpty ? d.nama : '${d.nama} (${d.peranTampil})').join(', ');
     } else if (p.ringkasTerakhir != null) {
       sub = p.ringkasTerakhir;
     }

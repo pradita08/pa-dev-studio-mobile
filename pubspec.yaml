@@ -21,6 +21,10 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # F2 kantor 3D: dibuat `node buat-kantor-apk.js` di repo kantor (jangan diedit di sini)
+  assets:
+    - assets/kantor/
+    - assets/pegawai-nama.json
   fonts:
     - family: PlusJakartaSans
       fonts:

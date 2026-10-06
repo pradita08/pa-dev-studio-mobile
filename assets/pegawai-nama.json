@@ -1,0 +1,81 @@
+{
+  "aplikasi": "PADEV STUDIO",
+  "jenis": "pegawai",
+  "orang": {
+    "div:analis#1": {
+      "nama": "Fajar"
+    },
+    "div:analis#2": {
+      "nama": "Nadia"
+    },
+    "div:analis#3": {
+      "nama": "Sinta"
+    },
+    "div:programmer#1": {
+      "nama": "Bima"
+    },
+    "div:programmer#2": {
+      "nama": "Rizky"
+    },
+    "div:programmer#3": {
+      "nama": "Putri"
+    },
+    "div:ui#1": {
+      "nama": "Laras"
+    },
+    "div:ui#2": {
+      "nama": "Ayu"
+    },
+    "div:ui#3": {
+      "nama": "Citra"
+    },
+    "div:reviewer#1": {
+      "nama": "Arya"
+    },
+    "div:reviewer#2": {
+      "nama": "Hendra"
+    },
+    "div:reviewer#3": {
+      "nama": "Yoga"
+    },
+    "div:qa#1": {
+      "nama": "Dewi"
+    },
+    "div:qa#2": {
+      "nama": "Aisyah"
+    },
+    "div:qa#3": {
+      "nama": "Salma"
+    },
+    "div:security#1": {
+      "nama": "Sekar"
+    },
+    "div:security#2": {
+      "nama": "Intan"
+    },
+    "div:security#3": {
+      "nama": "Wulan"
+    },
+    "div:dokumentasi#1": {
+      "nama": "Rendra"
+    },
+    "div:dokumentasi#2": {
+      "nama": "Rudi"
+    },
+    "div:dokumentasi#3": {
+      "nama": "Galih"
+    },
+    "div:devops#1": {
+      "nama": "Bayu"
+    },
+    "div:devops#2": {
+      "nama": "Teguh"
+    },
+    "div:devops#3": {
+      "nama": "Dimas"
+    },
+    "fullstack-quickfix#1": {
+      "nama": "Raka"
+    }
+  }
+}

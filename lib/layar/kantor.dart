@@ -1,15 +1,20 @@
-// L10 Kantor v1 (DESAIN §4): daftar "Di kantor sekarang" per proyek + lembar detail divisi. Tanpa gambar 3D/WebView (v1.1).
-// Data dari `status.proyek[].divisi` (DESAIN §5); bila Mac belum mengirim field itu, tampil keterangan rapi.
+// L10 Kantor (DESAIN §4) + F2: kantor 3D (Kantor3d, WebView terkunci) di atas daftar "Di kantor sekarang" per proyek + lembar
+// detail divisi. Data dari `status.proyek[].divisi` (DESAIN §5: [{peran, status, ke}] dari Mac; nama dari pegawai-nama.json);
+// bila Mac belum mengirim field itu, tampil keterangan rapi. 3D bisa disembunyikan (daftar tetap lengkap tanpa 3D).
 import 'package:flutter/material.dart';
 
 import '../komponen/komponen.dart';
 import '../tema/token.dart';
 import 'data.dart';
+import 'kantor3d.dart';
 
 class LayarKantor extends StatefulWidget {
-  const LayarKantor({super.key, required this.sumber, required this.onBukaChat});
+  const LayarKantor({super.key, required this.sumber, required this.onBukaChat, this.aktif = true});
   final SumberData sumber;
   final ValueChanged<String> onBukaChat;
+
+  /// Tab Kantor sedang terlihat (render 3D dijeda bila tidak).
+  final bool aktif;
 
   @override
   State<LayarKantor> createState() => _LayarKantorState();
@@ -17,6 +22,15 @@ class LayarKantor extends StatefulWidget {
 
 class _LayarKantorState extends State<LayarKantor> {
   String? _pilih;
+  bool _tampil3d = true;
+
+  @override
+  void initState() {
+    super.initState();
+    NamaPegawai.muat().then((_) {
+      if (mounted) setState(() {});
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,9 +81,24 @@ class _LayarKantorState extends State<LayarKantor> {
           Row(children: [
             Container(width: 8, height: 8, decoration: BoxDecoration(color: aktif > 0 ? w.ok : w.muted, shape: BoxShape.circle)),
             const SizedBox(width: 6),
-            Text(aktif > 0 ? 'Di kantor sekarang · $aktif aktif' : 'Di kantor sekarang', style: TeksPadev.label(w)),
+            Expanded(child: Text(aktif > 0 ? 'Di kantor sekarang · $aktif aktif' : 'Di kantor sekarang', style: TeksPadev.label(w))),
+            TextButton.icon(
+              onPressed: () => setState(() => _tampil3d = !_tampil3d),
+              icon: Icon(_tampil3d ? Simbol.tutup : Simbol.kantor, size: 18),
+              label: Text(_tampil3d ? 'Sembunyikan 3D' : 'Tampilkan 3D'),
+            ),
           ]),
           const SizedBox(height: 8),
+          if (_tampil3d) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: SizedBox(
+                height: (MediaQuery.sizeOf(context).height * .5).clamp(300.0, 520.0),
+                child: Kantor3d(proyek: p.nama, divisi: divisi, aktif: widget.aktif),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           if (divisi.isEmpty)
             IsiKosong(ikon: Simbol.tidur, judul: 'Kantor sepi', teks: 'Belum ada divisi yang bekerja di ${p.nama}.')
           else
@@ -77,8 +106,6 @@ class _LayarKantorState extends State<LayarKantor> {
               for (final d in divisi)
                 _BarisDivisi(divisi: d, onTap: () => _detail(context, p, d)),
             ]),
-          const SizedBox(height: 14),
-          Text('Tampilan 3D kantor menyusul di versi berikutnya.', textAlign: TextAlign.center, style: TeksPadev.redup(w, ukuran: 12)),
         ],
       ],
     );
@@ -95,7 +122,7 @@ class _LayarKantorState extends State<LayarKantor> {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(d.nama, style: TextStyle(color: w.ink, fontSize: 18, fontWeight: FontWeight.w800)),
-              Text('${_kapital(d.peran)} · ${p.nama}', style: TeksPadev.redup(w)),
+              Text('${_kapital(d.peranTampil)} · ${p.nama}', style: TeksPadev.redup(w)),
             ]),
           ),
           ChipPadev.divisi(context, d.status),
@@ -139,7 +166,7 @@ class _BarisDivisi extends StatelessWidget {
     final d = divisi;
     return Semantics(
       button: true,
-      label: '${d.nama}, ${d.peran}${d.ringkas == null ? '' : ', ${d.ringkas}'}',
+      label: '${d.nama}, ${d.peranTampil}${d.ringkas == null ? '' : ', ${d.ringkas}'}',
       child: InkWell(
         onTap: onTap,
         child: ConstrainedBox(
@@ -153,7 +180,7 @@ class _BarisDivisi extends StatelessWidget {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text.rich(TextSpan(children: [
                     TextSpan(text: d.nama, style: TextStyle(color: w.ink, fontSize: 14, fontWeight: FontWeight.w800)),
-                    TextSpan(text: d.peran.isEmpty ? '' : ' · ${d.peran}', style: TeksPadev.redup(w, ukuran: 13.5)),
+                    TextSpan(text: d.peran.isEmpty ? '' : ' · ${d.peranTampil}', style: TeksPadev.redup(w, ukuran: 13.5)),
                   ])),
                   Text(d.ringkas ?? (d.status == 'diam' ? 'Menunggu tugas' : ''),
                       maxLines: 1, overflow: TextOverflow.ellipsis, style: TeksPadev.redup(w, ukuran: 12)),

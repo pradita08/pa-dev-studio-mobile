@@ -32,6 +32,31 @@ Image: `ghcr.io/cirruslabs/flutter:3.44.0` dipin digest, `linux/amd64` (emulasi 
 Uji silang dengan Node (amplop buatan Kotlin): setelah `bangun.sh uji`, jalankan
 `node apk/kontrak/uji-kripto.js --periksa apk/build/uji-kotlin/amplop-kotlin.json`.
 
+## Pasang di HP
+**A. Unduh dari GitHub (tanpa Mac).** Setiap push ke `main`/`claude/**` menjalankan workflow `.github/workflows/apk.yml`
+(analyze, flutter test, unit test JVM, lalu APK debug + profile arm64; rilis bila rahasia rilis diisi). Di HP: buka
+github.com → repo ini → **Actions → APK → run terbaru → Artifacts → padev-studio-apk** (zip; buka dengan aplikasi Files, ketuk
+`.apk`, izinkan "Instal aplikasi tidak dikenal" untuk browser/Files). Repo **privat**: APK juga ada di rilis pra-terbit
+**apk-terbaru** (Releases), unduh langsung `.apk`. SHA-256 sertifikat tiap APK ada di ringkasan run.
+- Agar SHA-256 debug tetap antar-run, isi rahasia Actions `PADEV_DEBUG_KEYSTORE_B64` (= `base64 -i debug.keystore`; keystore
+  debug Mac ada di volume Docker `padev-apk-android`, atau buat sekali: `keytool -genkeypair -keystore debug.keystore -alias
+  androiddebugkey -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"`).
+- APK rilis (data nyata): rahasia `PADEV_RILIS_KEYSTORE_B64`, `PADEV_KEYSTORE_SANDI`, `PADEV_KUNCI_ALIAS`, `PADEV_KUNCI_SANDI`.
+
+**B. Dari Mac lewat USB.** HP: Setelan → Tentang ponsel → ketuk *Versi OS* 7× → Opsi pengembang → **USB debugging** aktif.
+Mac (folder induk): `bash _mobile_padev_studio_3d/bangun.sh debug` lalu `bash _mobile_padev_studio_3d/pasang-hp.sh debug`.
+
+Pemasangan ke Mac (QR) tetap butuh SHA-256 sertifikat APK dicatat di konfigurasi pelaksana (`apkSertifikatDebugSha256` untuk
+debug/profile, `apkSertifikatSha256` untuk rilis).
+
+## Kantor 3D (F2)
+Tab Kantor menampilkan kantor 3D (sama dengan kantor laptop) di atas daftar divisi. `assets/kantor/` + `assets/pegawai-nama.json`
+**dibuat** dari repo kantor: `node _app_padev_studio_3d/buat-kantor-apk.js` (cek: `--cek`); jangan diedit di sini. Native:
+`android/.../kantor/Kantor3d.kt` — WebView terkunci: hanya aset dari daftar tetap di `https://kantor.padev-apk.invalid/`
+(request lain 403, tanpa jaringan), tanpa `addJavascriptInterface`, tanpa file/cookie/storage, CSP ketat; data satu arah
+(`kantorHp.terima(json)`), render dijeda saat tab tidak terlihat. Data tim = `status.proyek[].divisi` `[{peran, status, ke}]`
+dari pelaksana (nama dari `pegawai-nama.json`).
+
 ## Struktur
 - `lib/kunci/kunci.dart` — fasad Dart, satu-satunya jalan UI ke native (kanal `pro.padeveloper.studio/kunci`).
 - Pemindai QR pemasangan: `android/.../kunci/PemindaiQrActivity.kt` + `DekoderQr.kt` (CameraX + ZXing core, offline, tanpa
