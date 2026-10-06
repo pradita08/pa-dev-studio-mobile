@@ -1,0 +1,39 @@
+name: padev_studio
+description: "PADEV Studio — pemantau & pengirim perintah kantor PADEV dari HP (Android)."
+publish_to: 'none'
+version: 0.2.0+2
+
+environment:
+  sdk: ^3.12.0
+  flutter: 3.44.0
+
+# Dependensi minimal & dipin (pubspec.lock di repo). Kunci, kripto, sidik jari, dan HTTP relay ada di Kotlin
+# (android/app/src/main/kotlin/pro/padeveloper/studio/kunci); Dart hanya lewat lib/kunci/kunci.dart.
+# Pemindai QR pemasangan ada di Kotlin (CameraX + ZXing core, offline; kontrak v1.1 §7 / SEC-77) — tanpa plugin Dart.
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: 6.0.0
+
+flutter:
+  uses-material-design: true
+  fonts:
+    - family: PlusJakartaSans
+      fonts:
+        - asset: assets/fonts/PlusJakartaSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/PlusJakartaSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/PlusJakartaSans-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/PlusJakartaSans-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/PlusJakartaSans-ExtraBold.ttf
+          weight: 800
+    - family: MaterialSymbolsRounded
+      fonts:
+        - asset: assets/fonts/MaterialSymbolsRounded.ttf

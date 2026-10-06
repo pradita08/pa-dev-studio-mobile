@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">@drawable/launch_background</item>
+    </style>
+    <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">@color/latar_pembuka</item>
+    </style>
+    <!-- Layar pemindai QR native (PemindaiQrActivity): gelap, tanpa action bar, ikon bilah status terang. -->
+    <style name="TemaPemindai" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/latar_pemindai</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@color/latar_pemindai</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

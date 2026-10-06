@@ -1,0 +1,11 @@
+/.gradle
+/captures/
+/local.properties
+GeneratedPluginRegistrant.java
+.cxx/
+key.properties
+**/*.keystore
+**/*.jks
+**/*.p12
+# konfigurasi Firebase asli tidak pernah di repo
+app/google-services.json

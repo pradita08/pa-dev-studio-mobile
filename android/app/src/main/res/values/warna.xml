@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Latar ikon adaptif (DESAIN-apk §2 L9) -->
+    <color name="latar_ikon">#1D2433</color>
+    <!-- Token bg terang/gelap (DESAIN-apk §1) untuk layar pembuka -->
+    <color name="latar_pembuka">#E6EBF0</color>
+    <!-- Layar pemindai QR (sama dengan kamera L02 sebelumnya) -->
+    <color name="latar_pemindai">#0F131A</color>
+</resources>

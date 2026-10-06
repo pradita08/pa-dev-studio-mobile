@@ -1,0 +1,1255 @@
+{
+  "catatan": [
+    "Vektor uji bersama PADEV-E2E-v1 (kontrak .ai/brief/KONTRAK-apk.md §2). SEMUA kunci di berkas ini KUNCI UJI (hanya_uji) — jangan dipakai di perangkat.",
+    "Dibuat oleh: node apk/kontrak/buat-vektor.js · diperiksa oleh: node apk/kontrak/uji-kripto.js (Node 18+, tanpa npm).",
+    "Cara pakai di Kotlin (Putri): impor kunci dari `kunci` (ECDSA: pkcs8/spki b64u; X25519: privat_raw/publik_raw b64u, cocok untuk Tink HPKE keyset).",
+    "1) Untuk setiap `sah.perintah` (penerima Mac: kunci sandi e_mac, kunci_tanda_dikenal.mac) dan `sah.kabar` (penerima HP: e_hp, kunci_tanda_dikenal.hp):",
+    "   hitung ulang H = JCS(6 field header) dan info, bandingkan dengan `antara`; verifikasi tanda ECDSA (DER) atas b64u-dekode(antara.input_tanda)",
+    "   = \"PADEV-STUDIO-AMPLOP-v1\\n\" ‖ H ‖ enc ‖ ct; buka HPKE (info, aad = H) → harus sama persis dengan `antara.plaintext`.",
+    "2) Setiap `rusak[]` harus DITOLAK dengan `alasan` yang sama, memakai urutan pemeriksaan di `urutan_pemeriksaan` (alasan pertama yang gagal menang).",
+    "   `periksa.sekarang` = jam yang dipakai (ms). `periksa.penyimpan_awal` = isi penyimpan anti-replay sebelum amplop diperiksa",
+    "   (`urut_terakhir` untuk perangkat/pengirim itu, `id_terlihat` = id amplop yang sudah pernah diterima). `kunciSandiTambahan` = kunci sandi lain yang juga dipegang penerima.",
+    "3) `enc`/`ct` deterministik dari `antara.hpke.ikm_e` (DeriveKeyPair RFC 9180) — Tink tidak menerima ikm efemeral, jadi cukup uji buka+verifikasi;",
+    "   tanda ECDSA acak (k acak) — bandingkan dengan VERIFIKASI, bukan kesamaan byte.",
+    "4) Arah sebaliknya: amplop buatan Kotlin (kunci uji ini, jam nyata) diperiksa Node dengan: node apk/kontrak/uji-kripto.js --periksa <berkas.json>",
+    "   (berkas = satu amplop atau larik amplop; jenis_kotak perintah → sisi Mac, pasang → sisi Mac dengan rahasia di `pasang.qr`).",
+    "5) Pemasangan: `pasang.isi.hmac` = b64u(HMAC-SHA256(rahasia, UTF-8 `hmac_input_jcs`)); `pasang.sas` wajib sama dengan kode 6 digit di HP;",
+    "   `tantangan_atestasi_heks` = SHA-256(rahasia ‖ UTF-8 mac_id) untuk setAttestationChallenge.",
+    "6) `jcs[]`: masuk (teks JSON) → keluar (JCS RFC 8785) wajib sama byte-per-byte. Amplop hanya memakai bilangan bulat aman (≤ 2^53−1)."
+  ],
+  "suite": "PADEV-E2E-v1",
+  "versi_vektor": 1,
+  "hanya_uji": true,
+  "urutan_pemeriksaan": [
+    "bentuk (9 field, tipe, b64u kanonik, ukuran ≤96 KB; v bukan angka → bentuk)",
+    "versi (v ≠ 1)",
+    "jenis_kotak (bukan yang diharapkan penerima)",
+    "ke_salah",
+    "dari_tidak_dikenal",
+    "peran_salah",
+    "tanda_salah (SEBELUM dekripsi)",
+    "dekripsi_gagal",
+    "isi_bentuk (JSON objek, field wajib/tipe, field asing ditolak untuk perintah)",
+    "isi_tidak_cocok (mac_id; perintah: id & kedaluwarsa = header, perangkat_id = pemilik kunci; kabar: perangkat_id = HP ini)",
+    "kerjakan_tanpa_k_kerjakan",
+    "kedaluwarsa (sekarang > kedaluwarsa)",
+    "dibuat_masa_depan (dibuat > sekarang + 120 dtk)",
+    "masa_terlalu_panjang (kedaluwarsa − dibuat > masa_maks_ms per jenis, atau ≤ 0)",
+    "replay_id",
+    "urut_lama (urut ≤ tersimpan)"
+  ],
+  "alasan": [
+    "bentuk",
+    "versi",
+    "jenis_kotak",
+    "ke_salah",
+    "dari_tidak_dikenal",
+    "peran_salah",
+    "tanda_salah",
+    "dekripsi_gagal",
+    "hmac_salah",
+    "isi_bentuk",
+    "isi_tidak_cocok",
+    "kerjakan_tanpa_k_kerjakan",
+    "kedaluwarsa",
+    "dibuat_masa_depan",
+    "masa_terlalu_panjang",
+    "replay_id",
+    "urut_lama",
+    "penyimpan_gagal"
+  ],
+  "masa_maks_ms": {
+    "jalankan_kerjakan": 180000,
+    "jalankan_rencana": 600000,
+    "hapus_sesi": 600000,
+    "rotasi_kunci": 600000,
+    "hentikan": 1800000,
+    "lainnya": 600000,
+    "pasang": 600000,
+    "kabar": 259200000
+  },
+  "konteks": {
+    "sekarang": 1791000000000,
+    "mac_id": "dac41f4ed3e1ec5d",
+    "perangkat_id": "1f600ae09b7479f9",
+    "relay": "https://padev-studio.pa-developer.pro/api/v1/"
+  },
+  "kunci": {
+    "k_rencana": {
+      "hanya_uji": true,
+      "peran": "HP — K_rencana (Keystore)",
+      "jenis": "ECDSA P-256",
+      "d": "5eUG3oVBs7ErdudlUVxHoxeUnc6bWeXqOC7t7zwbxyI",
+      "pkcs8": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg5eUG3oVBs7ErdudlUVxHoxeUnc6bWeXqOC7t7zwbxyKhRANCAASfIvagtniECMYN6YfGuo3gqKtDdPVO7Ww3CMOZgPUGAKdAm0HvSFU7b4SlLc8swCMQ3NIjygnryf3uzYmnHrhD",
+      "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEnyL2oLZ4hAjGDemHxrqN4KirQ3T1Tu1sNwjDmYD1BgCnQJtB70hVO2-EpS3PLMAjENzSI8oJ68n97s2Jpx64Qw",
+      "id": "c4fa60a864eacae2"
+    },
+    "k_kerjakan": {
+      "hanya_uji": true,
+      "peran": "HP — K_kerjakan (Keystore, sidik jari)",
+      "jenis": "ECDSA P-256",
+      "d": "fg74UonfKuuG5LAXGiS6BbvlKM7JCj42gGZIH5MIQVQ",
+      "pkcs8": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgfg74UonfKuuG5LAXGiS6BbvlKM7JCj42gGZIH5MIQVShRANCAAQYLHdLOdESYXw1_yaYLD5llFSJ9b53Fzq5aMaeecyuZIBKSOSnA3NP_3Hc2teYrJmiS6c1oJ7l6p5AnUPJsAeu",
+      "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEGCx3SznREmF8Nf8mmCw-ZZRUifW-dxc6uWjGnnnMrmSASkjkpwNzT_9x3NrXmKyZokunNaCe5eqeQJ1DybAHrg",
+      "id": "9c309c0d81f1a9ff"
+    },
+    "s_mac": {
+      "hanya_uji": true,
+      "peran": "Mac — S_mac",
+      "jenis": "ECDSA P-256",
+      "d": "fR_aCpC24jrcFKJdViYiDogJ2mw4rK0Ja20xnvvf6eQ",
+      "pkcs8": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgfR_aCpC24jrcFKJdViYiDogJ2mw4rK0Ja20xnvvf6eShRANCAATapdDxdk9VlrFj2515JT_AKPaLPY0iNQ49_iALehPzuej98SkhJrRxh4beUSe4yrsnYqR3VPc2dEziu8CBc4Sy",
+      "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE2qXQ8XZPVZaxY9udeSU_wCj2iz2NIjUOPf4gC3oT87no_fEpISa0cYeG3lEnuMq7J2Kkd1T3NnRM4rvAgXOEsg",
+      "id": "18d8a51307fe55d3"
+    },
+    "k_asing": {
+      "hanya_uji": true,
+      "peran": "kunci tanda TIDAK terdaftar (uji dari_tidak_dikenal)",
+      "jenis": "ECDSA P-256",
+      "d": "6ORBMseMy0II6KFo_NDQ99LwBa5GuKtX3eNfd-ygs7A",
+      "pkcs8": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg6ORBMseMy0II6KFo_NDQ99LwBa5GuKtX3eNfd-ygs7ChRANCAAQY3XbewF2eBr2Ty7bZ9xaClRKRaSKXqv-AIVvaFv679TPj1F7wRTTkA3jWIU9yis1qPIUK5wuSx-mcuKhYJvqu",
+      "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEGN123sBdnga9k8u22fcWgpUSkWkil6r_gCFb2hb-u_Uz49Re8EU05AN41iFPcorNajyFCucLksfpnLioWCb6rg",
+      "id": "56a7993e3b9873f1"
+    },
+    "e_hp": {
+      "hanya_uji": true,
+      "peran": "HP — E_hp (keyset Tink)",
+      "jenis": "X25519",
+      "privat_raw": "7f-aT_Rk9PVsp1pC7jioyGzivB6Y2M_lxmJw4VFCLzw",
+      "pkcs8": "MC4CAQAwBQYDK2VuBCIEIO3_mk_0ZPT1bKdaQu44qMhs4rwemNjP5cZicOFRQi88",
+      "publik_raw": "Cdp9SaUUIKbWnVOdunwsRYQqu-aKz9JNu2IUdZFTQDQ",
+      "id": "dcc6e1284bed98fb"
+    },
+    "e_mac": {
+      "hanya_uji": true,
+      "peran": "Mac — E_mac",
+      "jenis": "X25519",
+      "privat_raw": "VMyudrttn7pzj_bXYR-ESrH0zH7Z3R4Q8xz0SI3fkz4",
+      "pkcs8": "MC4CAQAwBQYDK2VuBCIEIFTMrna7bZ-6c4_212EfhEqx9Mx-2d0eEPMc9EiN35M-",
+      "publik_raw": "qmoZ3M3RlQq7OWntW6srCeE9A1L6mHxfWvJGEpcFEys",
+      "id": "11d4d3b0db14e3d2"
+    },
+    "e_asing": {
+      "hanya_uji": true,
+      "peran": "kunci sandi Mac LAIN (uji ke_salah)",
+      "jenis": "X25519",
+      "privat_raw": "-zIkpdomvr0HAj7ydMoWSdNtwOdbJCmFnPlW4oUAMGk",
+      "pkcs8": "MC4CAQAwBQYDK2VuBCIEIPsyJKXaJr69BwI-8nTKFknTbcDnWyQphZz5VuKFADBp",
+      "publik_raw": "AuurzFgG0zfOStLJ-m1KR5D_kK7vX927jbyVk_PVJGs",
+      "id": "873a1784ca9ec980"
+    }
+  },
+  "kunci_tanda_dikenal": {
+    "mac": {
+      "c4fa60a864eacae2": {
+        "publik": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEnyL2oLZ4hAjGDemHxrqN4KirQ3T1Tu1sNwjDmYD1BgCnQJtB70hVO2-EpS3PLMAjENzSI8oJ68n97s2Jpx64Qw",
+        "peran": "k_rencana",
+        "perangkat_id": "1f600ae09b7479f9"
+      },
+      "9c309c0d81f1a9ff": {
+        "publik": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEGCx3SznREmF8Nf8mmCw-ZZRUifW-dxc6uWjGnnnMrmSASkjkpwNzT_9x3NrXmKyZokunNaCe5eqeQJ1DybAHrg",
+        "peran": "k_kerjakan",
+        "perangkat_id": "1f600ae09b7479f9"
+      }
+    },
+    "hp": {
+      "18d8a51307fe55d3": {
+        "publik": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE2qXQ8XZPVZaxY9udeSU_wCj2iz2NIjUOPf4gC3oT87no_fEpISa0cYeG3lEnuMq7J2Kkd1T3NnRM4rvAgXOEsg",
+        "peran": "s_mac"
+      }
+    }
+  },
+  "jcs": [
+    {
+      "masuk": "{\"b\":2,\"a\":1,\"c\":{\"z\":true,\"y\":null,\"x\":[3,2,1]}}",
+      "keluar": "{\"a\":1,\"b\":2,\"c\":{\"x\":[3,2,1],\"y\":null,\"z\":true}}"
+    },
+    {
+      "masuk": "{\"\\u20ac\":\"Euro\",\"\\r\":\"cr\",\"1\":\"satu\",\"\\u0080\":\"c1\",\"\\ud83d\\ude00\":\"emoji\",\"\\u00f6\":\"o\"}",
+      "keluar": "{\"\\r\":\"cr\",\"1\":\"satu\",\"\":\"c1\",\"ö\":\"o\",\"€\":\"Euro\",\"😀\":\"emoji\"}"
+    },
+    {
+      "masuk": "{\"s\":\"kutip \\\" garis \\\\ tab \\t baris \\n kontrol \\u0001 \\u001f del \\u007f slash / unicode \\u2028\"}",
+      "keluar": "{\"s\":\"kutip \\\" garis \\\\ tab \\t baris \\n kontrol \\u0001 \\u001f del  slash / unicode  \"}"
+    },
+    {
+      "masuk": "{\"angka\":[0,-0,1,-1,1791000000000,9007199254740991,1e21,1.5,0.000001,1e-7]}",
+      "keluar": "{\"angka\":[0,0,1,-1,1791000000000,9007199254740991,1e+21,1.5,0.000001,1e-7]}"
+    },
+    {
+      "masuk": "{\"kosong\":{},\"larik\":[],\"str\":\"\"}",
+      "keluar": "{\"kosong\":{},\"larik\":[],\"str\":\"\"}"
+    }
+  ],
+  "sah": {
+    "perintah": [
+      {
+        "label": "perintah_rencana",
+        "amplop": {
+          "v": 1,
+          "jenis_kotak": "perintah",
+          "dari": "c4fa60a864eacae2",
+          "ke": "11d4d3b0db14e3d2",
+          "id": "03ebfb21c7e17bbc5d27b016ac95b7a9",
+          "kedaluwarsa": 1791000595000,
+          "enc": "IimzWTjbqXpEHcpJGxlpkedJqhqj5l567RgvkkOV4j0",
+          "ct": "9_dXUOTK61S5nOGWTs0b-yldfwyuCAF4zHdUE1scHszcJRtd4USjteUfCXXeIE96i_uTkjdOkEodhSdjZfBygSxXSV7DjhG6r6Cbt0w4sAkbCeOAz_apUFQzuBsCDjWXOkPcj2V9LXWg0Re_XpbGGERT26Rt5l0sC3SPxIMfzJatrqfrsrYzRUcX-gmPIXQK5FQs5OEXAzu0kqyywsrksd3WhJ1w_e2jgzHPI6EHO8XWGnyN9s5Q2SaPKau9wghS0HT-rCp18j1Aoc-lAXWH821J_ZxZeZbPGZjdrX2qSZyV2D71fbvGfuDTTVEIEe6l2zqupz21XwE4jEhilGj-O5hf-xXDpVIJlv8nvTjhJwBdhQuIlGA99_J-Eq4-Bm53PZjvpfXTY1uiYO2dnFAs8kAKIHMy4q4eufxe3XkG66EPewUn_8wRUPMP1bj0ySiuVQMsEtltUyeOMnDnQQNewF1nh4PHCgXv5hvMdFX0rkW8gf5-F1oqDacGEMFNw6B6k7ESB33FKHG5vBCgJH4",
+          "tanda": "MEUCIQD92qk-j9R52vXr_2PV5gOKKBCi4j9HZOrO_8n6XFN2iAIgCyVxHZUbRw49__aiC51ayv1qiiKJC_ZV95DfE0uEeCI"
+        },
+        "antara": {
+          "H": "{\"dari\":\"c4fa60a864eacae2\",\"id\":\"03ebfb21c7e17bbc5d27b016ac95b7a9\",\"jenis_kotak\":\"perintah\",\"ke\":\"11d4d3b0db14e3d2\",\"kedaluwarsa\":1791000595000,\"v\":1}",
+          "info": "PADEV-STUDIO-v1|c4fa60a864eacae2|11d4d3b0db14e3d2",
+          "input_tanda": "UEFERVYtU1RVRElPLUFNUExPUC12MQp7ImRhcmkiOiJjNGZhNjBhODY0ZWFjYWUyIiwiaWQiOiIwM2ViZmIyMWM3ZTE3YmJjNWQyN2IwMTZhYzk1YjdhOSIsImplbmlzX2tvdGFrIjoicGVyaW50YWgiLCJrZSI6IjExZDRkM2IwZGIxNGUzZDIiLCJrZWRhbHV3YXJzYSI6MTc5MTAwMDU5NTAwMCwidiI6MX0iKbNZONupekQdykkbGWmR50mqGqPmXnrtGC-SQ5XiPff3V1DkyutUuZzhlk7NG_spXX8MrggBeMx3VBNbHB7M3CUbXeFEo7XlHwl13iBPeov7k5I3TpBKHYUnY2XwcoEsV0lew44Ruq-gm7dMOLAJGwnjgM_2qVBUM7gbAg41lzpD3I9lfS11oNEXv16WxhhEU9ukbeZdLAt0j8SDH8yWra6n67K2M0VHF_oJjyF0CuRULOThFwM7tJKsssLK5LHd1oSdcP3to4MxzyOhBzvF1hp8jfbOUNkmjymrvcIIUtB0_qwqdfI9QKHPpQF1h_NtSf2cWXmWzxmY3a19qkmcldg-9X27xn7g001RCBHupds6rqc9tV8BOIxIYpRo_juYX_sVw6VSCZb_J7044ScAXYULiJRgPffyfhKuPgZudz2Y76X102NbomDtnZxQLPJACiBzMuKuHrn8Xt15BuuhD3sFJ__MEVDzD9W49MkorlUDLBLZbVMnjjJw50EDXsBdZ4eDxwoF7-YbzHRV9K5FvIH-fhdaKg2nBhDBTcOgepOxEgd9xShxubwQoCR-",
+          "plaintext": "{\"akun\":\"akun-uji\",\"baru\":true,\"dibuat\":1790999995000,\"id\":\"03ebfb21c7e17bbc5d27b016ac95b7a9\",\"jenis\":\"jalankan\",\"kedaluwarsa\":1791000595000,\"mac_id\":\"dac41f4ed3e1ec5d\",\"mode\":\"rencana\",\"model\":\"opus\",\"perangkat_id\":\"1f600ae09b7479f9\",\"pesan\":\"Rencanakan perbaikan form — \\\"kutip\\\", baris\\nbaru, tab\\t, é, 日本, emoji 🙂\",\"proyek\":\"proyek-uji\",\"tugas\":\"tgs-rencana\",\"urut\":1}",
+          "hpke": {
+            "ikm_e": "asmFXTQG_Gzqsqj00551Yxqt2GJnMDlQSrrrTnKKaWU",
+            "sk_e": "e7dqWcer1y1PsW7-n5ce66BbVIMAh-z109rpoGkQ4-Q",
+            "enc": "IimzWTjbqXpEHcpJGxlpkedJqhqj5l567RgvkkOV4j0",
+            "shared_secret": "goVQEX9hzfmGe0zqku8-6H6_kD-TQgJcesOC1rRMuw4",
+            "key": "RliNcxu17VzwVoCpzw4FBPsIaO4V4bWyojFczgoBWYY",
+            "base_nonce": "7ALPxWNI2xWrtgmt"
+          }
+        },
+        "periksa": {
+          "jenisKotak": "perintah",
+          "penerima": "mac",
+          "sekarang": 1791000000000
+        },
+        "hasil": {
+          "ok": true,
+          "peran": "k_rencana",
+          "jenis": "jalankan",
+          "hash": "facb441df81421458ed7ea175d7b74b9dc5d8c919967aab1f541e3682c416ec6"
+        }
+      },
+      {
+        "label": "perintah_kerjakan",
+        "amplop": {
+          "v": 1,
+          "jenis_kotak": "perintah",
+          "dari": "9c309c0d81f1a9ff",
+          "ke": "11d4d3b0db14e3d2",
+          "id": "e4e7c1846c47e724e56f0c81f5327771",
+          "kedaluwarsa": 1791000175000,
+          "enc": "uQh8RrkXGCdQ6SC09mcnndTV9mTz5vxzZgdwWj1W2QE",
+          "ct": "e3CQgyQm4_8VXZ7e1w2kpilrU2atHXLwMBOB_nDeIF0BUXedyF8qzcXC-2k_PpXm-F828r1WcdnsaE2TYZ1trIrm9vx08lW4rPMXiDPohQi6Y8-9ra0uae2KmtlO9gcKBjqRVt48Q4Yg8bA-mThwB7DUMrWSoqGio-NEICIzl--82Mg_AOx3IspAeMgn29uVGyIZq5ntB7oa-OGOCA93nECPX6QLVzKTPNCSYmTwa80-RzcFOsmfKVc8ESFnWnOJCttS0oXo_dBU9EFhAn--OQBr0nSsmv2UHlInd-tpyGIxMCpK0HjSCP3i1DOKQT6zQyC7NiPVOxYwlP2SiDTmY38GiInzpWAk_nmTaFoMAaChed1p7j2hrna1C9SwNK2xGh64HUm1P1wYlETjqxLi5oMqx6Wsf-IlzXGuOJba168XL_pW8Ltc5U72Aom_ChwaKrw",
+          "tanda": "MEYCIQDL6M2ooWVIEoKL0hfPqjAM4kgqEbPggFXjx7UqBvFywAIhAIrnNHGEL7CinACKrd7-Zj-4tD39uT3dAWjXA7V4BvyQ"
+        },
+        "antara": {
+          "H": "{\"dari\":\"9c309c0d81f1a9ff\",\"id\":\"e4e7c1846c47e724e56f0c81f5327771\",\"jenis_kotak\":\"perintah\",\"ke\":\"11d4d3b0db14e3d2\",\"kedaluwarsa\":1791000175000,\"v\":1}",
+          "info": "PADEV-STUDIO-v1|9c309c0d81f1a9ff|11d4d3b0db14e3d2",
+          "input_tanda": "UEFERVYtU1RVRElPLUFNUExPUC12MQp7ImRhcmkiOiI5YzMwOWMwZDgxZjFhOWZmIiwiaWQiOiJlNGU3YzE4NDZjNDdlNzI0ZTU2ZjBjODFmNTMyNzc3MSIsImplbmlzX2tvdGFrIjoicGVyaW50YWgiLCJrZSI6IjExZDRkM2IwZGIxNGUzZDIiLCJrZWRhbHV3YXJzYSI6MTc5MTAwMDE3NTAwMCwidiI6MX25CHxGuRcYJ1DpILT2Zyed1NX2ZPPm_HNmB3BaPVbZAXtwkIMkJuP_FV2e3tcNpKYpa1NmrR1y8DATgf5w3iBdAVF3nchfKs3FwvtpPz6V5vhfNvK9VnHZ7GhNk2GdbayK5vb8dPJVuKzzF4gz6IUIumPPva2tLmntiprZTvYHCgY6kVbePEOGIPGwPpk4cAew1DK1kqKhoqPjRCAiM5fvvNjIPwDsdyLKQHjIJ9vblRsiGauZ7Qe6GvjhjggPd5xAj1-kC1cykzzQkmJk8GvNPkc3BTrJnylXPBEhZ1pziQrbUtKF6P3QVPRBYQJ_vjkAa9J0rJr9lB5SJ3frachiMTAqStB40gj94tQzikE-s0MguzYj1TsWMJT9kog05mN_BoiJ86VgJP55k2haDAGgoXndae49oa52tQvUsDStsRoeuB1JtT9cGJRE46sS4uaDKselrH_iJc1xrjiW2tevFy_6VvC7XOVO9gKJvwocGiq8",
+          "plaintext": "{\"akun\":\"akun-uji\",\"baru\":true,\"dibuat\":1790999995000,\"id\":\"e4e7c1846c47e724e56f0c81f5327771\",\"jenis\":\"jalankan\",\"kedaluwarsa\":1791000175000,\"mac_id\":\"dac41f4ed3e1ec5d\",\"mode\":\"kerjakan\",\"model\":\"opus\",\"perangkat_id\":\"1f600ae09b7479f9\",\"pesan\":\"Kerjakan rencana tadi\",\"proyek\":\"proyek-uji\",\"tugas\":\"tgs-kerjakan\",\"urut\":2}",
+          "hpke": {
+            "ikm_e": "T0svVSHxIapRfi8_FacpKiuvr_aidxplojweTeI1KLY",
+            "sk_e": "X0HZHsBv5pPBhjxASuc-y4Vrzp_iwP5AYJQsJCaRTKU",
+            "enc": "uQh8RrkXGCdQ6SC09mcnndTV9mTz5vxzZgdwWj1W2QE",
+            "shared_secret": "xRYl7KZcwEaJDjmk_tvvknfzfWl9U0C4DdY8UaLVavw",
+            "key": "GGaVOEYsYmbt8jqpis6GhWDyhoZhGs4iP7wc7fahCcY",
+            "base_nonce": "dRL7yXMoWNJh9Axw"
+          }
+        },
+        "periksa": {
+          "jenisKotak": "perintah",
+          "penerima": "mac",
+          "sekarang": 1791000000000
+        },
+        "hasil": {
+          "ok": true,
+          "peran": "k_kerjakan",
+          "jenis": "jalankan",
+          "hash": "a0e2b6b980d7054f2966628b4208c0f4c5e5426e5797e24219d091c6cbacc39b"
+        }
+      },
+      {
+        "label": "perintah_hentikan",
+        "amplop": {
+          "v": 1,
+          "jenis_kotak": "perintah",
+          "dari": "c4fa60a864eacae2",
+          "ke": "11d4d3b0db14e3d2",
+          "id": "946749b20b071ceba34aedb5b78bc50c",
+          "kedaluwarsa": 1791001795000,
+          "enc": "3LA3dVsKP9ZSm8S2XfVH1gD0MynTZGjwsGeOirvrvHg",
+          "ct": "SVj8dURVOF7Sld9jiLMmt_ZtZ4Wq7i30SXvyL-iQH8sDTAsATM86nl0ZbYGCymXFQJTy4i_4Y0FKGmSl1JWGLGILF10llDIfuPZMPcnPQmlrErH9X4hK9DMo46LGtT8nztdttWn-gICblLSX-R_VNW4lj1zog_JN5DRGmtPqdAX8bfw40c2ddSHOmjlMFCkIgb3xnc8LFGl6BHyPM6c46273Yo-O4wd-znWyiaAaySsGDwIY7--GdZxuz1Ksrg15-HeLH8-gswawbAv0e_14RD4LrFctgGNZmo3fig",
+          "tanda": "MEQCIDlh_qbXRjOkbaYbwwnf8kRFY6aR3qdIhwbo-BjT1_NWAiAtRVEASFNRyTUkUGrABPOay3hslPv0MwUf08oKF-Rweg"
+        },
+        "antara": {
+          "H": "{\"dari\":\"c4fa60a864eacae2\",\"id\":\"946749b20b071ceba34aedb5b78bc50c\",\"jenis_kotak\":\"perintah\",\"ke\":\"11d4d3b0db14e3d2\",\"kedaluwarsa\":1791001795000,\"v\":1}",
+          "info": "PADEV-STUDIO-v1|c4fa60a864eacae2|11d4d3b0db14e3d2",
+          "input_tanda": "UEFERVYtU1RVRElPLUFNUExPUC12MQp7ImRhcmkiOiJjNGZhNjBhODY0ZWFjYWUyIiwiaWQiOiI5NDY3NDliMjBiMDcxY2ViYTM0YWVkYjViNzhiYzUwYyIsImplbmlzX2tvdGFrIjoicGVyaW50YWgiLCJrZSI6IjExZDRkM2IwZGIxNGUzZDIiLCJrZWRhbHV3YXJzYSI6MTc5MTAwMTc5NTAwMCwidiI6MX3csDd1Wwo_1lKbxLZd9UfWAPQzKdNkaPCwZ46Ku-u8eElY_HVEVThe0pXfY4izJrf2bWeFqu4t9El78i_okB_LA0wLAEzPOp5dGW2BgsplxUCU8uIv-GNBShpkpdSVhixiCxddJZQyH7j2TD3Jz0JpaxKx_V-ISvQzKOOixrU_J87XbbVp_oCAm5S0l_kf1TVuJY9c6IPyTeQ0RprT6nQF_G38ONHNnXUhzpo5TBQpCIG98Z3PCxRpegR8jzOnOOtu92KPjuMHfs51somgGskrBg8CGO_vhnWcbs9SrK4Nefh3ix_PoLMGsGwL9Hv9eEQ-C6xXLYBjWZqN34o",
+          "plaintext": "{\"dibuat\":1790999995000,\"id\":\"946749b20b071ceba34aedb5b78bc50c\",\"jenis\":\"hentikan\",\"kedaluwarsa\":1791001795000,\"mac_id\":\"dac41f4ed3e1ec5d\",\"perangkat_id\":\"1f600ae09b7479f9\",\"tugas\":\"tgs-rencana\",\"urut\":3}",
+          "hpke": {
+            "ikm_e": "JG0biizWOHkJat-ARqj1-zc3TANJ74MtrUMDVJTqQPI",
+            "sk_e": "CycnOo2PmWyS9GUKXLCdyxD97mzO3VmMtRI23CtSiYA",
+            "enc": "3LA3dVsKP9ZSm8S2XfVH1gD0MynTZGjwsGeOirvrvHg",
+            "shared_secret": "V9XIEyO0NPi3m8OSU8QTikhUZcuk_xdWqJT-jMEKwiY",
+            "key": "m74ySPb0_MrLiGTFxnIhzveB0MyUEL3b0jgg_3iibi0",
+            "base_nonce": "6yLZjaZp25zAvgl6"
+          }
+        },
+        "periksa": {
+          "jenisKotak": "perintah",
+          "penerima": "mac",
+          "sekarang": 1791000000000
+        },
+        "hasil": {
+          "ok": true,
+          "peran": "k_rencana",
+          "jenis": "hentikan",
+          "hash": "818fa7e7c460cefc78b60babbf5bfb5078090c7c340cd583c9b2753c29dbebce"
+        }
+      }
+    ],
+    "kabar": [
+      {
+        "label": "kabar_tanda_terima",
+        "amplop": {
+          "v": 1,
+          "jenis_kotak": "kabar",
+          "dari": "18d8a51307fe55d3",
+          "ke": "dcc6e1284bed98fb",
+          "id": "0037cb63f7aaa0c55f75c8795f0a5e60",
+          "kedaluwarsa": 1791003595000,
+          "enc": "_y7S3U1ZhUIT0FOULrOlU24RmVebFBl_kAvHKVRkoRU",
+          "ct": "-LkgFdP-Qj1gJxv1gvuFkpExrVo8YBcHDh3IqgcjLmm3fr1ylcx8lt3SxvH9n3xJ9qA6GV35QSCDCPFyX8Ya6AD3Mfvfmc--SBIXiSzG3G34QVNp15y0fq0gEEIeH1E6FpujhX45GaI4WJkfX6TwtL2kVEkPxRDIOjBl2dYOdGDzEnJhaDZRCMKDGpT4dZTqxmQ7NTfRXDZ0XBH2gZtfxMe8tPgOPtj6YnUjIeR26E87m_3QEtQ6_7SLeNdbmnK5FNVObqT_9JdXBUkl1mDVuxnFTWArshw1kDvVOA4vYPZhLZRvztJAWRe7am1pGvUN6seKlPiXoz8LtUilhA88CnVnMbbdhDSi3kpi8zgXVTixeAnKjNRA4cC7d9g-wP_iQnTB0IW7C-sHqOvOMB5yNliCPgg",
+          "tanda": "MEUCIQDfZV93IYX7GqwBBmjiGLmcnveZG6hC7L-cFcuB9GYedQIgIShaLpFe5R15Al2TfDEtnmYq94btxBrLG1UmUMw0cTI"
+        },
+        "antara": {
+          "H": "{\"dari\":\"18d8a51307fe55d3\",\"id\":\"0037cb63f7aaa0c55f75c8795f0a5e60\",\"jenis_kotak\":\"kabar\",\"ke\":\"dcc6e1284bed98fb\",\"kedaluwarsa\":1791003595000,\"v\":1}",
+          "info": "PADEV-STUDIO-v1|18d8a51307fe55d3|dcc6e1284bed98fb",
+          "input_tanda": "UEFERVYtU1RVRElPLUFNUExPUC12MQp7ImRhcmkiOiIxOGQ4YTUxMzA3ZmU1NWQzIiwiaWQiOiIwMDM3Y2I2M2Y3YWFhMGM1NWY3NWM4Nzk1ZjBhNWU2MCIsImplbmlzX2tvdGFrIjoia2FiYXIiLCJrZSI6ImRjYzZlMTI4NGJlZDk4ZmIiLCJrZWRhbHV3YXJzYSI6MTc5MTAwMzU5NTAwMCwidiI6MX3_LtLdTVmFQhPQU5Qus6VTbhGZV5sUGX-QC8cpVGShFfi5IBXT_kI9YCcb9YL7hZKRMa1aPGAXBw4dyKoHIy5pt369cpXMfJbd0sbx_Z98SfagOhld-UEggwjxcl_GGugA9zH735nPvkgSF4ksxtxt-EFTadectH6tIBBCHh9ROhabo4V-ORmiOFiZH1-k8LS9pFRJD8UQyDowZdnWDnRg8xJyYWg2UQjCgxqU-HWU6sZkOzU30Vw2dFwR9oGbX8THvLT4Dj7Y-mJ1IyHkduhPO5v90BLUOv-0i3jXW5pyuRTVTm6k__SXVwVJJdZg1bsZxU1gK7IcNZA71TgOL2D2YS2Ub87SQFkXu2ptaRr1DerHipT4l6M_C7VIpYQPPAp1ZzG23YQ0ot5KYvM4F1U4sXgJyozUQOHAu3fYPsD_4kJ0wdCFuwvrB6jrzjAecjZYgj4I",
+          "plaintext": "{\"dibuat\":1790999995000,\"jenis\":\"tanda_terima\",\"mac_id\":\"dac41f4ed3e1ec5d\",\"perangkat_id\":\"1f600ae09b7479f9\",\"tanda_terima\":{\"hasil\":\"diterima\",\"perintah_id\":\"03ebfb21c7e17bbc5d27b016ac95b7a9\",\"perintah_sha256\":\"facb441df81421458ed7ea175d7b74b9dc5d8c919967aab1f541e3682c416ec6\"},\"urut_mac\":1}",
+          "hpke": {
+            "ikm_e": "FLJ_ESccAF24_ZWhL4A4wxCpAqyVpPaLG2DRoSJG8hk",
+            "sk_e": "g0qHQRH9o_2-X2WonQqBSklcqDkkaApOXvQJMgcWNLs",
+            "enc": "_y7S3U1ZhUIT0FOULrOlU24RmVebFBl_kAvHKVRkoRU",
+            "shared_secret": "GSmZws7DG2ziFwUO4Kyf9-0YV0Ru0KEuO1IXQXHv_kg",
+            "key": "RoUZey0qC34M8pSB4nlS221mNTO4thltzTqDS0XYvFs",
+            "base_nonce": "S4oMVHrCOjoyKqhB"
+          }
+        },
+        "periksa": {
+          "jenisKotak": "kabar",
+          "penerima": "hp",
+          "sekarang": 1791000000000
+        },
+        "hasil": {
+          "ok": true,
+          "peran": "s_mac",
+          "jenis": "tanda_terima"
+        }
+      },
+      {
+        "label": "kabar_notif",
+        "amplop": {
+          "v": 1,
+          "jenis_kotak": "kabar",
+          "dari": "18d8a51307fe55d3",
+          "ke": "dcc6e1284bed98fb",
+          "id": "4887a4a331eb84d2b4c9bcf0e1b4a93a",
+          "kedaluwarsa": 1791003595000,
+          "enc": "Tym53XV86Q5x31_xs_4qTKKUaJznQYaUPNa20hKztgE",
+          "ct": "2Xwv1EuiErxB17myq8fGIJ4F_cfxYny-LfwR8nFrId8eRXk-t48mKsaaHRH6WgQW8oHlt0xNU-ADGftVLzBcmRfedLOfTfvCgxHa6Fnc2kR3p86DviwY9gUYUuAjFlP3lqgNQSxTY3FJWDJMb3TpsVZtxkaSj9PFWOlU7dlvHzl769aMjm46X13EbP0RVY_2eHClB9Dd8o1nGuWGSUBsMxpQ2MxvdWrdY9DLY5cB2vVZaE-KiAG2yLKsVpf6TSFhdEM",
+          "tanda": "MEYCIQDVsi_O6LYRlfQyNndZijsp9i82s8f8mLGmTRZD3bZkzAIhAOk9yJyYjq5J1AqGMa5KN2N8gnrChhoYWV3q_OGWJoLs"
+        },
+        "antara": {
+          "H": "{\"dari\":\"18d8a51307fe55d3\",\"id\":\"4887a4a331eb84d2b4c9bcf0e1b4a93a\",\"jenis_kotak\":\"kabar\",\"ke\":\"dcc6e1284bed98fb\",\"kedaluwarsa\":1791003595000,\"v\":1}",
+          "info": "PADEV-STUDIO-v1|18d8a51307fe55d3|dcc6e1284bed98fb",
+          "input_tanda": "UEFERVYtU1RVRElPLUFNUExPUC12MQp7ImRhcmkiOiIxOGQ4YTUxMzA3ZmU1NWQzIiwiaWQiOiI0ODg3YTRhMzMxZWI4NGQyYjRjOWJjZjBlMWI0YTkzYSIsImplbmlzX2tvdGFrIjoia2FiYXIiLCJrZSI6ImRjYzZlMTI4NGJlZDk4ZmIiLCJrZWRhbHV3YXJzYSI6MTc5MTAwMzU5NTAwMCwidiI6MX1PKbnddXzpDnHfX_Gz_ipMopRonOdBhpQ81rbSErO2Adl8L9RLohK8Qde5sqvHxiCeBf3H8WJ8vi38EfJxayHfHkV5PrePJirGmh0R-loEFvKB5bdMTVPgAxn7VS8wXJkX3nSzn037woMR2uhZ3NpEd6fOg74sGPYFGFLgIxZT95aoDUEsU2NxSVgyTG906bFWbcZGko_TxVjpVO3Zbx85e-vWjI5uOl9dxGz9EVWP9nhwpQfQ3fKNZxrlhklAbDMaUNjMb3Vq3WPQy2OXAdr1WWhPiogBtsiyrFaX-k0hYXRD",
+          "plaintext": "{\"dibuat\":1790999995000,\"jenis\":\"notif\",\"mac_id\":\"dac41f4ed3e1ec5d\",\"notif\":{\"durasiDtk\":95,\"j\":\"selesai\",\"n\":3,\"proyek\":\"SIMPEG\"},\"perangkat_id\":\"1f600ae09b7479f9\",\"urut_mac\":2}",
+          "hpke": {
+            "ikm_e": "ZvV83ppqGk0LB6_kn3bNDJIkwpPCCK34Jj9eLDQTNbI",
+            "sk_e": "CSN4hxP9JJl7mZp8Xmv5WP0gJ9BeurZePYwqLOoR7V4",
+            "enc": "Tym53XV86Q5x31_xs_4qTKKUaJznQYaUPNa20hKztgE",
+            "shared_secret": "bz_rlJFUHWEapnu3V9XFhT5JldgLyntf3dVpw_Bw9xM",
+            "key": "_MQYN1UYyhUM834KyumNqJev3XkpN3AH_ie2GubR06E",
+            "base_nonce": "4TUDWAlu-vLopaPa"
+          }
+        },
+        "periksa": {
+          "jenisKotak": "kabar",
+          "penerima": "hp",
+          "sekarang": 1791000000000
+        },
+        "hasil": {
+          "ok": true,
+          "peran": "s_mac",
+          "jenis": "notif"
+        }
+      },
+      {
+        "label": "kabar_status",
+        "amplop": {
+          "v": 1,
+          "jenis_kotak": "kabar",
+          "dari": "18d8a51307fe55d3",
+          "ke": "dcc6e1284bed98fb",
+          "id": "23053729606e448ce9c7fd23e47c77ab",
+          "kedaluwarsa": 1791003595000,
+          "enc": "VwSinoOkXhZcGA0SokQhyIrYjku1k_HTy12fYk7ciiQ",
+          "ct": "-l5GXUntC_VJCUr0J9WVjHX6wvDlfb7AYt0y2mFLzQx2DJ03nZ5qEHAn3-3DOQ3e8Qo4niMK4A-BXWXfohXZVtZpcq-SSdqVAEDmS6RmeIE3FWjg17JPf-UBNH9CgqaVtaetM8xLGBKcCghzZnoFjhXxLpzAx3cDDEj5nNXIF5BLKBzLiJQDP4LpTZC2Ct0pJ2-JH9PJXJScDDOFYOkJtZ_I5d98Cy-35gSlQqgAfcmCN4m9ZWEaSIEhWibtsLxcLs-F7ysc0vfiUmruZHW986Q0VwYGcl5vpHX35L7qmBz-mhXMZyx7R1CwJxLMCT5lG2dN56Nwccv-2WStEYWJbCI33yhUjMI",
+          "tanda": "MEQCIB8apG82u4IUjzoGOnrbWmwaqdAK3JC05blEI65kLJ2WAiBrs76ZeTBYoekQXA9VNC2oHyH190_5iB44aVYeZdnEig"
+        },
+        "antara": {
+          "H": "{\"dari\":\"18d8a51307fe55d3\",\"id\":\"23053729606e448ce9c7fd23e47c77ab\",\"jenis_kotak\":\"kabar\",\"ke\":\"dcc6e1284bed98fb\",\"kedaluwarsa\":1791003595000,\"v\":1}",
+          "info": "PADEV-STUDIO-v1|18d8a51307fe55d3|dcc6e1284bed98fb",
+          "input_tanda": "UEFERVYtU1RVRElPLUFNUExPUC12MQp7ImRhcmkiOiIxOGQ4YTUxMzA3ZmU1NWQzIiwiaWQiOiIyMzA1MzcyOTYwNmU0NDhjZTljN2ZkMjNlNDdjNzdhYiIsImplbmlzX2tvdGFrIjoia2FiYXIiLCJrZSI6ImRjYzZlMTI4NGJlZDk4ZmIiLCJrZWRhbHV3YXJzYSI6MTc5MTAwMzU5NTAwMCwidiI6MX1XBKKeg6ReFlwYDRKiRCHIitiOS7WT8dPLXZ9iTtyKJPpeRl1J7Qv1SQlK9CfVlYx1-sLw5X2-wGLdMtphS80MdgydN52eahBwJ9_twzkN3vEKOJ4jCuAPgV1l36IV2VbWaXKvkknalQBA5kukZniBNxVo4NeyT3_lATR_QoKmlbWnrTPMSxgSnAoIc2Z6BY4V8S6cwMd3AwxI-ZzVyBeQSygcy4iUAz-C6U2QtgrdKSdviR_TyVyUnAwzhWDpCbWfyOXffAsvt-YEpUKoAH3JgjeJvWVhGkiBIVom7bC8XC7Phe8rHNL34lJq7mR1vfOkNFcGBnJeb6R19-S-6pgc_poVzGcse0dQsCcSzAk-ZRtnTeejcHHL_tlkrRGFiWwiN98oVIzC",
+          "plaintext": "{\"dibuat\":1790999995000,\"jenis\":\"status\",\"mac_id\":\"dac41f4ed3e1ec5d\",\"perangkat_id\":\"1f600ae09b7479f9\",\"status\":{\"proyek\":[{\"akun\":[\"akun-uji\"],\"batasMenit\":30,\"hp\":\"rencana\",\"id\":\"p1\",\"nama\":\"SIMPEG\",\"sibuk\":false}],\"versi\":\"1.0.0\"},\"urut_mac\":3}",
+          "hpke": {
+            "ikm_e": "m0C4QCEOnSIGgBXxL0bO62q5431jrapSGAfc6nQHesU",
+            "sk_e": "Sm5xjmsN7BF-vr4FJlhJxN-OfQUNs2iiwsg1AIrzEZk",
+            "enc": "VwSinoOkXhZcGA0SokQhyIrYjku1k_HTy12fYk7ciiQ",
+            "shared_secret": "--O0rfmwapDKsY7A3iLoe_Mt9-CL7hCjkg72Yov_6Cs",
+            "key": "OYIqSPD8mAO4YKGdlNs5rxIRAR_E2oNeY7flawpG5Zs",
+            "base_nonce": "crixIYDMPtPEqPn6"
+          }
+        },
+        "periksa": {
+          "jenisKotak": "kabar",
+          "penerima": "hp",
+          "sekarang": 1791000000000
+        },
+        "hasil": {
+          "ok": true,
+          "peran": "s_mac",
+          "jenis": "status"
+        }
+      }
+    ]
+  },
+  "rusak": [
+    {
+      "label": "tanpa_tanda",
+      "alasan": "bentuk",
+      "keterangan": "tanda \"\" (Sekar §6 #1)",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "perintah",
+        "dari": "c4fa60a864eacae2",
+        "ke": "11d4d3b0db14e3d2",
+        "id": "03ebfb21c7e17bbc5d27b016ac95b7a9",
+        "kedaluwarsa": 1791000595000,
+        "enc": "IimzWTjbqXpEHcpJGxlpkedJqhqj5l567RgvkkOV4j0",
+        "ct": "9_dXUOTK61S5nOGWTs0b-yldfwyuCAF4zHdUE1scHszcJRtd4USjteUfCXXeIE96i_uTkjdOkEodhSdjZfBygSxXSV7DjhG6r6Cbt0w4sAkbCeOAz_apUFQzuBsCDjWXOkPcj2V9LXWg0Re_XpbGGERT26Rt5l0sC3SPxIMfzJatrqfrsrYzRUcX-gmPIXQK5FQs5OEXAzu0kqyywsrksd3WhJ1w_e2jgzHPI6EHO8XWGnyN9s5Q2SaPKau9wghS0HT-rCp18j1Aoc-lAXWH821J_ZxZeZbPGZjdrX2qSZyV2D71fbvGfuDTTVEIEe6l2zqupz21XwE4jEhilGj-O5hf-xXDpVIJlv8nvTjhJwBdhQuIlGA99_J-Eq4-Bm53PZjvpfXTY1uiYO2dnFAs8kAKIHMy4q4eufxe3XkG66EPewUn_8wRUPMP1bj0ySiuVQMsEtltUyeOMnDnQQNewF1nh4PHCgXv5hvMdFX0rkW8gf5-F1oqDacGEMFNw6B6k7ESB33FKHG5vBCgJH4",
+        "tanda": ""
+      },
+      "periksa": {
+        "jenisKotak": "perintah",
+        "penerima": "mac",
+        "sekarang": 1791000000000
+      }
+    },
+    {
+      "label": "tanda_salah",
+      "alasan": "tanda_salah",
+      "keterangan": "tanda sah milik amplop lain (sama-sama K_rencana) (§6 #1)",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "perintah",
+        "dari": "c4fa60a864eacae2",
+        "ke": "11d4d3b0db14e3d2",
+        "id": "03ebfb21c7e17bbc5d27b016ac95b7a9",
+        "kedaluwarsa": 1791000595000,
+        "enc": "IimzWTjbqXpEHcpJGxlpkedJqhqj5l567RgvkkOV4j0",
+        "ct": "9_dXUOTK61S5nOGWTs0b-yldfwyuCAF4zHdUE1scHszcJRtd4USjteUfCXXeIE96i_uTkjdOkEodhSdjZfBygSxXSV7DjhG6r6Cbt0w4sAkbCeOAz_apUFQzuBsCDjWXOkPcj2V9LXWg0Re_XpbGGERT26Rt5l0sC3SPxIMfzJatrqfrsrYzRUcX-gmPIXQK5FQs5OEXAzu0kqyywsrksd3WhJ1w_e2jgzHPI6EHO8XWGnyN9s5Q2SaPKau9wghS0HT-rCp18j1Aoc-lAXWH821J_ZxZeZbPGZjdrX2qSZyV2D71fbvGfuDTTVEIEe6l2zqupz21XwE4jEhilGj-O5hf-xXDpVIJlv8nvTjhJwBdhQuIlGA99_J-Eq4-Bm53PZjvpfXTY1uiYO2dnFAs8kAKIHMy4q4eufxe3XkG66EPewUn_8wRUPMP1bj0ySiuVQMsEtltUyeOMnDnQQNewF1nh4PHCgXv5hvMdFX0rkW8gf5-F1oqDacGEMFNw6B6k7ESB33FKHG5vBCgJH4",
+        "tanda": "MEQCIDlh_qbXRjOkbaYbwwnf8kRFY6aR3qdIhwbo-BjT1_NWAiAtRVEASFNRyTUkUGrABPOay3hslPv0MwUf08oKF-Rweg"
+      },
+      "periksa": {
+        "jenisKotak": "perintah",
+        "penerima": "mac",
+        "sekarang": 1791000000000
+      }
+    },
+    {
+      "label": "header_diubah",
+      "alasan": "tanda_salah",
+      "keterangan": "kedaluwarsa header +1 ms tanpa tanda ulang (§6 #2)",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "perintah",
+        "dari": "c4fa60a864eacae2",
+        "ke": "11d4d3b0db14e3d2",
+        "id": "03ebfb21c7e17bbc5d27b016ac95b7a9",
+        "kedaluwarsa": 1791000595001,
+        "enc": "IimzWTjbqXpEHcpJGxlpkedJqhqj5l567RgvkkOV4j0",
+        "ct": "9_dXUOTK61S5nOGWTs0b-yldfwyuCAF4zHdUE1scHszcJRtd4USjteUfCXXeIE96i_uTkjdOkEodhSdjZfBygSxXSV7DjhG6r6Cbt0w4sAkbCeOAz_apUFQzuBsCDjWXOkPcj2V9LXWg0Re_XpbGGERT26Rt5l0sC3SPxIMfzJatrqfrsrYzRUcX-gmPIXQK5FQs5OEXAzu0kqyywsrksd3WhJ1w_e2jgzHPI6EHO8XWGnyN9s5Q2SaPKau9wghS0HT-rCp18j1Aoc-lAXWH821J_ZxZeZbPGZjdrX2qSZyV2D71fbvGfuDTTVEIEe6l2zqupz21XwE4jEhilGj-O5hf-xXDpVIJlv8nvTjhJwBdhQuIlGA99_J-Eq4-Bm53PZjvpfXTY1uiYO2dnFAs8kAKIHMy4q4eufxe3XkG66EPewUn_8wRUPMP1bj0ySiuVQMsEtltUyeOMnDnQQNewF1nh4PHCgXv5hvMdFX0rkW8gf5-F1oqDacGEMFNw6B6k7ESB33FKHG5vBCgJH4",
+        "tanda": "MEUCIQD92qk-j9R52vXr_2PV5gOKKBCi4j9HZOrO_8n6XFN2iAIgCyVxHZUbRw49__aiC51ayv1qiiKJC_ZV95DfE0uEeCI"
+      },
+      "periksa": {
+        "jenisKotak": "perintah",
+        "penerima": "mac",
+        "sekarang": 1791000000000
+      }
+    },
+    {
+      "label": "ke_diubah",
+      "alasan": "ke_salah",
+      "keterangan": "`ke` header diganti ke ID kunci yang tidak dipegang penerima (§6 #2)",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "perintah",
+        "dari": "c4fa60a864eacae2",
+        "ke": "873a1784ca9ec980",
+        "id": "03ebfb21c7e17bbc5d27b016ac95b7a9",
+        "kedaluwarsa": 1791000595000,
+        "enc": "IimzWTjbqXpEHcpJGxlpkedJqhqj5l567RgvkkOV4j0",
+        "ct": "9_dXUOTK61S5nOGWTs0b-yldfwyuCAF4zHdUE1scHszcJRtd4USjteUfCXXeIE96i_uTkjdOkEodhSdjZfBygSxXSV7DjhG6r6Cbt0w4sAkbCeOAz_apUFQzuBsCDjWXOkPcj2V9LXWg0Re_XpbGGERT26Rt5l0sC3SPxIMfzJatrqfrsrYzRUcX-gmPIXQK5FQs5OEXAzu0kqyywsrksd3WhJ1w_e2jgzHPI6EHO8XWGnyN9s5Q2SaPKau9wghS0HT-rCp18j1Aoc-lAXWH821J_ZxZeZbPGZjdrX2qSZyV2D71fbvGfuDTTVEIEe6l2zqupz21XwE4jEhilGj-O5hf-xXDpVIJlv8nvTjhJwBdhQuIlGA99_J-Eq4-Bm53PZjvpfXTY1uiYO2dnFAs8kAKIHMy4q4eufxe3XkG66EPewUn_8wRUPMP1bj0ySiuVQMsEtltUyeOMnDnQQNewF1nh4PHCgXv5hvMdFX0rkW8gf5-F1oqDacGEMFNw6B6k7ESB33FKHG5vBCgJH4",
+        "tanda": "MEUCIQD92qk-j9R52vXr_2PV5gOKKBCi4j9HZOrO_8n6XFN2iAIgCyVxHZUbRw49__aiC51ayv1qiiKJC_ZV95DfE0uEeCI"
+      },
+      "periksa": {
+        "jenisKotak": "perintah",
+        "penerima": "mac",
+        "sekarang": 1791000000000
+      }
+    },
+    {
+      "label": "ke_diubah_saat_rotasi",
+      "alasan": "tanda_salah",
+      "keterangan": "`ke` diganti ke kunci sandi lain yang JUGA dipegang penerima (masa rotasi) → tanda gagal (§6 #2)",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "perintah",
+        "dari": "c4fa60a864eacae2",
+        "ke": "873a1784ca9ec980",
+        "id": "03ebfb21c7e17bbc5d27b016ac95b7a9",
+        "kedaluwarsa": 1791000595000,
+        "enc": "IimzWTjbqXpEHcpJGxlpkedJqhqj5l567RgvkkOV4j0",
+        "ct": "9_dXUOTK61S5nOGWTs0b-yldfwyuCAF4zHdUE1scHszcJRtd4USjteUfCXXeIE96i_uTkjdOkEodhSdjZfBygSxXSV7DjhG6r6Cbt0w4sAkbCeOAz_apUFQzuBsCDjWXOkPcj2V9LXWg0Re_XpbGGERT26Rt5l0sC3SPxIMfzJatrqfrsrYzRUcX-gmPIXQK5FQs5OEXAzu0kqyywsrksd3WhJ1w_e2jgzHPI6EHO8XWGnyN9s5Q2SaPKau9wghS0HT-rCp18j1Aoc-lAXWH821J_ZxZeZbPGZjdrX2qSZyV2D71fbvGfuDTTVEIEe6l2zqupz21XwE4jEhilGj-O5hf-xXDpVIJlv8nvTjhJwBdhQuIlGA99_J-Eq4-Bm53PZjvpfXTY1uiYO2dnFAs8kAKIHMy4q4eufxe3XkG66EPewUn_8wRUPMP1bj0ySiuVQMsEtltUyeOMnDnQQNewF1nh4PHCgXv5hvMdFX0rkW8gf5-F1oqDacGEMFNw6B6k7ESB33FKHG5vBCgJH4",
+        "tanda": "MEUCIQD92qk-j9R52vXr_2PV5gOKKBCi4j9HZOrO_8n6XFN2iAIgCyVxHZUbRw49__aiC51ayv1qiiKJC_ZV95DfE0uEeCI"
+      },
+      "periksa": {
+        "jenisKotak": "perintah",
+        "penerima": "mac",
+        "sekarang": 1791000000000,
+        "kunciSandiTambahan": [
+          "e_asing"
+        ]
+      }
+    },
+    {
+      "label": "ct_diubah",
+      "alasan": "tanda_salah",
+      "keterangan": "1 bit ct dibalik (§6 #2)",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "perintah",
+        "dari": "c4fa60a864eacae2",
+        "ke": "11d4d3b0db14e3d2",
+        "id": "03ebfb21c7e17bbc5d27b016ac95b7a9",
+        "kedaluwarsa": 1791000595000,
+        "enc": "IimzWTjbqXpEHcpJGxlpkedJqhqj5l567RgvkkOV4j0",
+        "ct": "9_dXUOTL61S5nOGWTs0b-yldfwyuCAF4zHdUE1scHszcJRtd4USjteUfCXXeIE96i_uTkjdOkEodhSdjZfBygSxXSV7DjhG6r6Cbt0w4sAkbCeOAz_apUFQzuBsCDjWXOkPcj2V9LXWg0Re_XpbGGERT26Rt5l0sC3SPxIMfzJatrqfrsrYzRUcX-gmPIXQK5FQs5OEXAzu0kqyywsrksd3WhJ1w_e2jgzHPI6EHO8XWGnyN9s5Q2SaPKau9wghS0HT-rCp18j1Aoc-lAXWH821J_ZxZeZbPGZjdrX2qSZyV2D71fbvGfuDTTVEIEe6l2zqupz21XwE4jEhilGj-O5hf-xXDpVIJlv8nvTjhJwBdhQuIlGA99_J-Eq4-Bm53PZjvpfXTY1uiYO2dnFAs8kAKIHMy4q4eufxe3XkG66EPewUn_8wRUPMP1bj0ySiuVQMsEtltUyeOMnDnQQNewF1nh4PHCgXv5hvMdFX0rkW8gf5-F1oqDacGEMFNw6B6k7ESB33FKHG5vBCgJH4",
+        "tanda": "MEUCIQD92qk-j9R52vXr_2PV5gOKKBCi4j9HZOrO_8n6XFN2iAIgCyVxHZUbRw49__aiC51ayv1qiiKJC_ZV95DfE0uEeCI"
+      },
+      "periksa": {
+        "jenisKotak": "perintah",
+        "penerima": "mac",
+        "sekarang": 1791000000000
+      }
+    },
+    {
+      "label": "enc_diubah",
+      "alasan": "tanda_salah",
+      "keterangan": "1 bit enc dibalik (§6 #2)",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "perintah",
+        "dari": "c4fa60a864eacae2",
+        "ke": "11d4d3b0db14e3d2",
+        "id": "03ebfb21c7e17bbc5d27b016ac95b7a9",
+        "kedaluwarsa": 1791000595000,
+        "enc": "IymzWTjbqXpEHcpJGxlpkedJqhqj5l567RgvkkOV4j0",
+        "ct": "9_dXUOTK61S5nOGWTs0b-yldfwyuCAF4zHdUE1scHszcJRtd4USjteUfCXXeIE96i_uTkjdOkEodhSdjZfBygSxXSV7DjhG6r6Cbt0w4sAkbCeOAz_apUFQzuBsCDjWXOkPcj2V9LXWg0Re_XpbGGERT26Rt5l0sC3SPxIMfzJatrqfrsrYzRUcX-gmPIXQK5FQs5OEXAzu0kqyywsrksd3WhJ1w_e2jgzHPI6EHO8XWGnyN9s5Q2SaPKau9wghS0HT-rCp18j1Aoc-lAXWH821J_ZxZeZbPGZjdrX2qSZyV2D71fbvGfuDTTVEIEe6l2zqupz21XwE4jEhilGj-O5hf-xXDpVIJlv8nvTjhJwBdhQuIlGA99_J-Eq4-Bm53PZjvpfXTY1uiYO2dnFAs8kAKIHMy4q4eufxe3XkG66EPewUn_8wRUPMP1bj0ySiuVQMsEtltUyeOMnDnQQNewF1nh4PHCgXv5hvMdFX0rkW8gf5-F1oqDacGEMFNw6B6k7ESB33FKHG5vBCgJH4",
+        "tanda": "MEUCIQD92qk-j9R52vXr_2PV5gOKKBCi4j9HZOrO_8n6XFN2iAIgCyVxHZUbRw49__aiC51ayv1qiiKJC_ZV95DfE0uEeCI"
+      },
+      "periksa": {
+        "jenisKotak": "perintah",
+        "penerima": "mac",
+        "sekarang": 1791000000000
+      }
+    },
+    {
+      "label": "field_tambahan",
+      "alasan": "bentuk",
+      "keterangan": "header 10 field (\"alg\") (§6 #6)",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "perintah",
+        "dari": "c4fa60a864eacae2",
+        "ke": "11d4d3b0db14e3d2",
+        "id": "03ebfb21c7e17bbc5d27b016ac95b7a9",
+        "kedaluwarsa": 1791000595000,
+        "enc": "IimzWTjbqXpEHcpJGxlpkedJqhqj5l567RgvkkOV4j0",
+        "ct": "9_dXUOTK61S5nOGWTs0b-yldfwyuCAF4zHdUE1scHszcJRtd4USjteUfCXXeIE96i_uTkjdOkEodhSdjZfBygSxXSV7DjhG6r6Cbt0w4sAkbCeOAz_apUFQzuBsCDjWXOkPcj2V9LXWg0Re_XpbGGERT26Rt5l0sC3SPxIMfzJatrqfrsrYzRUcX-gmPIXQK5FQs5OEXAzu0kqyywsrksd3WhJ1w_e2jgzHPI6EHO8XWGnyN9s5Q2SaPKau9wghS0HT-rCp18j1Aoc-lAXWH821J_ZxZeZbPGZjdrX2qSZyV2D71fbvGfuDTTVEIEe6l2zqupz21XwE4jEhilGj-O5hf-xXDpVIJlv8nvTjhJwBdhQuIlGA99_J-Eq4-Bm53PZjvpfXTY1uiYO2dnFAs8kAKIHMy4q4eufxe3XkG66EPewUn_8wRUPMP1bj0ySiuVQMsEtltUyeOMnDnQQNewF1nh4PHCgXv5hvMdFX0rkW8gf5-F1oqDacGEMFNw6B6k7ESB33FKHG5vBCgJH4",
+        "tanda": "MEUCIQD92qk-j9R52vXr_2PV5gOKKBCi4j9HZOrO_8n6XFN2iAIgCyVxHZUbRw49__aiC51ayv1qiiKJC_ZV95DfE0uEeCI",
+        "alg": "ES256"
+      },
+      "periksa": {
+        "jenisKotak": "perintah",
+        "penerima": "mac",
+        "sekarang": 1791000000000
+      }
+    },
+    {
+      "label": "field_kurang",
+      "alasan": "bentuk",
+      "keterangan": "header 8 field (tanpa enc)",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "perintah",
+        "dari": "c4fa60a864eacae2",
+        "ke": "11d4d3b0db14e3d2",
+        "id": "03ebfb21c7e17bbc5d27b016ac95b7a9",
+        "kedaluwarsa": 1791000595000,
+        "ct": "9_dXUOTK61S5nOGWTs0b-yldfwyuCAF4zHdUE1scHszcJRtd4USjteUfCXXeIE96i_uTkjdOkEodhSdjZfBygSxXSV7DjhG6r6Cbt0w4sAkbCeOAz_apUFQzuBsCDjWXOkPcj2V9LXWg0Re_XpbGGERT26Rt5l0sC3SPxIMfzJatrqfrsrYzRUcX-gmPIXQK5FQs5OEXAzu0kqyywsrksd3WhJ1w_e2jgzHPI6EHO8XWGnyN9s5Q2SaPKau9wghS0HT-rCp18j1Aoc-lAXWH821J_ZxZeZbPGZjdrX2qSZyV2D71fbvGfuDTTVEIEe6l2zqupz21XwE4jEhilGj-O5hf-xXDpVIJlv8nvTjhJwBdhQuIlGA99_J-Eq4-Bm53PZjvpfXTY1uiYO2dnFAs8kAKIHMy4q4eufxe3XkG66EPewUn_8wRUPMP1bj0ySiuVQMsEtltUyeOMnDnQQNewF1nh4PHCgXv5hvMdFX0rkW8gf5-F1oqDacGEMFNw6B6k7ESB33FKHG5vBCgJH4",
+        "tanda": "MEUCIQD92qk-j9R52vXr_2PV5gOKKBCi4j9HZOrO_8n6XFN2iAIgCyVxHZUbRw49__aiC51ayv1qiiKJC_ZV95DfE0uEeCI"
+      },
+      "periksa": {
+        "jenisKotak": "perintah",
+        "penerima": "mac",
+        "sekarang": 1791000000000
+      }
+    },
+    {
+      "label": "v2",
+      "alasan": "versi",
+      "keterangan": "v = 2 (§6 #6)",
+      "amplop": {
+        "v": 2,
+        "jenis_kotak": "perintah",
+        "dari": "c4fa60a864eacae2",
+        "ke": "11d4d3b0db14e3d2",
+        "id": "03ebfb21c7e17bbc5d27b016ac95b7a9",
+        "kedaluwarsa": 1791000595000,
+        "enc": "IimzWTjbqXpEHcpJGxlpkedJqhqj5l567RgvkkOV4j0",
+        "ct": "9_dXUOTK61S5nOGWTs0b-yldfwyuCAF4zHdUE1scHszcJRtd4USjteUfCXXeIE96i_uTkjdOkEodhSdjZfBygSxXSV7DjhG6r6Cbt0w4sAkbCeOAz_apUFQzuBsCDjWXOkPcj2V9LXWg0Re_XpbGGERT26Rt5l0sC3SPxIMfzJatrqfrsrYzRUcX-gmPIXQK5FQs5OEXAzu0kqyywsrksd3WhJ1w_e2jgzHPI6EHO8XWGnyN9s5Q2SaPKau9wghS0HT-rCp18j1Aoc-lAXWH821J_ZxZeZbPGZjdrX2qSZyV2D71fbvGfuDTTVEIEe6l2zqupz21XwE4jEhilGj-O5hf-xXDpVIJlv8nvTjhJwBdhQuIlGA99_J-Eq4-Bm53PZjvpfXTY1uiYO2dnFAs8kAKIHMy4q4eufxe3XkG66EPewUn_8wRUPMP1bj0ySiuVQMsEtltUyeOMnDnQQNewF1nh4PHCgXv5hvMdFX0rkW8gf5-F1oqDacGEMFNw6B6k7ESB33FKHG5vBCgJH4",
+        "tanda": "MEUCIQD92qk-j9R52vXr_2PV5gOKKBCi4j9HZOrO_8n6XFN2iAIgCyVxHZUbRw49__aiC51ayv1qiiKJC_ZV95DfE0uEeCI"
+      },
+      "periksa": {
+        "jenisKotak": "perintah",
+        "penerima": "mac",
+        "sekarang": 1791000000000
+      }
+    },
+    {
+      "label": "v0",
+      "alasan": "versi",
+      "keterangan": "v = 0 (§6 #6)",
+      "amplop": {
+        "v": 0,
+        "jenis_kotak": "perintah",
+        "dari": "c4fa60a864eacae2",
+        "ke": "11d4d3b0db14e3d2",
+        "id": "03ebfb21c7e17bbc5d27b016ac95b7a9",
+        "kedaluwarsa": 1791000595000,
+        "enc": "IimzWTjbqXpEHcpJGxlpkedJqhqj5l567RgvkkOV4j0",
+        "ct": "9_dXUOTK61S5nOGWTs0b-yldfwyuCAF4zHdUE1scHszcJRtd4USjteUfCXXeIE96i_uTkjdOkEodhSdjZfBygSxXSV7DjhG6r6Cbt0w4sAkbCeOAz_apUFQzuBsCDjWXOkPcj2V9LXWg0Re_XpbGGERT26Rt5l0sC3SPxIMfzJatrqfrsrYzRUcX-gmPIXQK5FQs5OEXAzu0kqyywsrksd3WhJ1w_e2jgzHPI6EHO8XWGnyN9s5Q2SaPKau9wghS0HT-rCp18j1Aoc-lAXWH821J_ZxZeZbPGZjdrX2qSZyV2D71fbvGfuDTTVEIEe6l2zqupz21XwE4jEhilGj-O5hf-xXDpVIJlv8nvTjhJwBdhQuIlGA99_J-Eq4-Bm53PZjvpfXTY1uiYO2dnFAs8kAKIHMy4q4eufxe3XkG66EPewUn_8wRUPMP1bj0ySiuVQMsEtltUyeOMnDnQQNewF1nh4PHCgXv5hvMdFX0rkW8gf5-F1oqDacGEMFNw6B6k7ESB33FKHG5vBCgJH4",
+        "tanda": "MEUCIQD92qk-j9R52vXr_2PV5gOKKBCi4j9HZOrO_8n6XFN2iAIgCyVxHZUbRw49__aiC51ayv1qiiKJC_ZV95DfE0uEeCI"
+      },
+      "periksa": {
+        "jenisKotak": "perintah",
+        "penerima": "mac",
+        "sekarang": 1791000000000
+      }
+    },
+    {
+      "label": "jenis_kotak_salah",
+      "alasan": "jenis_kotak",
+      "keterangan": "amplop kabar sah diserahkan ke pemeriksa perintah Mac",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "kabar",
+        "dari": "18d8a51307fe55d3",
+        "ke": "dcc6e1284bed98fb",
+        "id": "0037cb63f7aaa0c55f75c8795f0a5e60",
+        "kedaluwarsa": 1791003595000,
+        "enc": "_y7S3U1ZhUIT0FOULrOlU24RmVebFBl_kAvHKVRkoRU",
+        "ct": "-LkgFdP-Qj1gJxv1gvuFkpExrVo8YBcHDh3IqgcjLmm3fr1ylcx8lt3SxvH9n3xJ9qA6GV35QSCDCPFyX8Ya6AD3Mfvfmc--SBIXiSzG3G34QVNp15y0fq0gEEIeH1E6FpujhX45GaI4WJkfX6TwtL2kVEkPxRDIOjBl2dYOdGDzEnJhaDZRCMKDGpT4dZTqxmQ7NTfRXDZ0XBH2gZtfxMe8tPgOPtj6YnUjIeR26E87m_3QEtQ6_7SLeNdbmnK5FNVObqT_9JdXBUkl1mDVuxnFTWArshw1kDvVOA4vYPZhLZRvztJAWRe7am1pGvUN6seKlPiXoz8LtUilhA88CnVnMbbdhDSi3kpi8zgXVTixeAnKjNRA4cC7d9g-wP_iQnTB0IW7C-sHqOvOMB5yNliCPgg",
+        "tanda": "MEUCIQDfZV93IYX7GqwBBmjiGLmcnveZG6hC7L-cFcuB9GYedQIgIShaLpFe5R15Al2TfDEtnmYq94btxBrLG1UmUMw0cTI"
+      },
+      "periksa": {
+        "jenisKotak": "perintah",
+        "penerima": "mac",
+        "sekarang": 1791000000000
+      }
+    },
+    {
+      "label": "kid_dari_tidak_dikenal",
+      "alasan": "dari_tidak_dikenal",
+      "keterangan": "ditandatangani kunci tidak terdaftar, `dari` = ID-nya (§6 #1)",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "perintah",
+        "dari": "56a7993e3b9873f1",
+        "ke": "11d4d3b0db14e3d2",
+        "id": "fb6ffcd495d44e430785e60beea0e10d",
+        "kedaluwarsa": 1791000595000,
+        "enc": "Yyb7CJZpHzGuYWDFYq-GiHxwlP6yk6p7FOZks4LJbXY",
+        "ct": "pHDgc-I13YVFXcWbGKaucEIyqV2BQWkETY_x7XohJTfkeLEp4HQmq_6cIyCS0lpXu84WBsJDk768ZdC9j5yC8H9L9NaF08yfZw5fHGWi0RMTSJRKaMEVcZDMaO7BnrPpdOqeZF5MV0PvQ1hntgPnxlV4HRnsHJ1e8_CfH2jQfI49SuNWNyavqdCHgHFYsA_8yzL_UxtGShyist4WEiNyXLeb-e14XR48-ghAuwS1iGkfDPDnIsddPmyfEnutB3MA7Z2Y-2H0NM1XFQ",
+        "tanda": "MEUCID6qbIKMzB41WXaHOoOCigOp1XX52sA7-ahYxLPgdY7JAiEAjCcqc_a-XxCNla3CCQETdOKYmLG869vxxNZYdE8otMk"
+      },
+      "periksa": {
+        "jenisKotak": "perintah",
+        "penerima": "mac",
+        "sekarang": 1791000000000
+      },
+      "antara": {
+        "H": "{\"dari\":\"56a7993e3b9873f1\",\"id\":\"fb6ffcd495d44e430785e60beea0e10d\",\"jenis_kotak\":\"perintah\",\"ke\":\"11d4d3b0db14e3d2\",\"kedaluwarsa\":1791000595000,\"v\":1}",
+        "info": "PADEV-STUDIO-v1|56a7993e3b9873f1|11d4d3b0db14e3d2",
+        "input_tanda": "UEFERVYtU1RVRElPLUFNUExPUC12MQp7ImRhcmkiOiI1NmE3OTkzZTNiOTg3M2YxIiwiaWQiOiJmYjZmZmNkNDk1ZDQ0ZTQzMDc4NWU2MGJlZWEwZTEwZCIsImplbmlzX2tvdGFrIjoicGVyaW50YWgiLCJrZSI6IjExZDRkM2IwZGIxNGUzZDIiLCJrZWRhbHV3YXJzYSI6MTc5MTAwMDU5NTAwMCwidiI6MX1jJvsIlmkfMa5hYMVir4aIfHCU_rKTqnsU5mSzgsltdqRw4HPiNd2FRV3FmximrnBCMqldgUFpBE2P8e16ISU35HixKeB0Jqv-nCMgktJaV7vOFgbCQ5O-vGXQvY-cgvB_S_TWhdPMn2cOXxxlotETE0iUSmjBFXGQzGjuwZ6z6XTqnmReTFdD70NYZ7YD58ZVeB0Z7BydXvPwnx9o0HyOPUrjVjcmr6nQh4BxWLAP_Msy_1MbRkocorLeFhIjcly3m_nteF0ePPoIQLsEtYhpHwzw5yLHXT5snxJ7rQdzAO2dmPth9DTNVxU",
+        "plaintext": "{\"dibuat\":1790999995000,\"id\":\"fb6ffcd495d44e430785e60beea0e10d\",\"jenis\":\"minta_status\",\"kedaluwarsa\":1791000595000,\"mac_id\":\"dac41f4ed3e1ec5d\",\"perangkat_id\":\"1f600ae09b7479f9\",\"urut\":4}",
+        "hpke": {
+          "ikm_e": "4gaukjDu2SNr9v5Gt0l0OK3QqZGZWdGOS3iqfAmFXXk",
+          "sk_e": "kfl5yRwRyff5c23_VHMJT8iN4_0jv6obQfm2WyTADNA",
+          "enc": "Yyb7CJZpHzGuYWDFYq-GiHxwlP6yk6p7FOZks4LJbXY",
+          "shared_secret": "pTOSpgtDLPYN4P7NwXlwNBhs7RtTen8HnDQVyyuROVw",
+          "key": "NXoTrhYhPAfVqKXh_Ek151oUVa8cCLZgBjWPj1r82ks",
+          "base_nonce": "0IcEVHMNAJxyrD7a"
+        }
+      }
+    },
+    {
+      "label": "kid_ke_salah",
+      "alasan": "ke_salah",
+      "keterangan": "dienkripsi ke E Mac lain (`ke` bukan kunci saya)",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "perintah",
+        "dari": "c4fa60a864eacae2",
+        "ke": "873a1784ca9ec980",
+        "id": "0fbe96a65df920e1fa83365458766909",
+        "kedaluwarsa": 1791000595000,
+        "enc": "Q8yKIzdjo2hM5xTe5i6Ofa6P012KVY0zqQza8DOVckc",
+        "ct": "L7qDM-4iObFqdp42QeJmdU7o5O9qsWG63GKfamsGoRNHrW9ee53y0qTgGYeX3YGDyfLvYo4aeeydD26nC18w8D-4BwW-X7BBhibPFbNr2AoHiu5gcC1YSrTYKFyLaKXR70IzOt3oNUvWVOEhhBUa3pkBc1hFRc-5IBx1kulQOnRjXDAfcBCbSmLnGMKWnZMf-yLYhogTEtjfN7ZfAiQcxMznpzFfAgN-EJmhyaqkgzM3_rQCj5V2aYbcdXk66bNVHkuLTupVF7lr1A",
+        "tanda": "MEYCIQCz4g_FSSRTTLxbo3wRxGo1s0WBikbqz9ePUhJ7r2OaKgIhAO-1mIYU5JTCzjsU9YdQZ1N9pSFWb5Nd4OZMsdi8bH4E"
+      },
+      "periksa": {
+        "jenisKotak": "perintah",
+        "penerima": "mac",
+        "sekarang": 1791000000000
+      },
+      "antara": {
+        "H": "{\"dari\":\"c4fa60a864eacae2\",\"id\":\"0fbe96a65df920e1fa83365458766909\",\"jenis_kotak\":\"perintah\",\"ke\":\"873a1784ca9ec980\",\"kedaluwarsa\":1791000595000,\"v\":1}",
+        "info": "PADEV-STUDIO-v1|c4fa60a864eacae2|873a1784ca9ec980",
+        "input_tanda": "UEFERVYtU1RVRElPLUFNUExPUC12MQp7ImRhcmkiOiJjNGZhNjBhODY0ZWFjYWUyIiwiaWQiOiIwZmJlOTZhNjVkZjkyMGUxZmE4MzM2NTQ1ODc2NjkwOSIsImplbmlzX2tvdGFrIjoicGVyaW50YWgiLCJrZSI6Ijg3M2ExNzg0Y2E5ZWM5ODAiLCJrZWRhbHV3YXJzYSI6MTc5MTAwMDU5NTAwMCwidiI6MX1DzIojN2OjaEznFN7mLo59ro_TXYpVjTOpDNrwM5VyRy-6gzPuIjmxanaeNkHiZnVO6OTvarFhutxin2prBqETR61vXnud8tKk4BmHl92Bg8ny72KOGnnsnQ9upwtfMPA_uAcFvl-wQYYmzxWza9gKB4ruYHAtWEq02Chci2il0e9CMzrd6DVL1lThIYQVGt6ZAXNYRUXPuSAcdZLpUDp0Y1wwH3AQm0pi5xjClp2TH_si2IaIExLY3ze2XwIkHMTM56cxXwIDfhCZocmqpIMzN_60Ao-VdmmG3HV5OumzVR5Li07qVRe5a9Q",
+        "plaintext": "{\"dibuat\":1790999995000,\"id\":\"0fbe96a65df920e1fa83365458766909\",\"jenis\":\"minta_status\",\"kedaluwarsa\":1791000595000,\"mac_id\":\"dac41f4ed3e1ec5d\",\"perangkat_id\":\"1f600ae09b7479f9\",\"urut\":4}",
+        "hpke": {
+          "ikm_e": "Do5kai54g9DlcLXSpvnQCRwfgmRxzxMqsPBS2imVRPE",
+          "sk_e": "XLce57RKChAh2eYcB97vKJ5EB11gEj3eBhsh6OFTO8I",
+          "enc": "Q8yKIzdjo2hM5xTe5i6Ofa6P012KVY0zqQza8DOVckc",
+          "shared_secret": "Tr_L7TIVaCMYlaY3bODm5hKq6fqHpueWvuFpnPzwM-k",
+          "key": "tZSkZXKoAFpLkHEw5AUGS9IxzQzackdnH1Mach7EJtE",
+          "base_nonce": "Dv1t1gNazMm5KXAC"
+        }
+      }
+    },
+    {
+      "label": "kedaluwarsa",
+      "alasan": "kedaluwarsa",
+      "keterangan": "sah tapi sekarang > kedaluwarsa (rencana ditahan 20 mnt; §6 #5)",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "perintah",
+        "dari": "c4fa60a864eacae2",
+        "ke": "11d4d3b0db14e3d2",
+        "id": "c5e1120d0f46aa48123f6d7752d1c2be",
+        "kedaluwarsa": 1790999400000,
+        "enc": "tLP-RHl3Z-0FMLsYM6grQOUudTfPAnznRMOf_gQugDo",
+        "ct": "uPx5ldi75w9Se7fg1bnejXuAf2pQQKTQSGT5gceepZ01qeEZPrgEWv8hnUw7Rqs4GXd_5PYRJE5524x-_RRk20gUjKL2hCwDk1D_M_1LDY9ma3Pn_lUAR7Z6wUGk4S7VytWvKdSA6cjMJv3ZmQ0kXJPCkQ4je15qdkx8hEU2Tj3yq3yMJrae5DwLsQiAZOlowfit6fjxlwn6WS1wLGDGNEhcsFgQPEmuCfpS_slIhRDA9HrYXRLVUV8mVfeUIZKckO-YhIOe8FI_5TlPD_ka64MzjKcrR9zoc_GGHJnlZNaVYrEw3WVtQVKGGzZomoG5-PQ5_r449MBhTd6KsGKKL_MmAJPvoL-2mRvyxjBXFlBUHHszUkMrmruWwzovkth1AhCwZa9Wajwh1Mr-e-8rhCcEYsNoREbR6AZfow",
+        "tanda": "MEUCIQDcjueifQfKpuLeZowRlagd-BucPoXKL_kdyEUbDbqfOQIgG54GtwA7PbUnJK6mCScV_Z-lUQOJ1RYfUNoxbeR13P4"
+      },
+      "periksa": {
+        "jenisKotak": "perintah",
+        "penerima": "mac",
+        "sekarang": 1791000000000
+      },
+      "antara": {
+        "H": "{\"dari\":\"c4fa60a864eacae2\",\"id\":\"c5e1120d0f46aa48123f6d7752d1c2be\",\"jenis_kotak\":\"perintah\",\"ke\":\"11d4d3b0db14e3d2\",\"kedaluwarsa\":1790999400000,\"v\":1}",
+        "info": "PADEV-STUDIO-v1|c4fa60a864eacae2|11d4d3b0db14e3d2",
+        "input_tanda": "UEFERVYtU1RVRElPLUFNUExPUC12MQp7ImRhcmkiOiJjNGZhNjBhODY0ZWFjYWUyIiwiaWQiOiJjNWUxMTIwZDBmNDZhYTQ4MTIzZjZkNzc1MmQxYzJiZSIsImplbmlzX2tvdGFrIjoicGVyaW50YWgiLCJrZSI6IjExZDRkM2IwZGIxNGUzZDIiLCJrZWRhbHV3YXJzYSI6MTc5MDk5OTQwMDAwMCwidiI6MX20s_5EeXdn7QUwuxgzqCtA5S51N88CfOdEw5_-BC6AOrj8eZXYu-cPUnu34NW53o17gH9qUECk0Ehk-YHHnqWdNanhGT64BFr_IZ1MO0arOBl3f-T2ESROeduMfv0UZNtIFIyi9oQsA5NQ_zP9Sw2PZmtz5_5VAEe2esFBpOEu1crVrynUgOnIzCb92ZkNJFyTwpEOI3teanZMfIRFNk498qt8jCa2nuQ8C7EIgGTpaMH4ren48ZcJ-lktcCxgxjRIXLBYEDxJrgn6Uv7JSIUQwPR62F0S1VFfJlX3lCGSnJDvmISDnvBSP-U5Tw_5GuuDM4ynK0fc6HPxhhyZ5WTWlWKxMN1lbUFShhs2aJqBufj0Of6-OPTAYU3eirBiii_zJgCT76C_tpkb8sYwVxZQVBx7M1JDK5q7lsM6L5LYdQIQsGWvVmo8IdTK_nvvK4QnBGLDaERG0egGX6M",
+        "plaintext": "{\"akun\":\"akun-uji\",\"baru\":true,\"dibuat\":1790998800000,\"id\":\"c5e1120d0f46aa48123f6d7752d1c2be\",\"jenis\":\"jalankan\",\"kedaluwarsa\":1790999400000,\"mac_id\":\"dac41f4ed3e1ec5d\",\"mode\":\"rencana\",\"model\":\"opus\",\"perangkat_id\":\"1f600ae09b7479f9\",\"pesan\":\"x\",\"proyek\":\"proyek-uji\",\"tugas\":\"tgs-rencana\",\"urut\":4}",
+        "hpke": {
+          "ikm_e": "j4ZWoSAOy-UbqBBkpBdcTJLHmy1slsvTPW2ZBxAumrs",
+          "sk_e": "oRxIGgx__JeRAzEeUkpBpGFMXB2wbiOxXG6vCMw5iHM",
+          "enc": "tLP-RHl3Z-0FMLsYM6grQOUudTfPAnznRMOf_gQugDo",
+          "shared_secret": "B4VPpHk3sFsdgUEQ_4eYMZu9knNTg11YKogRLMrk8V4",
+          "key": "Vm2bRW0viBrJXXwsdgs8270T32ODMkmJlrg28acIB_s",
+          "base_nonce": "vrNZ19YRSTLiaiN3"
+        }
+      }
+    },
+    {
+      "label": "masa_terlalu_panjang",
+      "alasan": "masa_terlalu_panjang",
+      "keterangan": "kerjakan dengan masa berlaku 4 mnt (> 3 mnt)",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "perintah",
+        "dari": "9c309c0d81f1a9ff",
+        "ke": "11d4d3b0db14e3d2",
+        "id": "f8b1a221338b288ba2423920619bd3c6",
+        "kedaluwarsa": 1791000235000,
+        "enc": "FEL7VZIWoxGjfwVsqwZCPdL9JRBEGE9WO3lvA6kUNAI",
+        "ct": "e3b7IhIoajGTeej7YgPsh7McrdlgKQ2XmcJGyq3qn1YiWcAN4yiK_imAjnYWf5FcRr_ZulTQcrBXVgmjmDbkaF1PBJAGPunjXrPqskHTXjW40tdhElg7XsvLVwUW0YTde2NgMdwa7IlB7OL_JH4oYltUTQotxvcztaeh_kuppcwW_tvPsOmHXPz8xiJeP6WDNaLGNgl8Ruu1ODXx1lmLGtn8Om5oj9DqIhQlORGCsAIgMHJrJ09cimQ-R5oS2kUV0BRm9RLCKInyQtffFNdqu6I8hpbOlplpg6m0mkW3vx1QRaQUTCZXQRMWTKwzd_UON7Gdlp5MeDnFHFGmly7mwceFkgu5Y0M9y0cVov12afW3wbgeHpGCW6vlwRo-E6hDruKCAejFwYvnyTME50osE7GLtiFiFhjEyrtH9sfi",
+        "tanda": "MEUCIDkQ0HbUpsxb_K8gvu67_hNNKx5jx6XQDq_3DMKlsIy_AiEA6qzYH4b7p1v-6AIUrA6lAxTnmzQ-0Es1QKtrBsaDyaw"
+      },
+      "periksa": {
+        "jenisKotak": "perintah",
+        "penerima": "mac",
+        "sekarang": 1791000000000
+      },
+      "antara": {
+        "H": "{\"dari\":\"9c309c0d81f1a9ff\",\"id\":\"f8b1a221338b288ba2423920619bd3c6\",\"jenis_kotak\":\"perintah\",\"ke\":\"11d4d3b0db14e3d2\",\"kedaluwarsa\":1791000235000,\"v\":1}",
+        "info": "PADEV-STUDIO-v1|9c309c0d81f1a9ff|11d4d3b0db14e3d2",
+        "input_tanda": "UEFERVYtU1RVRElPLUFNUExPUC12MQp7ImRhcmkiOiI5YzMwOWMwZDgxZjFhOWZmIiwiaWQiOiJmOGIxYTIyMTMzOGIyODhiYTI0MjM5MjA2MTliZDNjNiIsImplbmlzX2tvdGFrIjoicGVyaW50YWgiLCJrZSI6IjExZDRkM2IwZGIxNGUzZDIiLCJrZWRhbHV3YXJzYSI6MTc5MTAwMDIzNTAwMCwidiI6MX0UQvtVkhajEaN_BWyrBkI90v0lEEQYT1Y7eW8DqRQ0Ant2-yISKGoxk3no-2ID7IezHK3ZYCkNl5nCRsqt6p9WIlnADeMoiv4pgI52Fn-RXEa_2bpU0HKwV1YJo5g25GhdTwSQBj7p416z6rJB0141uNLXYRJYO17Ly1cFFtGE3XtjYDHcGuyJQezi_yR-KGJbVE0KLcb3M7Wnof5LqaXMFv7bz7Dph1z8_MYiXj-lgzWixjYJfEbrtTg18dZZixrZ_DpuaI_Q6iIUJTkRgrACIDByaydPXIpkPkeaEtpFFdAUZvUSwiiJ8kLX3xTXaruiPIaWzpaZaYOptJpFt78dUEWkFEwmV0ETFkysM3f1DjexnZaeTHg5xRxRppcu5sHHhZILuWNDPctHFaL9dmn1t8G4Hh6Rglur5cEaPhOoQ67iggHoxcGL58kzBOdKLBOxi7YhYhYYxMq7R_bH4g",
+        "plaintext": "{\"akun\":\"akun-uji\",\"baru\":true,\"dibuat\":1790999995000,\"id\":\"f8b1a221338b288ba2423920619bd3c6\",\"jenis\":\"jalankan\",\"kedaluwarsa\":1791000235000,\"mac_id\":\"dac41f4ed3e1ec5d\",\"mode\":\"kerjakan\",\"model\":\"opus\",\"perangkat_id\":\"1f600ae09b7479f9\",\"pesan\":\"x\",\"proyek\":\"proyek-uji\",\"tugas\":\"tgs-kerjakan\",\"urut\":4}",
+        "hpke": {
+          "ikm_e": "G2TlJXcTOvDP-hwSeBe362te_JexzFoJ5zFfXhww5V4",
+          "sk_e": "1mJlNQSlAoMEZwc883RIL5Tyr3g_Oqje5k0hmWM7Rfc",
+          "enc": "FEL7VZIWoxGjfwVsqwZCPdL9JRBEGE9WO3lvA6kUNAI",
+          "shared_secret": "7-8hDvLbDfCgOEmf5qX9S1qw-PWLtqf5_3hzVwaVOzc",
+          "key": "s9BelDzKv__Ci95mXo-FILJdArmH-wx_koawAxVvgS0",
+          "base_nonce": "sq6pr4ojoYslrR0t"
+        }
+      }
+    },
+    {
+      "label": "dibuat_masa_depan",
+      "alasan": "dibuat_masa_depan",
+      "keterangan": "`dibuat` 5 mnt di depan jam Mac (§6 #4)",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "perintah",
+        "dari": "c4fa60a864eacae2",
+        "ke": "11d4d3b0db14e3d2",
+        "id": "6bf06828773f483719ee28d220d788e3",
+        "kedaluwarsa": 1791000900000,
+        "enc": "ym285B3bqGDNoKiInnWEH46yf25Kj0m4BCctq9dUyyU",
+        "ct": "5P6i1jotSW6zgh5yGTnJpoEXZ2HmgX5BhXmmlA7S06PpTwxF8q2IT5ypFFx2EUIl4K_jaeslciDMFK-9On0s5Bp3OVUcLkmpuwj8s4G54a_VPyZJUx_lWrfVCtOVEX-R4CHBL_x8D7hA419ZjJOPtbkY2WT1NApfBJkZgq8gmiI3jeu06Rtj3tamM0zz-upxU6Auf96ohm-lG57LSsxzgzex71n7RLc23OG7RFWsDJCPC-hRb6W6AW6Xs9-Xkvibbo1ZZcBgVN0uIg",
+        "tanda": "MEUCIC-rx0_5rCG4Fo48WtEzsKiwTe2MHy6I6LWyW3fFpOL7AiEA2ckHPM6YX-9GAZOVtr749tYp3F9dKTGisJhrXpLxHas"
+      },
+      "periksa": {
+        "jenisKotak": "perintah",
+        "penerima": "mac",
+        "sekarang": 1791000000000
+      },
+      "antara": {
+        "H": "{\"dari\":\"c4fa60a864eacae2\",\"id\":\"6bf06828773f483719ee28d220d788e3\",\"jenis_kotak\":\"perintah\",\"ke\":\"11d4d3b0db14e3d2\",\"kedaluwarsa\":1791000900000,\"v\":1}",
+        "info": "PADEV-STUDIO-v1|c4fa60a864eacae2|11d4d3b0db14e3d2",
+        "input_tanda": "UEFERVYtU1RVRElPLUFNUExPUC12MQp7ImRhcmkiOiJjNGZhNjBhODY0ZWFjYWUyIiwiaWQiOiI2YmYwNjgyODc3M2Y0ODM3MTllZTI4ZDIyMGQ3ODhlMyIsImplbmlzX2tvdGFrIjoicGVyaW50YWgiLCJrZSI6IjExZDRkM2IwZGIxNGUzZDIiLCJrZWRhbHV3YXJzYSI6MTc5MTAwMDkwMDAwMCwidiI6MX3KbbzkHduoYM2gqIiedYQfjrJ_bkqPSbgEJy2r11TLJeT-otY6LUlus4Iechk5yaaBF2dh5oF-QYV5ppQO0tOj6U8MRfKtiE-cqRRcdhFCJeCv42nrJXIgzBSvvTp9LOQadzlVHC5JqbsI_LOBueGv1T8mSVMf5Vq31QrTlRF_keAhwS_8fA-4QONfWYyTj7W5GNlk9TQKXwSZGYKvIJoiN43rtOkbY97WpjNM8_rqcVOgLn_eqIZvpRuey0rMc4M3se9Z-0S3Ntzhu0RVrAyQjwvoUW-lugFul7Pfl5L4m26NWWXAYFTdLiI",
+        "plaintext": "{\"dibuat\":1791000300000,\"id\":\"6bf06828773f483719ee28d220d788e3\",\"jenis\":\"minta_status\",\"kedaluwarsa\":1791000900000,\"mac_id\":\"dac41f4ed3e1ec5d\",\"perangkat_id\":\"1f600ae09b7479f9\",\"urut\":4}",
+        "hpke": {
+          "ikm_e": "5iyuWnha4b11mi70hJMwQP_37LnNkonli6v0Zfpqwww",
+          "sk_e": "4QldfXmxUwAbIpIn7HXcn6ZA4Q54LMcYaxxX-zE0sEk",
+          "enc": "ym285B3bqGDNoKiInnWEH46yf25Kj0m4BCctq9dUyyU",
+          "shared_secret": "8teKV_FCqKb1RkIyKFKbPUaQeN3Qy0yAOo1ujbGb0Qg",
+          "key": "pj94Ng-PEv0Z5N0gqpQJ5df2AeupnOauKwLqMlvUFTo",
+          "base_nonce": "y5ZvWVCWPLq4hXIE"
+        }
+      }
+    },
+    {
+      "label": "kerjakan_bertanda_k_rencana",
+      "alasan": "kerjakan_tanpa_k_kerjakan",
+      "keterangan": "mode kerjakan ditandatangani K_rencana (§6 #7)",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "perintah",
+        "dari": "c4fa60a864eacae2",
+        "ke": "11d4d3b0db14e3d2",
+        "id": "3aaa95032fc85d0215b44ae55f326ce0",
+        "kedaluwarsa": 1791000175000,
+        "enc": "h_3XcVhLw3Fv3OWOzhL_mcsI9v5KLLQuHHPavEHnFCg",
+        "ct": "iijavLP1brMD23phD28kdXuW8bRXVzF6bpCoMDqccLPFh-qpLet4G46PM5MnVcuhdjOQj1W8n0xFQH_b-DizBjRHaPxZTu2nnlsy4Ab1xyRZJTE43fsyBeU0Msq9W3qK3l_0dB3QTk6lfwxP-4npdMejrELxvpFsc8AB9EPg-tEax3gYC4OCWWB_6OPBRGiTl4-9juFfaz6B5uVu-tHveBxge7Ar-AMqS-HtbtJjph_53hlYSHHkcAelZw8Vo9hY67t19ZgKEl8mAnGoWFERnNCTaJuZLy6dP9XPkUUykqROtBCubuUG8qcI9QhPNoZFyPcBT91Sx6uOuar3GFvBfamxE3EXZxBgOajHDM0Mm3ykE_jHMPRIHiT2xRXdvvwC0JNfMPdGc_iD7bU6nI3FceTof29eWufwoAhf9U7Y",
+        "tanda": "MEUCIEMxv5aNM8YWgSKlMEib9_5z7HKdhdH637U2CUYpIBG_AiEAqDFLcKwJWcJsXBPwzdgbou1XxGXg0HtAGqkOA_yNHOU"
+      },
+      "periksa": {
+        "jenisKotak": "perintah",
+        "penerima": "mac",
+        "sekarang": 1791000000000
+      },
+      "antara": {
+        "H": "{\"dari\":\"c4fa60a864eacae2\",\"id\":\"3aaa95032fc85d0215b44ae55f326ce0\",\"jenis_kotak\":\"perintah\",\"ke\":\"11d4d3b0db14e3d2\",\"kedaluwarsa\":1791000175000,\"v\":1}",
+        "info": "PADEV-STUDIO-v1|c4fa60a864eacae2|11d4d3b0db14e3d2",
+        "input_tanda": "UEFERVYtU1RVRElPLUFNUExPUC12MQp7ImRhcmkiOiJjNGZhNjBhODY0ZWFjYWUyIiwiaWQiOiIzYWFhOTUwMzJmYzg1ZDAyMTViNDRhZTU1ZjMyNmNlMCIsImplbmlzX2tvdGFrIjoicGVyaW50YWgiLCJrZSI6IjExZDRkM2IwZGIxNGUzZDIiLCJrZWRhbHV3YXJzYSI6MTc5MTAwMDE3NTAwMCwidiI6MX2H_ddxWEvDcW_c5Y7OEv-Zywj2_kostC4cc9q8QecUKIoo2ryz9W6zA9t6YQ9vJHV7lvG0V1cxem6QqDA6nHCzxYfqqS3reBuOjzOTJ1XLoXYzkI9VvJ9MRUB_2_g4swY0R2j8WU7tp55bMuAG9cckWSUxON37MgXlNDLKvVt6it5f9HQd0E5OpX8MT_uJ6XTHo6xC8b6RbHPAAfRD4PrRGsd4GAuDgllgf-jjwURok5ePvY7hX2s-geblbvrR73gcYHuwK_gDKkvh7W7SY6Yf-d4ZWEhx5HAHpWcPFaPYWOu7dfWYChJfJgJxqFhREZzQk2ibmS8unT_Vz5FFMpKkTrQQrm7lBvKnCPUITzaGRcj3AU_dUserjrmq9xhbwX2psRNxF2cQYDmoxwzNDJt8pBP4xzD0SB4k9sUV3b78AtCTXzD3RnP4g-21OpyNxXHk6H9vXlrn8KAIX_VO2A",
+        "plaintext": "{\"akun\":\"akun-uji\",\"baru\":true,\"dibuat\":1790999995000,\"id\":\"3aaa95032fc85d0215b44ae55f326ce0\",\"jenis\":\"jalankan\",\"kedaluwarsa\":1791000175000,\"mac_id\":\"dac41f4ed3e1ec5d\",\"mode\":\"kerjakan\",\"model\":\"opus\",\"perangkat_id\":\"1f600ae09b7479f9\",\"pesan\":\"x\",\"proyek\":\"proyek-uji\",\"tugas\":\"tgs-kerjakan\",\"urut\":4}",
+        "hpke": {
+          "ikm_e": "ky480KOYt3lnw4igEfMdsrP1WQld7WW-Hly01ckkEo0",
+          "sk_e": "xWwz3zwARlGCHTwiZghthI6HRwRvTQ9byc6NlGYA-zE",
+          "enc": "h_3XcVhLw3Fv3OWOzhL_mcsI9v5KLLQuHHPavEHnFCg",
+          "shared_secret": "H3yt6rQD8ifpVZOgX_YqCLK_YFmVDapPtSFy5TBdwpU",
+          "key": "8uZpMu6n9PxAIYyt8iSwnZPeqJ_98I6FF4KbUVsn548",
+          "base_nonce": "C3iA_89dCrSql1SZ"
+        }
+      }
+    },
+    {
+      "label": "mac_id_lain",
+      "alasan": "isi_tidak_cocok",
+      "keterangan": "plaintext untuk Mac lain (mac_id beda) (§6 #2)",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "perintah",
+        "dari": "c4fa60a864eacae2",
+        "ke": "11d4d3b0db14e3d2",
+        "id": "9d404b74871fc2b47d37008791cdcfa9",
+        "kedaluwarsa": 1791000595000,
+        "enc": "c-7k3dZHJPvmITsyrbj6C_mWmkBWufQI6g0aHH6snQ4",
+        "ct": "OxTImgJplDH4ra3IGNfEIU7IAqkk-rZGBLbWs3A8NttssSjbCsLbIabmfOPJZORqNLCqCGVmeJ3SY8DA-q7mxha4GZQYPGajLRhKER5nv6e51_PTT20adOdAkTmvycf375WZ8qtHxkK1gXUCNv7-nzEBivtyj4w6qcwGbxYjNVcC2lluIyUipEBfYQn4Pp2e-sQS-SAXzv2wZ1J2gWlKfrWVQwdsVmDYy4L0FzLzLqMjOtEkRbmAusY1TUcufGDx8vXnR8pcvBODNQ",
+        "tanda": "MEYCIQDSlcMkXuB3v63vmznqNpXKPzlrCDG1ioKF5oyDwxDRhAIhAL25mSzwcIXYkTMpBzH0DJjIcx9GSdUE2-BDxviLZqRW"
+      },
+      "periksa": {
+        "jenisKotak": "perintah",
+        "penerima": "mac",
+        "sekarang": 1791000000000
+      },
+      "antara": {
+        "H": "{\"dari\":\"c4fa60a864eacae2\",\"id\":\"9d404b74871fc2b47d37008791cdcfa9\",\"jenis_kotak\":\"perintah\",\"ke\":\"11d4d3b0db14e3d2\",\"kedaluwarsa\":1791000595000,\"v\":1}",
+        "info": "PADEV-STUDIO-v1|c4fa60a864eacae2|11d4d3b0db14e3d2",
+        "input_tanda": "UEFERVYtU1RVRElPLUFNUExPUC12MQp7ImRhcmkiOiJjNGZhNjBhODY0ZWFjYWUyIiwiaWQiOiI5ZDQwNGI3NDg3MWZjMmI0N2QzNzAwODc5MWNkY2ZhOSIsImplbmlzX2tvdGFrIjoicGVyaW50YWgiLCJrZSI6IjExZDRkM2IwZGIxNGUzZDIiLCJrZWRhbHV3YXJzYSI6MTc5MTAwMDU5NTAwMCwidiI6MX1z7uTd1kck--YhOzKtuPoL-ZaaQFa59AjqDRocfqydDjsUyJoCaZQx-K2tyBjXxCFOyAKpJPq2RgS21rNwPDbbbLEo2wrC2yGm5nzjyWTkajSwqghlZnid0mPAwPqu5sYWuBmUGDxmoy0YShEeZ7-nudfz009tGnTnQJE5r8nH9--VmfKrR8ZCtYF1Ajb-_p8xAYr7co-MOqnMBm8WIzVXAtpZbiMlIqRAX2EJ-D6dnvrEEvkgF879sGdSdoFpSn61lUMHbFZg2MuC9Bcy8y6jIzrRJEW5gLrGNU1HLnxg8fL150fKXLwTgzU",
+        "plaintext": "{\"dibuat\":1790999995000,\"id\":\"9d404b74871fc2b47d37008791cdcfa9\",\"jenis\":\"minta_status\",\"kedaluwarsa\":1791000595000,\"mac_id\":\"1f5ce707fa718c29\",\"perangkat_id\":\"1f600ae09b7479f9\",\"urut\":4}",
+        "hpke": {
+          "ikm_e": "wIArvc6zmL6Qt96NJg6DExaI9dzRcrqavHcPL3ZDgyI",
+          "sk_e": "qK0NeD5XI-CpBi0RpKYsj1thdfnR6R-8_wape_vjMN8",
+          "enc": "c-7k3dZHJPvmITsyrbj6C_mWmkBWufQI6g0aHH6snQ4",
+          "shared_secret": "NpVy3ZxbddSzWYLg7wdVchR1PhE6uk06R1L8kZXSxow",
+          "key": "Kbp6hS5OzUpKinppopWxnuaCwu-RYZTCJ0UUD98zDV4",
+          "base_nonce": "d4ILY2QHYkDDpTzS"
+        }
+      }
+    },
+    {
+      "label": "id_isi_beda_header",
+      "alasan": "isi_tidak_cocok",
+      "keterangan": "id di plaintext ≠ id header",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "perintah",
+        "dari": "c4fa60a864eacae2",
+        "ke": "11d4d3b0db14e3d2",
+        "id": "6fa48d1878402b5075cf2623cfb498d2",
+        "kedaluwarsa": 1791000595000,
+        "enc": "bjo-B8lpahxdQWEWP3_WeKECeNZSHGNEQGrW9eSAgz8",
+        "ct": "xReISWa-xO8t04dUe-Acfqb_gdv4fGaVb5uyj6YraFipV5iH75RNuvPM3uBFCjCuoLlueST2T21vOmLU16w9TeuOA4q58MnQFBz4b1xWqa7NeGy7OZCpdVVRbezsYyvsRrFYGKc9r-VfSfeKkzzQO1roBbSUcCY1T5S8KrrK-5d2ewjDEd-1wP67OF8ooXAifHsxWoIVAQ2p21ea-2qi4V191JYNF-0sfaaKoHBj5XWcsENUgWqk1NANHPQM1Rj4HOcqHY98kApV1Q",
+        "tanda": "MEUCIFRcXvGxvXpbMgcfLQaaUeVrcscC6Sh-fxsqPuUpSx_JAiEA4KbcQw4nDR5UhhBZU3HhuSiJXQ3zTBnTkU4Mosdnj9Q"
+      },
+      "periksa": {
+        "jenisKotak": "perintah",
+        "penerima": "mac",
+        "sekarang": 1791000000000
+      },
+      "antara": {
+        "H": "{\"dari\":\"c4fa60a864eacae2\",\"id\":\"6fa48d1878402b5075cf2623cfb498d2\",\"jenis_kotak\":\"perintah\",\"ke\":\"11d4d3b0db14e3d2\",\"kedaluwarsa\":1791000595000,\"v\":1}",
+        "info": "PADEV-STUDIO-v1|c4fa60a864eacae2|11d4d3b0db14e3d2",
+        "input_tanda": "UEFERVYtU1RVRElPLUFNUExPUC12MQp7ImRhcmkiOiJjNGZhNjBhODY0ZWFjYWUyIiwiaWQiOiI2ZmE0OGQxODc4NDAyYjUwNzVjZjI2MjNjZmI0OThkMiIsImplbmlzX2tvdGFrIjoicGVyaW50YWgiLCJrZSI6IjExZDRkM2IwZGIxNGUzZDIiLCJrZWRhbHV3YXJzYSI6MTc5MTAwMDU5NTAwMCwidiI6MX1uOj4HyWlqHF1BYRY_f9Z4oQJ41lIcY0RAatb15ICDP8UXiElmvsTvLdOHVHvgHH6m_4Hb-HxmlW-bso-mK2hYqVeYh--UTbrzzN7gRQowrqC5bnkk9k9tbzpi1NesPU3rjgOKufDJ0BQc-G9cVqmuzXhsuzmQqXVVUW3s7GMr7EaxWBinPa_lX0n3ipM80Dta6AW0lHAmNU-UvCq6yvuXdnsIwxHftcD-uzhfKKFwInx7MVqCFQENqdtXmvtqouFdfdSWDRftLH2miqBwY-V1nLBDVIFqpNTQDRz0DNUY-BznKh2PfJAKVdU",
+        "plaintext": "{\"dibuat\":1790999995000,\"id\":\"72f078f3c8ee146e1c15ad07e1bddb52\",\"jenis\":\"minta_status\",\"kedaluwarsa\":1791000595000,\"mac_id\":\"dac41f4ed3e1ec5d\",\"perangkat_id\":\"1f600ae09b7479f9\",\"urut\":4}",
+        "hpke": {
+          "ikm_e": "9VNfbsioCpAD6ICysforbPjVhhA5eFq7SbMDHZlWsN8",
+          "sk_e": "WuLmgX5D5E8BXarG4TVkL4YuvR7K3LyS7vaT9s_aFDA",
+          "enc": "bjo-B8lpahxdQWEWP3_WeKECeNZSHGNEQGrW9eSAgz8",
+          "shared_secret": "-j_dUf2Ao79yaG6Hf5M8NUW8LJls96whaZr_FDBvZSk",
+          "key": "Eh008IGmzGW82el9mjP_3jZ6l6uZzkR86YPFo3_hrOs",
+          "base_nonce": "S_f_Me9yx9UV1oxG"
+        }
+      }
+    },
+    {
+      "label": "isi_field_asing",
+      "alasan": "isi_bentuk",
+      "keterangan": "plaintext memuat field tak dikenal",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "perintah",
+        "dari": "c4fa60a864eacae2",
+        "ke": "11d4d3b0db14e3d2",
+        "id": "50793490ca2edd9bf18389961b494caf",
+        "kedaluwarsa": 1791000595000,
+        "enc": "nQO82pHBvFil6nCAIZDGvGY1Kt5dCICHhx9HQrSs2nI",
+        "ct": "APHLDUoQAIiwr2TNoa81ju0LcM6VD2mzdK6hymE1wm_42bszumNx8-0Sy6l1CFPm2g4DWND0Z-90spGnvXZPlY2KTJiIrvpiRgAlCQns9gZkTAlV8ekfu4TrG4nfPPNwsez33vxq1oKBr0qUBxNhf4fYzIiFaUSqNRfZe6NGcAoueVe-EwTBKMRJCqx8UCPNevK2InqoheCq4kGCmLtx_6qU6AgIouOr6v-4uxClXhL-UuTNEUaMG-q7U6CmIt18UrT--gAND9tqPhQBj-ItlfLKZ7znLS-Lbw",
+        "tanda": "MEQCIFAGv17fK_TYbGQR06nbaLqL3RTDpFv-Kga_YyER7-QGAiAObP5Lv6pvdZVSl2kr5WxCvsiBAQXK3jlW25SeQD52fg"
+      },
+      "periksa": {
+        "jenisKotak": "perintah",
+        "penerima": "mac",
+        "sekarang": 1791000000000
+      },
+      "antara": {
+        "H": "{\"dari\":\"c4fa60a864eacae2\",\"id\":\"50793490ca2edd9bf18389961b494caf\",\"jenis_kotak\":\"perintah\",\"ke\":\"11d4d3b0db14e3d2\",\"kedaluwarsa\":1791000595000,\"v\":1}",
+        "info": "PADEV-STUDIO-v1|c4fa60a864eacae2|11d4d3b0db14e3d2",
+        "input_tanda": "UEFERVYtU1RVRElPLUFNUExPUC12MQp7ImRhcmkiOiJjNGZhNjBhODY0ZWFjYWUyIiwiaWQiOiI1MDc5MzQ5MGNhMmVkZDliZjE4Mzg5OTYxYjQ5NGNhZiIsImplbmlzX2tvdGFrIjoicGVyaW50YWgiLCJrZSI6IjExZDRkM2IwZGIxNGUzZDIiLCJrZWRhbHV3YXJzYSI6MTc5MTAwMDU5NTAwMCwidiI6MX2dA7zakcG8WKXqcIAhkMa8ZjUq3l0IgIeHH0dCtKzacgDxyw1KEACIsK9kzaGvNY7tC3DOlQ9ps3SuocphNcJv-Nm7M7pjcfPtEsupdQhT5toOA1jQ9GfvdLKRp712T5WNikyYiK76YkYAJQkJ7PYGZEwJVfHpH7uE6xuJ3zzzcLHs9978ataCga9KlAcTYX-H2MyIhWlEqjUX2XujRnAKLnlXvhMEwSjESQqsfFAjzXrytiJ6qIXgquJBgpi7cf-qlOgICKLjq-r_uLsQpV4S_lLkzRFGjBvqu1OgpiLdfFK0_voADQ_baj4UAY_iLZXyyme85y0vi28",
+        "plaintext": "{\"dibuat\":1790999995000,\"id\":\"50793490ca2edd9bf18389961b494caf\",\"jalur\":\"/etc\",\"jenis\":\"minta_status\",\"kedaluwarsa\":1791000595000,\"mac_id\":\"dac41f4ed3e1ec5d\",\"perangkat_id\":\"1f600ae09b7479f9\",\"urut\":4}",
+        "hpke": {
+          "ikm_e": "8wgDqkOj0NowL0Nmehiwxly2v5XvRCInBp_hhi5ARc8",
+          "sk_e": "oWcXeSzi6mUUWyXRtHaKs7Se-OjgPgdM5yuRJbn0-5g",
+          "enc": "nQO82pHBvFil6nCAIZDGvGY1Kt5dCICHhx9HQrSs2nI",
+          "shared_secret": "CR4UiDlgUgkuuLdJbvsCIaXISIQroE-y_i-O2I_fuRQ",
+          "key": "9pKwIeAcN7Rg-9Y-4Q0VMXFmoflrodPZh4EjOxEgo8M",
+          "base_nonce": "Qvtc9VcSii_W7IMC"
+        }
+      }
+    },
+    {
+      "label": "replay_id",
+      "alasan": "replay_id",
+      "keterangan": "amplop perintah_hentikan sah, tetapi id-nya sudah pernah terlihat (§6 #3)",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "perintah",
+        "dari": "c4fa60a864eacae2",
+        "ke": "11d4d3b0db14e3d2",
+        "id": "946749b20b071ceba34aedb5b78bc50c",
+        "kedaluwarsa": 1791001795000,
+        "enc": "3LA3dVsKP9ZSm8S2XfVH1gD0MynTZGjwsGeOirvrvHg",
+        "ct": "SVj8dURVOF7Sld9jiLMmt_ZtZ4Wq7i30SXvyL-iQH8sDTAsATM86nl0ZbYGCymXFQJTy4i_4Y0FKGmSl1JWGLGILF10llDIfuPZMPcnPQmlrErH9X4hK9DMo46LGtT8nztdttWn-gICblLSX-R_VNW4lj1zog_JN5DRGmtPqdAX8bfw40c2ddSHOmjlMFCkIgb3xnc8LFGl6BHyPM6c46273Yo-O4wd-znWyiaAaySsGDwIY7--GdZxuz1Ksrg15-HeLH8-gswawbAv0e_14RD4LrFctgGNZmo3fig",
+        "tanda": "MEQCIDlh_qbXRjOkbaYbwwnf8kRFY6aR3qdIhwbo-BjT1_NWAiAtRVEASFNRyTUkUGrABPOay3hslPv0MwUf08oKF-Rweg"
+      },
+      "periksa": {
+        "jenisKotak": "perintah",
+        "penerima": "mac",
+        "sekarang": 1791000000000,
+        "penyimpan_awal": {
+          "urut_terakhir": 0,
+          "id_terlihat": [
+            "946749b20b071ceba34aedb5b78bc50c"
+          ]
+        }
+      }
+    },
+    {
+      "label": "urut_lama",
+      "alasan": "urut_lama",
+      "keterangan": "amplop perintah_hentikan sah (urut 3), urut tersimpan = 3 (§6 #4)",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "perintah",
+        "dari": "c4fa60a864eacae2",
+        "ke": "11d4d3b0db14e3d2",
+        "id": "946749b20b071ceba34aedb5b78bc50c",
+        "kedaluwarsa": 1791001795000,
+        "enc": "3LA3dVsKP9ZSm8S2XfVH1gD0MynTZGjwsGeOirvrvHg",
+        "ct": "SVj8dURVOF7Sld9jiLMmt_ZtZ4Wq7i30SXvyL-iQH8sDTAsATM86nl0ZbYGCymXFQJTy4i_4Y0FKGmSl1JWGLGILF10llDIfuPZMPcnPQmlrErH9X4hK9DMo46LGtT8nztdttWn-gICblLSX-R_VNW4lj1zog_JN5DRGmtPqdAX8bfw40c2ddSHOmjlMFCkIgb3xnc8LFGl6BHyPM6c46273Yo-O4wd-znWyiaAaySsGDwIY7--GdZxuz1Ksrg15-HeLH8-gswawbAv0e_14RD4LrFctgGNZmo3fig",
+        "tanda": "MEQCIDlh_qbXRjOkbaYbwwnf8kRFY6aR3qdIhwbo-BjT1_NWAiAtRVEASFNRyTUkUGrABPOay3hslPv0MwUf08oKF-Rweg"
+      },
+      "periksa": {
+        "jenisKotak": "perintah",
+        "penerima": "mac",
+        "sekarang": 1791000000000,
+        "penyimpan_awal": {
+          "urut_terakhir": 3,
+          "id_terlihat": []
+        }
+      }
+    },
+    {
+      "label": "kabar_tanda_salah",
+      "alasan": "tanda_salah",
+      "keterangan": "kabar dengan tanda kabar lain (§6 #13)",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "kabar",
+        "dari": "18d8a51307fe55d3",
+        "ke": "dcc6e1284bed98fb",
+        "id": "4887a4a331eb84d2b4c9bcf0e1b4a93a",
+        "kedaluwarsa": 1791003595000,
+        "enc": "Tym53XV86Q5x31_xs_4qTKKUaJznQYaUPNa20hKztgE",
+        "ct": "2Xwv1EuiErxB17myq8fGIJ4F_cfxYny-LfwR8nFrId8eRXk-t48mKsaaHRH6WgQW8oHlt0xNU-ADGftVLzBcmRfedLOfTfvCgxHa6Fnc2kR3p86DviwY9gUYUuAjFlP3lqgNQSxTY3FJWDJMb3TpsVZtxkaSj9PFWOlU7dlvHzl769aMjm46X13EbP0RVY_2eHClB9Dd8o1nGuWGSUBsMxpQ2MxvdWrdY9DLY5cB2vVZaE-KiAG2yLKsVpf6TSFhdEM",
+        "tanda": "MEUCIQDfZV93IYX7GqwBBmjiGLmcnveZG6hC7L-cFcuB9GYedQIgIShaLpFe5R15Al2TfDEtnmYq94btxBrLG1UmUMw0cTI"
+      },
+      "periksa": {
+        "jenisKotak": "kabar",
+        "penerima": "hp",
+        "sekarang": 1791000000000
+      }
+    },
+    {
+      "label": "kabar_dari_tidak_dikenal",
+      "alasan": "dari_tidak_dikenal",
+      "keterangan": "kabar \"selesai\" bertanda kunci selain S_mac (§6 #13)",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "kabar",
+        "dari": "56a7993e3b9873f1",
+        "ke": "dcc6e1284bed98fb",
+        "id": "cb880d33235215e32bf0fe559017c966",
+        "kedaluwarsa": 1791003595000,
+        "enc": "BGBLwN1yBjMbHoylmDz03tated17r1wEl46b67svfQM",
+        "ct": "MUg-NgeVx0BU0N1WMWmXAJlYGPJn7dB0Bw5ei4qz87p0hDDW2Xf6nTobTttfPgAW_lp4is2zLIFW-Z7zGOzoCbbEbCF_GvPnEUpYdbtVR4qsi8QGyOCn1sNKsezwacULjzpxuYpg0-x2v-HauHzRFWpn9UK8TBhAo0qGcLigTNNkyYgnG-Tb6z1RDH88Lf9zzwAAM-7Pd7_vl2k",
+        "tanda": "MEQCIF1Fh8HztSxwEtsRgKGqUMi9Ni51_kV-Mx7dP8jnybXFAiBa-xpZOY5NlUHxRIIgPxk1gR8NWu3qeGA58qtcSanfCw"
+      },
+      "periksa": {
+        "jenisKotak": "kabar",
+        "penerima": "hp",
+        "sekarang": 1791000000000
+      },
+      "antara": {
+        "H": "{\"dari\":\"56a7993e3b9873f1\",\"id\":\"cb880d33235215e32bf0fe559017c966\",\"jenis_kotak\":\"kabar\",\"ke\":\"dcc6e1284bed98fb\",\"kedaluwarsa\":1791003595000,\"v\":1}",
+        "info": "PADEV-STUDIO-v1|56a7993e3b9873f1|dcc6e1284bed98fb",
+        "input_tanda": "UEFERVYtU1RVRElPLUFNUExPUC12MQp7ImRhcmkiOiI1NmE3OTkzZTNiOTg3M2YxIiwiaWQiOiJjYjg4MGQzMzIzNTIxNWUzMmJmMGZlNTU5MDE3Yzk2NiIsImplbmlzX2tvdGFrIjoia2FiYXIiLCJrZSI6ImRjYzZlMTI4NGJlZDk4ZmIiLCJrZWRhbHV3YXJzYSI6MTc5MTAwMzU5NTAwMCwidiI6MX0EYEvA3XIGMxsejKWYPPTe1q153XuvXASXjpvruy99AzFIPjYHlcdAVNDdVjFplwCZWBjyZ-3QdAcOXouKs_O6dIQw1tl3-p06G07bXz4AFv5aeIrNsyyBVvme8xjs6Am2xGwhfxrz5xFKWHW7VUeKrIvEBsjgp9bDSrHs8GnFC486cbmKYNPsdr_h2rh80RVqZ_VCvEwYQKNKhnC4oEzTZMmIJxvk2-s9UQx_PC3_c88AADPuz3e_75dp",
+        "plaintext": "{\"dibuat\":1790999995000,\"jenis\":\"notif\",\"mac_id\":\"dac41f4ed3e1ec5d\",\"notif\":{\"j\":\"selesai\"},\"perangkat_id\":\"1f600ae09b7479f9\",\"urut_mac\":9}",
+        "hpke": {
+          "ikm_e": "gfGWWm-rCNR53nfboEqriEcLkOeizDty6qpLz12QQSw",
+          "sk_e": "Ilj1PxZ3kYH4kwYcjJYqtUGeOkltvHqxWQVEJyRVDPs",
+          "enc": "BGBLwN1yBjMbHoylmDz03tated17r1wEl46b67svfQM",
+          "shared_secret": "SBXuB0k6CimzWD21uCDM-MJULHjwdBRLG18wJjibAmo",
+          "key": "cuhVtN5Z8yZCsQlJXTsXtV3Ci6YxIYe_nZWodL6OmbU",
+          "base_nonce": "hM9M4zBTUrLMGr_Z"
+        }
+      }
+    },
+    {
+      "label": "kabar_urut_mac_lama",
+      "alasan": "urut_lama",
+      "keterangan": "kabar_notif sah (urut_mac 2), urut_mac tersimpan = 2 (§6 #13)",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "kabar",
+        "dari": "18d8a51307fe55d3",
+        "ke": "dcc6e1284bed98fb",
+        "id": "4887a4a331eb84d2b4c9bcf0e1b4a93a",
+        "kedaluwarsa": 1791003595000,
+        "enc": "Tym53XV86Q5x31_xs_4qTKKUaJznQYaUPNa20hKztgE",
+        "ct": "2Xwv1EuiErxB17myq8fGIJ4F_cfxYny-LfwR8nFrId8eRXk-t48mKsaaHRH6WgQW8oHlt0xNU-ADGftVLzBcmRfedLOfTfvCgxHa6Fnc2kR3p86DviwY9gUYUuAjFlP3lqgNQSxTY3FJWDJMb3TpsVZtxkaSj9PFWOlU7dlvHzl769aMjm46X13EbP0RVY_2eHClB9Dd8o1nGuWGSUBsMxpQ2MxvdWrdY9DLY5cB2vVZaE-KiAG2yLKsVpf6TSFhdEM",
+        "tanda": "MEYCIQDVsi_O6LYRlfQyNndZijsp9i82s8f8mLGmTRZD3bZkzAIhAOk9yJyYjq5J1AqGMa5KN2N8gnrChhoYWV3q_OGWJoLs"
+      },
+      "periksa": {
+        "jenisKotak": "kabar",
+        "penerima": "hp",
+        "sekarang": 1791000000000,
+        "penyimpan_awal": {
+          "urut_terakhir": 2,
+          "id_terlihat": []
+        }
+      }
+    },
+    {
+      "label": "kabar_ke_perintah",
+      "alasan": "jenis_kotak",
+      "keterangan": "amplop perintah sah diserahkan ke pemeriksa kabar HP",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "perintah",
+        "dari": "c4fa60a864eacae2",
+        "ke": "11d4d3b0db14e3d2",
+        "id": "03ebfb21c7e17bbc5d27b016ac95b7a9",
+        "kedaluwarsa": 1791000595000,
+        "enc": "IimzWTjbqXpEHcpJGxlpkedJqhqj5l567RgvkkOV4j0",
+        "ct": "9_dXUOTK61S5nOGWTs0b-yldfwyuCAF4zHdUE1scHszcJRtd4USjteUfCXXeIE96i_uTkjdOkEodhSdjZfBygSxXSV7DjhG6r6Cbt0w4sAkbCeOAz_apUFQzuBsCDjWXOkPcj2V9LXWg0Re_XpbGGERT26Rt5l0sC3SPxIMfzJatrqfrsrYzRUcX-gmPIXQK5FQs5OEXAzu0kqyywsrksd3WhJ1w_e2jgzHPI6EHO8XWGnyN9s5Q2SaPKau9wghS0HT-rCp18j1Aoc-lAXWH821J_ZxZeZbPGZjdrX2qSZyV2D71fbvGfuDTTVEIEe6l2zqupz21XwE4jEhilGj-O5hf-xXDpVIJlv8nvTjhJwBdhQuIlGA99_J-Eq4-Bm53PZjvpfXTY1uiYO2dnFAs8kAKIHMy4q4eufxe3XkG66EPewUn_8wRUPMP1bj0ySiuVQMsEtltUyeOMnDnQQNewF1nh4PHCgXv5hvMdFX0rkW8gf5-F1oqDacGEMFNw6B6k7ESB33FKHG5vBCgJH4",
+        "tanda": "MEUCIQD92qk-j9R52vXr_2PV5gOKKBCi4j9HZOrO_8n6XFN2iAIgCyVxHZUbRw49__aiC51ayv1qiiKJC_ZV95DfE0uEeCI"
+      },
+      "periksa": {
+        "jenisKotak": "kabar",
+        "penerima": "hp",
+        "sekarang": 1791000000000
+      }
+    }
+  ],
+  "pasang": {
+    "qr": {
+      "v": 1,
+      "relay": "https://padev-studio.pa-developer.pro/api/v1/",
+      "mac_id": "dac41f4ed3e1ec5d",
+      "nama_mac": "Mac Uji",
+      "kode_daftar": "3b157ba10f5c603960da3bfe8c41d885",
+      "rahasia": "tH8GQfnHmxsbJYH9u9rcO_gbDN_pM_fJRZb6X_oQ1js",
+      "s_mac": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE2qXQ8XZPVZaxY9udeSU_wCj2iz2NIjUOPf4gC3oT87no_fEpISa0cYeG3lEnuMq7J2Kkd1T3NnRM4rvAgXOEsg",
+      "e_mac": "qmoZ3M3RlQq7OWntW6srCeE9A1L6mHxfWvJGEpcFEys",
+      "kedaluwarsa": 1791000300000
+    },
+    "hmac_input_jcs": "{\"atestasi\":{\"k_kerjakan\":[],\"k_rencana\":[]},\"dibuat\":1790999995000,\"e_hp\":\"Cdp9SaUUIKbWnVOdunwsRYQqu-aKz9JNu2IUdZFTQDQ\",\"fcm\":\"token-fcm-uji\",\"k_kerjakan\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEGCx3SznREmF8Nf8mmCw-ZZRUifW-dxc6uWjGnnnMrmSASkjkpwNzT_9x3NrXmKyZokunNaCe5eqeQJ1DybAHrg\",\"k_rencana\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEnyL2oLZ4hAjGDemHxrqN4KirQ3T1Tu1sNwjDmYD1BgCnQJtB70hVO2-EpS3PLMAjENzSI8oJ68n97s2Jpx64Qw\",\"kedaluwarsa\":1791000295000,\"mac_id\":\"dac41f4ed3e1ec5d\",\"nama\":\"HP Uji\",\"perangkat_id\":\"1f600ae09b7479f9\"}",
+    "isi": {
+      "mac_id": "dac41f4ed3e1ec5d",
+      "perangkat_id": "1f600ae09b7479f9",
+      "dibuat": 1790999995000,
+      "kedaluwarsa": 1791000295000,
+      "nama": "HP Uji",
+      "k_rencana": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEnyL2oLZ4hAjGDemHxrqN4KirQ3T1Tu1sNwjDmYD1BgCnQJtB70hVO2-EpS3PLMAjENzSI8oJ68n97s2Jpx64Qw",
+      "k_kerjakan": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEGCx3SznREmF8Nf8mmCw-ZZRUifW-dxc6uWjGnnnMrmSASkjkpwNzT_9x3NrXmKyZokunNaCe5eqeQJ1DybAHrg",
+      "e_hp": "Cdp9SaUUIKbWnVOdunwsRYQqu-aKz9JNu2IUdZFTQDQ",
+      "atestasi": {
+        "k_rencana": [],
+        "k_kerjakan": []
+      },
+      "fcm": "token-fcm-uji",
+      "hmac": "zQLITAJvTq0FtnEEK3Hi2Kc6SlVNTstp5SEysIaNG-I"
+    },
+    "tantangan_atestasi_heks": "57af79016dabd04f30a1fca565356efe48b6ae467d43c148c2a51d7c0021915e",
+    "sas": "348721",
+    "sah": {
+      "label": "pasang",
+      "amplop": {
+        "v": 1,
+        "jenis_kotak": "pasang",
+        "dari": "c4fa60a864eacae2",
+        "ke": "11d4d3b0db14e3d2",
+        "id": "b5a830e4b48bb63ae957928a19a6d99f",
+        "kedaluwarsa": 1791000295000,
+        "enc": "onEQl0V7jb372EiIR0Cvve3kFfZTNzbBMrtJ93Z0CX4",
+        "ct": "Tc6POih4iDpZGfCpzSe7qwvvWBYst5RMd06WKMFeS-h3tF8gXkEszY8CjeVu1Nf1L6AW4s1OdhidUTXetQZdGsLfVy0lXYGRI7zGxDWi5IQSxSMawx2De_pXWLbsqXOlDXcgAcXschR7B_Hn_Mcf9rKr50_1nDULHkv4CCZ4BO7V0PO7paiT33ZmGGRYDBvJXSHEKIDL4azrHb3ClYMzaTa7mFUf-xiHn-H93m7VZdI_65HN6zIEztus8W5mUFeDmFl5qQW_5bbmzknqzRhNNqY7cYqDNmuQTdQV5ksIHZqh4KuDX-WYzyD1hsD-KcjYUVSF5KGqbbzZydAe4F1CLnBp_zgvonhYUO40QviCAvcZgYGJPZNf40o8FxPZpUh98Z38TimFTkcKdN7PdaryPWSmPM3JsKj3nVGKpRvRKjEfDkuldWNnih8E27d9v9ygBshn_eTxeDhy-dpcRWiCgngMR8uH3cyGDz7qoq-A-1MOarbk7fLnqC_wniugXH_1WUFT8nzPDU0Bv3SE_5i3YoveV80Z89Ek73WrL9PMyTewB560lTkqocrPTXgNr2CSpFGByehc63lHAWZ030ioRNFh7X5F7kOXLmrLtVxzURPgba_S3w2GrFWz3E35-zhQ3HbBlx3sAhz9SD-rvRGdhPVbjnpTmvJ-V4DUoHWsXcUvxHMHB9PiqWe5S1tW0Uy0MexZ8Yi0PwjnXWZrzMWjXkmANJm-FYtig0PBG7LBrbx8aNMmkq2DH32fL_clMJEZsaHTemPEzJQh1EvdHva3ia0",
+        "tanda": "MEQCIBONvwBZJO9VzAQXc8x9vuykta9fYkEoNWPQvd67ntKAAiByBpbqLAPLSw_CxmC9hmUpGyHn8nmZppRQiAuzHsS0qg"
+      },
+      "antara": {
+        "H": "{\"dari\":\"c4fa60a864eacae2\",\"id\":\"b5a830e4b48bb63ae957928a19a6d99f\",\"jenis_kotak\":\"pasang\",\"ke\":\"11d4d3b0db14e3d2\",\"kedaluwarsa\":1791000295000,\"v\":1}",
+        "info": "PADEV-STUDIO-v1|c4fa60a864eacae2|11d4d3b0db14e3d2",
+        "input_tanda": "UEFERVYtU1RVRElPLUFNUExPUC12MQp7ImRhcmkiOiJjNGZhNjBhODY0ZWFjYWUyIiwiaWQiOiJiNWE4MzBlNGI0OGJiNjNhZTk1NzkyOGExOWE2ZDk5ZiIsImplbmlzX2tvdGFrIjoicGFzYW5nIiwia2UiOiIxMWQ0ZDNiMGRiMTRlM2QyIiwia2VkYWx1d2Fyc2EiOjE3OTEwMDAyOTUwMDAsInYiOjF9onEQl0V7jb372EiIR0Cvve3kFfZTNzbBMrtJ93Z0CX5Nzo86KHiIOlkZ8KnNJ7urC-9YFiy3lEx3TpYowV5L6He0XyBeQSzNjwKN5W7U1_UvoBbizU52GJ1RNd61Bl0awt9XLSVdgZEjvMbENaLkhBLFIxrDHYN7-ldYtuypc6UNdyABxexyFHsH8ef8xx_2sqvnT_WcNQseS_gIJngE7tXQ87ulqJPfdmYYZFgMG8ldIcQogMvhrOsdvcKVgzNpNruYVR_7GIef4f3ebtVl0j_rkc3rMgTO26zxbmZQV4OYWXmpBb_ltubOSerNGE02pjtxioM2a5BN1BXmSwgdmqHgq4Nf5ZjPIPWGwP4pyNhRVIXkoaptvNnJ0B7gXUIucGn_OC-ieFhQ7jRC-IIC9xmBgYk9k1_jSjwXE9mlSH3xnfxOKYVORwp03s91qvI9ZKY8zcmwqPedUYqlG9EqMR8OS6V1Y2eKHwTbt32_3KAGyGf95PF4OHL52lxFaIKCeAxHy4fdzIYPPuqir4D7Uw5qtuTt8ueoL_CeK6Bcf_VZQVPyfM8NTQG_dIT_mLdii95XzRnz0STvdasv08zJN7AHnrSVOSqhys9NeA2vYJKkUYHJ6FzreUcBZnTfSKhE0WHtfkXuQ5cuasu1XHNRE-Btr9LfDYasVbPcTfn7OFDcdsGXHewCHP1IP6u9EZ2E9VuOelOa8n5XgNSgdaxdxS_EcwcH0-KpZ7lLW1bRTLQx7FnxiLQ_COddZmvMxaNeSYA0mb4Vi2KDQ8EbssGtvHxo0yaSrYMffZ8v9yUwkRmxodN6Y8TMlCHUS90e9reJrQ",
+        "plaintext": "{\"atestasi\":{\"k_kerjakan\":[],\"k_rencana\":[]},\"dibuat\":1790999995000,\"e_hp\":\"Cdp9SaUUIKbWnVOdunwsRYQqu-aKz9JNu2IUdZFTQDQ\",\"fcm\":\"token-fcm-uji\",\"hmac\":\"zQLITAJvTq0FtnEEK3Hi2Kc6SlVNTstp5SEysIaNG-I\",\"k_kerjakan\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEGCx3SznREmF8Nf8mmCw-ZZRUifW-dxc6uWjGnnnMrmSASkjkpwNzT_9x3NrXmKyZokunNaCe5eqeQJ1DybAHrg\",\"k_rencana\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEnyL2oLZ4hAjGDemHxrqN4KirQ3T1Tu1sNwjDmYD1BgCnQJtB70hVO2-EpS3PLMAjENzSI8oJ68n97s2Jpx64Qw\",\"kedaluwarsa\":1791000295000,\"mac_id\":\"dac41f4ed3e1ec5d\",\"nama\":\"HP Uji\",\"perangkat_id\":\"1f600ae09b7479f9\"}",
+        "hpke": {
+          "ikm_e": "vgXLTKtHwZZi19inVqbFz5xv79JNfrjElRRxwxeQ43U",
+          "sk_e": "thIjMB-yNUqy2B867dx_A20Pm3ER2gDqbAyZD_F6XOU",
+          "enc": "onEQl0V7jb372EiIR0Cvve3kFfZTNzbBMrtJ93Z0CX4",
+          "shared_secret": "z39AsHBALL8gUDTFelhLa97ByEHaeh1Cx01qQ3ZnBWc",
+          "key": "T16JcGcOQxNsh1VdpCCvFVXwoarcujuH_EEMavH6o0g",
+          "base_nonce": "B_8HRShyQLTWYSPh"
+        }
+      },
+      "periksa": {
+        "jenisKotak": "pasang",
+        "penerima": "mac",
+        "sekarang": 1791000000000
+      },
+      "hasil": {
+        "ok": true,
+        "k_rencana_id": "c4fa60a864eacae2",
+        "k_kerjakan_id": "9c309c0d81f1a9ff",
+        "e_hp_id": "dcc6e1284bed98fb"
+      }
+    },
+    "rusak": [
+      {
+        "label": "pasang_kunci_ditukar",
+        "alasan": "hmac_salah",
+        "keterangan": "k_kerjakan ditukar setelah HMAC dihitung (§6 #10)",
+        "amplop": {
+          "v": 1,
+          "jenis_kotak": "pasang",
+          "dari": "c4fa60a864eacae2",
+          "ke": "11d4d3b0db14e3d2",
+          "id": "8335ce688df99f28ab9f406a20611210",
+          "kedaluwarsa": 1791000295000,
+          "enc": "3L5vwIkjKwW6IPO-h7mx7-rLLTaG95SCMaOcKCwyhBk",
+          "ct": "KlQDcYkHJ3njawBnPuBrCt73TPT1kHp4XmpobthP_Gw5Isu84YeN_7iUnAyhGGVhX0aH7ZpCY_aN1ssTXm8GSrZx20t6NWM86S8brG8ob9uXosdkhamyJCy3_ADAEXKmlC9fBtaDj1JJEwOaNiTWElfY1vQJvex7DuQvTcBfbHkXinsNTfwiz7wottiTKqqrAHkkgVEfxwl-uc87OzZqnWMUsyLgyyf3mJhKI5xSlfyVObEHfKNDSdbSeWtkYS2YF18j4RIRai71-rRJP0Egu2chRPBh1DvsJPp7q5g8NDUB1tEmt0rXmWAVSSi5q_QHk6gcQYmsOytQE8xFZDNjY3ETH4QZb9ITwqPQcCJOqa9RXPG9AtlpKgXVrnSO14jabVXZjczpy6Apr4UdGMspWCC30YR7wFfx28SF_52sLswHHsqAxP4KM-I6wWBcTAmaY57pz0ep8eazGxir19zt3tVc759lw25yt6uO7NMmEfmi7vQA9Lc_hSUYmqKPwAMwe7mz_yLPUx0v_gntLyWv-a4sYm1MptBPLSibTTm3e2yV8_oTxZBNCrCFae7T2iZgk6T01mP-yQg9Z8PGSo3drJbpDVBUM9SfjbPkIK6CO9UqrWV-kP2kxCKGayJIe_T2NXqA2tMtraMfHppU5IN5BM8q_Tdio-cM-1MU_IdvjAK5RPdj1uRt40c0nhNJuXUJe2t5jM8Z3qzpyl1IXR7N5QWWCw9xdwGg9jYSI9Bzs_C0Lork77ib_IGYXjLWZT6cYMl_QbWmP2__2o-VvL52vxE",
+          "tanda": "MEYCIQDZn9lPSyWvIHA9-R55tmSx2wvWONXLjURwymI2MAoPNwIhANT27XhL87HhlBksiBSsyPvT51CChR-ddYzOwbyBYvDx"
+        },
+        "antara": {
+          "H": "{\"dari\":\"c4fa60a864eacae2\",\"id\":\"8335ce688df99f28ab9f406a20611210\",\"jenis_kotak\":\"pasang\",\"ke\":\"11d4d3b0db14e3d2\",\"kedaluwarsa\":1791000295000,\"v\":1}",
+          "info": "PADEV-STUDIO-v1|c4fa60a864eacae2|11d4d3b0db14e3d2",
+          "input_tanda": "UEFERVYtU1RVRElPLUFNUExPUC12MQp7ImRhcmkiOiJjNGZhNjBhODY0ZWFjYWUyIiwiaWQiOiI4MzM1Y2U2ODhkZjk5ZjI4YWI5ZjQwNmEyMDYxMTIxMCIsImplbmlzX2tvdGFrIjoicGFzYW5nIiwia2UiOiIxMWQ0ZDNiMGRiMTRlM2QyIiwia2VkYWx1d2Fyc2EiOjE3OTEwMDAyOTUwMDAsInYiOjF93L5vwIkjKwW6IPO-h7mx7-rLLTaG95SCMaOcKCwyhBkqVANxiQcneeNrAGc-4GsK3vdM9PWQenheamhu2E_8bDkiy7zhh43_uJScDKEYZWFfRoftmkJj9o3WyxNebwZKtnHbS3o1YzzpLxusbyhv25eix2SFqbIkLLf8AMARcqaUL18G1oOPUkkTA5o2JNYSV9jW9Am97HsO5C9NwF9seReKew1N_CLPvCi22JMqqqsAeSSBUR_HCX65zzs7NmqdYxSzIuDLJ_eYmEojnFKV_JU5sQd8o0NJ1tJ5a2RhLZgXXyPhEhFqLvX6tEk_QSC7ZyFE8GHUO-wk-nurmDw0NQHW0Sa3SteZYBVJKLmr9AeTqBxBiaw7K1ATzEVkM2NjcRMfhBlv0hPCo9BwIk6pr1Fc8b0C2WkqBdWudI7XiNptVdmNzOnLoCmvhR0YyylYILfRhHvAV_HbxIX_nawuzAceyoDE_goz4jrBYFxMCZpjnunPR6nx5rMbGKvX3O3e1Vzvn2XDbnK3q47s0yYR-aLu9AD0tz-FJRiaoo_AAzB7ubP_Is9THS_-Ce0vJa_5rixibUym0E8tKJtNObd7bJXz-hPFkE0KsIVp7tPaJmCTpPTWY_7JCD1nw8ZKjd2slukNUFQz1J-Ns-QgroI71SqtZX6Q_aTEIoZrIkh79PY1eoDa0y2tox8emlTkg3kEzyr9N2Kj5wz7UxT8h2-MArlE92PW5G3jRzSeE0m5dQl7a3mMzxnerOnKXUhdHs3lBZYLD3F3AaD2NhIj0HOz8LQuiuTvuJv8gZheMtZlPpxgyX9BtaY_b__aj5W8vna_EQ",
+          "plaintext": "{\"atestasi\":{\"k_kerjakan\":[],\"k_rencana\":[]},\"dibuat\":1790999995000,\"e_hp\":\"Cdp9SaUUIKbWnVOdunwsRYQqu-aKz9JNu2IUdZFTQDQ\",\"fcm\":\"token-fcm-uji\",\"hmac\":\"zQLITAJvTq0FtnEEK3Hi2Kc6SlVNTstp5SEysIaNG-I\",\"k_kerjakan\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEGN123sBdnga9k8u22fcWgpUSkWkil6r_gCFb2hb-u_Uz49Re8EU05AN41iFPcorNajyFCucLksfpnLioWCb6rg\",\"k_rencana\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEnyL2oLZ4hAjGDemHxrqN4KirQ3T1Tu1sNwjDmYD1BgCnQJtB70hVO2-EpS3PLMAjENzSI8oJ68n97s2Jpx64Qw\",\"kedaluwarsa\":1791000295000,\"mac_id\":\"dac41f4ed3e1ec5d\",\"nama\":\"HP Uji\",\"perangkat_id\":\"1f600ae09b7479f9\"}",
+          "hpke": {
+            "ikm_e": "Ae8NJ1C34hloq4BFjKxAhmbQnl5vE3hHuWbD6eQeYSg",
+            "sk_e": "PTMhmpWWZBbSmOGAhl8_fViAkgYgnUp8z1985Tm79aA",
+            "enc": "3L5vwIkjKwW6IPO-h7mx7-rLLTaG95SCMaOcKCwyhBk",
+            "shared_secret": "zEm6wgMgT-uJhQHFBDJVGhOdS7hRkqeDb3ZMyK9IH9E",
+            "key": "AvwK5-K82B_VgQzxdt-4UBu-cCGI2ZKMudOxQeWBRVQ",
+            "base_nonce": "YSVN7xBwKe5AHL_2"
+          }
+        },
+        "periksa": {
+          "jenisKotak": "pasang",
+          "penerima": "mac",
+          "sekarang": 1791000000000
+        }
+      }
+    ]
+  }
+}

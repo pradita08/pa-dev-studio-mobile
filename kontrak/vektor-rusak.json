@@ -1,0 +1,192 @@
+[
+  {
+    "label": "isi_field_constructor",
+    "galat": "isi_bentuk",
+    "keterangan": "perintah sah bertanda K_rencana, plaintext memuat field \"constructor\" (nama warisan prototipe) — field asing",
+    "amplop": {
+      "v": 1,
+      "jenis_kotak": "perintah",
+      "dari": "c4fa60a864eacae2",
+      "ke": "11d4d3b0db14e3d2",
+      "id": "ebe9de7621e45f359225d2fa65d1f041",
+      "kedaluwarsa": 1791000595000,
+      "enc": "Iz4WCXRWTNBX58WQ4nMjGEOpuATAwdxpzcw5MOoYDgg",
+      "ct": "PIzjvyDkA_9Oh0R276rCzZmnMUUHhbmqsYaDt5MW6VuHOSVmNp5rZg_88wanJfmEhXP-gqNfq8_UHbI5Ivh03F3mnkZ-O8eiDG-lldZP5whTabVy_S8671oIfAl6qzw6AZ_VNcOLtpclCzmskcG7xSmADRIptX0hv-D2use4JPzhP9TgFnlX2NmuG0GrJlxGgug95aJ7eQrJf6gsZRLrzEXpF1AxPfFyMFU4af5437r8omAnrmlfjC6cxEvhC6qrbV0VqjbtWYUE9qRYLn3HZvhdsfFp1ULZ9Nve9w",
+      "tanda": "MEUCIGbMsKogzfRRXSdp-BTfKmyOGzGUbujHoTBiDT7IECgRAiEAr2fHRcsmv8p9aspkDpCbaUmiVRi4V234pU_Ii2eImug"
+    },
+    "periksa": {
+      "jenisKotak": "perintah",
+      "penerima": "mac",
+      "sekarang": 1791000000000
+    }
+  },
+  {
+    "label": "isi_field_toString",
+    "galat": "isi_bentuk",
+    "keterangan": "perintah sah bertanda K_rencana, plaintext memuat field \"toString\" (nama warisan prototipe) — field asing",
+    "amplop": {
+      "v": 1,
+      "jenis_kotak": "perintah",
+      "dari": "c4fa60a864eacae2",
+      "ke": "11d4d3b0db14e3d2",
+      "id": "f0760325fa26c34fda08aa7c6270c517",
+      "kedaluwarsa": 1791000595000,
+      "enc": "UCAcg4pcDGg0ujAGYdWUGo921e9WJABRB9BribmEXm0",
+      "ct": "ySrBMUjkuPBjqHTodqCMz21a33WRODdXK0oZOZoPKujMFeaqnNF1xAbErksilC4MmQLdi__ZO3o4A1b8c3Bl28d90DV6_jgWctsb0QSYQyEHa99Hpmc0Zkh5kdGPYBCMN9EjMv0BpRFy0IB9cyCKa7wTv22H6r7t87PVL78S25GsYgnIlBNZSUZSU2FMzE7k5MiYiP96753I2DN6wpY2g3y4qyhXrzbi9aIkaL37lHFg3UHc2Fc4_ivakr67CZDtH7GvX7-65My7_4n5dYI9SIg3aFg7gOg56Q",
+      "tanda": "MEYCIQCyz64-DBI9piUnNl7QPH8pW-fAwWnD4UK1jW68WBls2gIhAIKf2NsCTniHIkqRAHijrQHxHei9SYYvOS4a8VwR2_Q1"
+    },
+    "periksa": {
+      "jenisKotak": "perintah",
+      "penerima": "mac",
+      "sekarang": 1791000000000
+    }
+  },
+  {
+    "label": "isi_field___proto__",
+    "galat": "isi_bentuk",
+    "keterangan": "perintah sah bertanda K_rencana, plaintext memuat field \"__proto__\" (nama warisan prototipe) — field asing",
+    "amplop": {
+      "v": 1,
+      "jenis_kotak": "perintah",
+      "dari": "c4fa60a864eacae2",
+      "ke": "11d4d3b0db14e3d2",
+      "id": "80bfe14e277724a175f1d603ee34c778",
+      "kedaluwarsa": 1791000595000,
+      "enc": "Z5DgPrsIwbyNm0c4hAe74cY1bjzqgiuszG9no_pctEY",
+      "ct": "2S-ORGwQK3z2qfZlSAO-CQ5DqEJmyhNIk8CE6R9bW-Jtd0IcJHBW4oylJpmi1a4nPrwCj7IvPpflhOoRZodIFzRhU_2j7fNRbS-93PIiBa_YiYS799d-pGFpNSdar-kRnrAqM72cA6OhD9m225lVnfoU-lLO9cWqCUc65man0eDubJTMlcJIQdrTtsHxTAD6LnXu3C-eE6pqmRN5OZIQGzYYKWYGYYU_XyjsHJxYQngjnNA33hLvvYeAv5lMeUW3D1k5o77U9NtqhhPrdu2spzB05Xwo-vbR3Gc",
+      "tanda": "MEUCIFjspEKeFFIUEfLI1gWFgWT3CsxxADXcoa2awYCyHJHOAiEAgbNmWEiFwOAKM1YLFsCJZnaMe08OBrLRVaqLTUlGIxE"
+    },
+    "periksa": {
+      "jenisKotak": "perintah",
+      "penerima": "mac",
+      "sekarang": 1791000000000
+    }
+  },
+  {
+    "label": "isi_field_hasOwnProperty",
+    "galat": "isi_bentuk",
+    "keterangan": "perintah sah bertanda K_rencana, plaintext memuat field \"hasOwnProperty\" (nama warisan prototipe) — field asing",
+    "amplop": {
+      "v": 1,
+      "jenis_kotak": "perintah",
+      "dari": "c4fa60a864eacae2",
+      "ke": "11d4d3b0db14e3d2",
+      "id": "a14757fd97271882b68911b6d04311cd",
+      "kedaluwarsa": 1791000595000,
+      "enc": "EOthxEKmRrQFe4F31gL1K6bcJ43SyMmFAcG7h3dzcxo",
+      "ct": "mI8ood64RHRw5NrzB6JTTy8clU1Y4EVFBp_1Hq1qTv8Ijazz1FUGJZmRmbNm1LFp5i-ZZZ7VslcMeMyXHMqpWT9vGYKbkHlpq0aFz-B_Y-CyoBq72yNCO5dF-K3rpMdHFwqJ8R1KZ2S8DluHhyiIEhSmrctN0tTZtGTcg2txjLBcNVOxZPeWv-q7gs2xT_1geljwqpAAAR86yBscj3AXCcGCrihIVynqbLBRKvO-dNpBuQzB55MOAP1_E0boW-jHh6MJ-RzjA1sb11hQ7rqrUpoqEDOWRtkZXVnNsopJmg",
+      "tanda": "MEYCIQDwVS7OAzjdYCLcCzkfn69gGZOBuH4Q_tYR3cz5RFe-5AIhAIsq1P1Yhh6hvMUSwTinKEblbGuPR9ml4a2QifqGX7W_"
+    },
+    "periksa": {
+      "jenisKotak": "perintah",
+      "penerima": "mac",
+      "sekarang": 1791000000000
+    }
+  },
+  {
+    "label": "isi_field_valueOf",
+    "galat": "isi_bentuk",
+    "keterangan": "perintah sah bertanda K_rencana, plaintext memuat field \"valueOf\" (nama warisan prototipe) — field asing",
+    "amplop": {
+      "v": 1,
+      "jenis_kotak": "perintah",
+      "dari": "c4fa60a864eacae2",
+      "ke": "11d4d3b0db14e3d2",
+      "id": "9552826a8a6cd1fa5724b8cf9f1a85b2",
+      "kedaluwarsa": 1791000595000,
+      "enc": "fljQ-_tnBV1_m5w6VX6BInPFYG3J7gKIw050jNWTlWI",
+      "ct": "Rj-vZ9SpT9ds4FxWtWMt3fpzWjU_bk82eink1dgFTxrcauHTu1NHFWncdRjdsdIojBDkKKmbvrbs6UE8xo7PN5PhsB-nctdf7q6ouv0dMzm6sE8JH7WMTy-KCeUQc_YZmS9fR0IPk-l-EAxKtYwH5R_eRKV_XGQUf6h0NZNIqRSdWD9gpmJwxxZvOGzQFqVrb2OIU8MhvrShDwS38gd53LA0pthRMEyT5X26IgsStokbDaqCxZwIAXdcbV1AKYrkQiOHxJtBxwOWh0NDQVqMYs-PyQ8ksJDp",
+      "tanda": "MEUCIDMspFbkQ_F8tPPlYV6OodHCTDoQ8LPvamgbMmNFoLoaAiEAv99QQ4jX4NG7Kd7BGGFaZFHp_GmOEcLK2mBR8L9I6Iw"
+    },
+    "periksa": {
+      "jenisKotak": "perintah",
+      "penerima": "mac",
+      "sekarang": 1791000000000
+    }
+  },
+  {
+    "label": "isi_jalankan_constructor",
+    "galat": "isi_bentuk",
+    "keterangan": "jalankan: field opsional `model` diganti `constructor`",
+    "amplop": {
+      "v": 1,
+      "jenis_kotak": "perintah",
+      "dari": "c4fa60a864eacae2",
+      "ke": "11d4d3b0db14e3d2",
+      "id": "885295c102abb908d218448fa14f0c20",
+      "kedaluwarsa": 1791000595000,
+      "enc": "Qjeo0Cm8zC9Iz-PnEuV_r-out5QR4MARAhrvwpPDdi0",
+      "ct": "7vPS0n62qCXpoYc_QPAT7bxb-eIaYiB-ItuGxB8S6iZRTdowc6ygftKJQs5EnppX_LSr5nDI343IqODzZCV8-dksGm2bKb3e2dE1qqxvwnziiqsZQi77aBBU9NO87wk67U10VXs4ejBUmJqFIAKhykh4hxZ3a7nZywEnhFcERbHeIm_D0AAZmE6urGNctniC-6GrrVB7mz4tn1NT0EPzErTZn1vKc6Ajhm91497y8IaEtyCSIZ3Js2ojNPESOrOAEJjXFpSyxxJuLtTk_6qID2G1OYZ1caRsdaC2cNFNvfDst1DP13xNj76fi-pZL9mnVGCDScUQMNkcY4GQ09iNVcGNHUsQ_x_o21pVIjzDVsB1Q9EfzHATYgK-H1nXcVb6sFR39f7YuZnGlsKkFcPSzX0LUyLXRZsGGWYoD1XNjU0U6A",
+      "tanda": "MEUCIQCkxdClBGqRJWwD29BTg5kgzSmL_JZVAkCZGq-YTIxtFgIgJkYfTsbgmeQvUs4OaK6f7e_INyYRWRrOeNDuUaxm88M"
+    },
+    "periksa": {
+      "jenisKotak": "perintah",
+      "penerima": "mac",
+      "sekarang": 1791000000000
+    }
+  },
+  {
+    "label": "header_tanda_diganti_constructor",
+    "galat": "bentuk",
+    "keterangan": "header tetap 9 field, `tanda` diganti `constructor`",
+    "amplop": {
+      "v": 1,
+      "jenis_kotak": "perintah",
+      "dari": "c4fa60a864eacae2",
+      "ke": "11d4d3b0db14e3d2",
+      "id": "03ebfb21c7e17bbc5d27b016ac95b7a9",
+      "kedaluwarsa": 1791000595000,
+      "enc": "IimzWTjbqXpEHcpJGxlpkedJqhqj5l567RgvkkOV4j0",
+      "ct": "9_dXUOTK61S5nOGWTs0b-yldfwyuCAF4zHdUE1scHszcJRtd4USjteUfCXXeIE96i_uTkjdOkEodhSdjZfBygSxXSV7DjhG6r6Cbt0w4sAkbCeOAz_apUFQzuBsCDjWXOkPcj2V9LXWg0Re_XpbGGERT26Rt5l0sC3SPxIMfzJatrqfrsrYzRUcX-gmPIXQK5FQs5OEXAzu0kqyywsrksd3WhJ1w_e2jgzHPI6EHO8XWGnyN9s5Q2SaPKau9wghS0HT-rCp18j1Aoc-lAXWH821J_ZxZeZbPGZjdrX2qSZyV2D71fbvGfuDTTVEIEe6l2zqupz21XwE4jEhilGj-O5hf-xXDpVIJlv8nvTjhJwBdhQuIlGA99_J-Eq4-Bm53PZjvpfXTY1uiYO2dnFAs8kAKIHMy4q4eufxe3XkG66EPewUn_8wRUPMP1bj0ySiuVQMsEtltUyeOMnDnQQNewF1nh4PHCgXv5hvMdFX0rkW8gf5-F1oqDacGEMFNw6B6k7ESB33FKHG5vBCgJH4",
+      "constructor": "x"
+    },
+    "periksa": {
+      "jenisKotak": "perintah",
+      "penerima": "mac",
+      "sekarang": 1791000000000
+    }
+  },
+  {
+    "label": "header_enc_diganti_toString",
+    "galat": "bentuk",
+    "keterangan": "header tetap 9 field, `enc` diganti `toString`",
+    "amplop": {
+      "v": 1,
+      "jenis_kotak": "perintah",
+      "dari": "c4fa60a864eacae2",
+      "ke": "11d4d3b0db14e3d2",
+      "id": "03ebfb21c7e17bbc5d27b016ac95b7a9",
+      "kedaluwarsa": 1791000595000,
+      "ct": "9_dXUOTK61S5nOGWTs0b-yldfwyuCAF4zHdUE1scHszcJRtd4USjteUfCXXeIE96i_uTkjdOkEodhSdjZfBygSxXSV7DjhG6r6Cbt0w4sAkbCeOAz_apUFQzuBsCDjWXOkPcj2V9LXWg0Re_XpbGGERT26Rt5l0sC3SPxIMfzJatrqfrsrYzRUcX-gmPIXQK5FQs5OEXAzu0kqyywsrksd3WhJ1w_e2jgzHPI6EHO8XWGnyN9s5Q2SaPKau9wghS0HT-rCp18j1Aoc-lAXWH821J_ZxZeZbPGZjdrX2qSZyV2D71fbvGfuDTTVEIEe6l2zqupz21XwE4jEhilGj-O5hf-xXDpVIJlv8nvTjhJwBdhQuIlGA99_J-Eq4-Bm53PZjvpfXTY1uiYO2dnFAs8kAKIHMy4q4eufxe3XkG66EPewUn_8wRUPMP1bj0ySiuVQMsEtltUyeOMnDnQQNewF1nh4PHCgXv5hvMdFX0rkW8gf5-F1oqDacGEMFNw6B6k7ESB33FKHG5vBCgJH4",
+      "tanda": "MEUCIQD92qk-j9R52vXr_2PV5gOKKBCi4j9HZOrO_8n6XFN2iAIgCyVxHZUbRw49__aiC51ayv1qiiKJC_ZV95DfE0uEeCI",
+      "toString": "x"
+    },
+    "periksa": {
+      "jenisKotak": "perintah",
+      "penerima": "mac",
+      "sekarang": 1791000000000
+    }
+  },
+  {
+    "label": "header_tambah___proto__",
+    "galat": "bentuk",
+    "keterangan": "header 10 field: tambahan `__proto__` milik sendiri",
+    "amplop": {
+      "v": 1,
+      "jenis_kotak": "perintah",
+      "dari": "c4fa60a864eacae2",
+      "ke": "11d4d3b0db14e3d2",
+      "id": "03ebfb21c7e17bbc5d27b016ac95b7a9",
+      "kedaluwarsa": 1791000595000,
+      "enc": "IimzWTjbqXpEHcpJGxlpkedJqhqj5l567RgvkkOV4j0",
+      "ct": "9_dXUOTK61S5nOGWTs0b-yldfwyuCAF4zHdUE1scHszcJRtd4USjteUfCXXeIE96i_uTkjdOkEodhSdjZfBygSxXSV7DjhG6r6Cbt0w4sAkbCeOAz_apUFQzuBsCDjWXOkPcj2V9LXWg0Re_XpbGGERT26Rt5l0sC3SPxIMfzJatrqfrsrYzRUcX-gmPIXQK5FQs5OEXAzu0kqyywsrksd3WhJ1w_e2jgzHPI6EHO8XWGnyN9s5Q2SaPKau9wghS0HT-rCp18j1Aoc-lAXWH821J_ZxZeZbPGZjdrX2qSZyV2D71fbvGfuDTTVEIEe6l2zqupz21XwE4jEhilGj-O5hf-xXDpVIJlv8nvTjhJwBdhQuIlGA99_J-Eq4-Bm53PZjvpfXTY1uiYO2dnFAs8kAKIHMy4q4eufxe3XkG66EPewUn_8wRUPMP1bj0ySiuVQMsEtltUyeOMnDnQQNewF1nh4PHCgXv5hvMdFX0rkW8gf5-F1oqDacGEMFNw6B6k7ESB33FKHG5vBCgJH4",
+      "tanda": "MEUCIQD92qk-j9R52vXr_2PV5gOKKBCi4j9HZOrO_8n6XFN2iAIgCyVxHZUbRw49__aiC51ayv1qiiKJC_ZV95DfE0uEeCI",
+      "__proto__": "x"
+    },
+    "periksa": {
+      "jenisKotak": "perintah",
+      "penerima": "mac",
+      "sekarang": 1791000000000
+    }
+  }
+]
