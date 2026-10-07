@@ -58,9 +58,13 @@ class Proyek {
     this.hasilTerakhir,
     this.ringkasTerakhir,
     this.divisi,
+    this.utama = 'diam',
   });
 
   final String id, nama;
+
+  /// Claude sesi utama proyek ini (Kepala di kantor 3D): 'bekerja' | 'menunggu_izin' | 'diam'.
+  final String utama;
   final List<String> akun;
 
   /// 'rencana' | 'kerjakan' (izin HP dari konfigurasi laptop)
@@ -394,11 +398,22 @@ abstract class SumberData extends ChangeNotifier {
   /// 3 dtk saat ada tugas aktif, sesi sedang diikuti, atau jawaban cermin ditunggu.
   bool get _butuhCepat => adaTugasAktif || _diikuti != null || _antreDaftar.isNotEmpty || _riwayat.values.any((r) => r.memuat);
 
-  /// Polling hemat (batas relay HP 60/mnt): 3 dtk saat ada tugas aktif, 15 dtk saat diam.
+  bool _kantorTerlihat = false;
+
+  /// Tab Kantor (3D) sedang terlihat → status ditarik tiap 4 dtk agar kantor bergerak mengikuti laptop (Mac mengirim status
+  /// segera saat tim/Kepala berubah).
+  set kantorTerlihat(bool v) {
+    if (v == _kantorTerlihat) return;
+    _kantorTerlihat = v;
+    if (v && _jalan) _jadwalkan();
+  }
+
+  /// Polling hemat (batas relay HP 60/mnt): 3 dtk saat ada tugas aktif, 4 dtk saat tab Kantor terlihat, 15 dtk saat diam.
   void _jadwalkan() {
     _jam?.cancel();
     if (!_jalan) return;
-    _jam = Timer(_butuhCepat ? const Duration(seconds: 3) : const Duration(seconds: 15), () async {
+    final jeda = _butuhCepat ? const Duration(seconds: 3) : _kantorTerlihat ? const Duration(seconds: 4) : const Duration(seconds: 15);
+    _jam = Timer(jeda, () async {
       await segarkan(diam: true);
       _jadwalkan();
     });
@@ -595,6 +610,7 @@ abstract class SumberData extends ChangeNotifier {
         hasilTerakhir: terPeta != null ? _teks(terPeta['hasil']) : null,
         ringkasTerakhir: terPeta != null ? _teks(terPeta['ringkas']) : null,
         divisi: m.containsKey('divisi') ? _divisi(m['divisi']) : null,
+        utama: switch (_teks(m['utama'])) { final u? when u == 'bekerja' || u == 'menunggu_izin' => u, _ => 'diam' },
       ));
     }
     proyek = daftar;

@@ -42,7 +42,7 @@ class SumberContoh extends SumberData {
             ? <Object>[]
             : [
                 {
-                  'id': 'simpeg', 'nama': 'SIMPEG', 'akun': ['akun2', 'akun1'], 'hp': 'kerjakan', 'sibuk': true, 'mode': 'rencana',
+                  'id': 'simpeg', 'nama': 'SIMPEG', 'akun': ['akun2', 'akun1'], 'hp': 'kerjakan', 'sibuk': true, 'mode': 'rencana', 'utama': 'bekerja',
                   'mulai': _lalu(const Duration(minutes: 4)), 'batasMenit': 10,
                   'divisi': [
                     {'nama': 'Bima', 'peran': 'programmer', 'status': 'bekerja', 'ringkas': 'Mengubah PegawaiModel.php'},

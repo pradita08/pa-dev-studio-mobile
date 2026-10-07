@@ -1,6 +1,7 @@
 // Kantor 3D untuk tab Kantor APK PADEV Studio (F2). Disalin ke APK oleh buat-kantor-apk.js (jangan edit salinannya di APK).
 // Dimuat di WebView terkunci: tanpa jaringan, tanpa jembatan native. Data masuk SATU ARAH dari native:
-//   window.kantorHp.terima('<json>')  json = {tema:'terang'|'gelap', proyek:'Nama', divisi:[{nama, peran, status, ke, ringkas?}]}
+//   window.kantorHp.terima('<json>')  json = {tema:'terang'|'gelap', proyek:'Nama', utama:'bekerja'|'menunggu_izin'|'diam',
+//                                      divisi:[{nama, peran, status, ke, ringkas?}]}
 //   window.kantorHp.jeda(true|false)  hentikan/lanjutkan render (tab tidak terlihat / aplikasi ke latar)
 // Semua teks dari data tampil lewat textContent. Adegan = desain/ (desain/API.md), tabel divisi = peta.js (dari office.html).
 'use strict';
@@ -150,45 +151,103 @@
     if (kartuUntuk === a) { kartu.hidden = true; kartuUntuk = null; }
   }
 
-  /* ---------- aktor: satu per slot divisi (peran#ke) ---------- */
+  /* ---------- aktor: satu per slot divisi (peran#ke) + Kepala (Claude utama); alur meniru kantor laptop ----------
+     datang dari pintu → brief di depan meja Kepala → meja (ketik) → selesai: lapor ke Kepala → meja (santai)
+     → hilang dari data: pulang lewat pintu (anggota tambahan) / kembali ke gaya bawaan (karakter desain).
+     Gerakan = langkah berurutan (a.di = titik terakhir); status yang berubah saat berjalan diterapkan saat tiba. */
   const aktor = new Map();
+  const BRIEF_MS = 2500, LAPOR_MS = 3500;
+  const WARNA_TUNGGU = new THREE.Color('#f0a341'), WARNA_KEPALA = new THREE.Color('#4d96ff');
   function posisikan(a) {   // pose sesuai status, di kursinya
     const k = a.kursi, d = a.data;
     if (d.status === 'bekerja') { ORANG.atur(a.P, { pose: k.duduk ? 'duduk' : 'berdiri', aksi: 'ketik', r: k.r }); layar(k, warnaDivisi(d.peran)); }
-    else if (d.status === 'menunggu_izin') { ORANG.atur(a.P, { pose: 'berdiri', aksi: 'lambai', r: k.r }); layar(k, new THREE.Color('#f0a341')); }
+    else if (d.status === 'menunggu_izin') { ORANG.atur(a.P, { pose: 'berdiri', aksi: 'lambai', r: k.r }); layar(k, WARNA_TUNGGU); }
     else {
       layar(k, null);
       if (a.asli) ORANG.atur(a.P, a.asli);
       else ORANG.atur(a.P, { pose: k.duduk ? 'duduk' : 'berdiri', aksi: 'santai', r: k.r });
     }
   }
-  function hadirkan(kunci, d) {
+  function jalan(a, ke, lalu) {
+    a.berjalan = true;
+    ORANG.jalanKe(a.P, R.rute(a.di, ke), () => { a.di = ke; a.berjalan = false; if (a.pulang) return keluar(a); if (lalu) lalu(); }, LAJU);
+  }
+  function keMeja(a) { if (a.di === a.kursi) posisikan(a); else jalan(a, a.kursi, () => posisikan(a)); }
+
+  /* Kepala = karakter desain "pimpinan": mengetik saat Claude utama bekerja, melambai saat menunggu izin, mendengar saat ada yang lapor */
+  const KEPALA = R.orang.pimpinan && R.orang.pimpinan.kursi ? R.orang.pimpinan : null;
+  const aKepala = KEPALA ? { kunci: 'kepala', P: KEPALA, kursi: KEPALA.kursi, desain: true,
+    asli: { pose: KEPALA.o.pose || (KEPALA.sit ? 'duduk' : 'berdiri'), aksi: KEPALA.o.aksi || 'santai', r: KEPALA.r0 },
+    data: { nama: 'Kepala', peranTampil: 'Claude utama', status: 'diam', ringkas: '' } } : null;
+  let utama = 'diam', pendengar = 0;
+  function aturKepala() {
+    if (!aKepala) return;
+    const k = aKepala.kursi, duduk = k.duduk ? 'duduk' : 'berdiri';
+    aKepala.data.status = utama;
+    if (utama === 'bekerja') { ORANG.atur(KEPALA, { pose: duduk, aksi: 'ketik', r: k.r }); layar(k, WARNA_KEPALA); }
+    else if (utama === 'menunggu_izin') { ORANG.atur(KEPALA, { pose: 'berdiri', aksi: 'lambai', r: k.r }); layar(k, WARNA_TUNGGU); }
+    else { layar(k, null); ORANG.atur(KEPALA, pendengar > 0 ? { pose: duduk, aksi: 'dengar', r: k.r } : aKepala.asli); }
+    if (utama !== 'diam') { if (!aKepala.label) buatLabel(aKepala); perbaruiLabel(aKepala); } else lepasLabel(aKepala);
+  }
+  // berdiri di depan meja Kepala (titik lapor) selama ms dengan aksi tertentu; tidak ada titik kosong → langsung lanjut
+  function menghadapKepala(a, aksi, ms, lalu) {
+    const t = R.titikLapor.find(x => !x.dipakaiHp);
+    if (!t || !KEPALA) return lalu();
+    t.dipakaiHp = true; a.diKepala = true;
+    jalan(a, t, () => {
+      ORANG.atur(a.P, { pose: 'berdiri', aksi, r: t.r });
+      pendengar++; aturKepala();
+      setTimeout(() => {
+        t.dipakaiHp = false; a.diKepala = false; pendengar--; aturKepala();
+        if (a.pulang) keluar(a); else lalu();
+      }, ms);
+    });
+  }
+  const brief = a => menghadapKepala(a, 'dengar', BRIEF_MS, () => keMeja(a));
+  const lapor = a => { layar(a.kursi, null); menghadapKepala(a, 'bicara', LAPOR_MS, () => keMeja(a)); };
+
+  function hadirkan(kunci, d, langsung) {
     const slot = (PETA_DIVISI[peranPendek(d.peran)] || [])[d.ke - 1] || {};
     const desain = slot.orang && R.orang[slot.orang];
-    if (desain && desain.kursi && ![...aktor.values()].some(x => x.P === desain)) {
-      const a = { kunci, P: desain, kursi: desain.kursi, data: d, desain: true, berjalan: false,
+    if (desain && desain.kursi && !desain.sibukHp && ![...aktor.values()].some(x => x.P === desain)) {
+      const a = { kunci, P: desain, kursi: desain.kursi, di: desain.kursi, data: d, desain: true, berjalan: false,
         asli: { pose: desain.o.pose || (desain.sit ? 'duduk' : 'berdiri'), aksi: desain.o.aksi || 'santai', r: desain.r0 } };
-      aktor.set(kunci, a); buatLabel(a); posisikan(a); return a;
+      siapJalan(desain);
+      aktor.set(kunci, a); buatLabel(a);
+      if (!langsung && d.status !== 'diam') brief(a); else posisikan(a);
+      return a;
     }
     let kursi = slot.kursi && KURSI_BY[slot.kursi];
     if (!kursi || kursi.pemilik || kursi.dipakaiHp) kursi = kursiBebas(d.peran);
     if (!kursi || !PINTU) return null;   // kantor penuh: tetap tampil di daftar APK
     kursi.dipakaiHp = true;
-    const P = ORANG.buat(grupLantai(PINTU.lantai), Object.assign(ORANG.tampilanDari(kunci), { x: PINTU.x, z: PINTU.z, r: PINTU.r, pose: 'berdiri', aksi: 'jalan' }));
+    const awal = langsung ? kursi : PINTU;
+    const P = ORANG.buat(grupLantai(awal.lantai), Object.assign(ORANG.tampilanDari(kunci), { x: awal.x, z: awal.z, r: awal.r, pose: 'berdiri', aksi: 'jalan' }));
     siapJalan(P);
-    const a = { kunci, P, kursi, data: d, desain: false, berjalan: true };
+    const a = { kunci, P, kursi, di: awal, data: d, desain: false, berjalan: false };
     aktor.set(kunci, a); buatLabel(a);
-    ORANG.jalanKe(P, R.rute(PINTU, kursi), () => { a.berjalan = false; if (aktor.get(kunci) === a) posisikan(a); }, LAJU);
+    if (langsung) posisikan(a);
+    else if (d.status !== 'diam') brief(a);
+    else keMeja(a);
     return a;
+  }
+  // aktor sudah lepas dari data: karakter desain kembali ke mejanya dengan gaya bawaan, anggota tambahan pulang lewat pintu
+  function keluar(a) {
+    a.pulang = false;
+    if (a.desain) {
+      const selesai = () => { a.P.sibukHp = false; ORANG.atur(a.P, a.asli); };
+      if (a.di === a.kursi) return selesai();
+      a.P.sibukHp = true;
+      return ORANG.jalanKe(a.P, R.rute(a.di, a.kursi), () => { a.di = a.kursi; selesai(); }, LAJU);
+    }
+    ORANG.jalanKe(a.P, R.rute(a.di, PINTU), () => { a.kursi.dipakaiHp = false; buangKarakter(a.P); }, LAJU);
   }
   function pulangkan(a) {
     aktor.delete(a.kunci);
     lepasLabel(a);
     layar(a.kursi, null);
-    if (a.desain) { ORANG.atur(a.P, a.asli); return; }
-    a.berjalan = true;
-    const kursi = a.kursi;
-    ORANG.jalanKe(a.P, R.rute(kursi, PINTU), () => { kursi.dipakaiHp = false; buangKarakter(a.P); }, LAJU);
+    if (a.berjalan || a.diKepala) { a.pulang = true; return; }   // diselesaikan saat langkah sekarang berakhir
+    keluar(a);
   }
 
   /* ---------- data dari native (tidak dipercaya: divalidasi & dipotong) ---------- */
@@ -202,22 +261,32 @@
     const peranTampil = meta ? meta.nama : pendek;
     return { peran, ke, status, nama: teks(x.nama, 60) || peranTampil, peranTampil, ringkas: teks(x.ringkas, 300) };
   }
+  let pertama = true;
   function terima(json) {
     let d;
     try { d = JSON.parse(String(json)); } catch (e) { return; }
     if (!d || typeof d !== 'object') return;
     document.body.classList.toggle('gelap', d.tema === 'gelap');
+    // data pertama setelah halaman dibuka = keadaan sekarang: ditempatkan langsung (kantor laptop juga tidak memutar ulang kejadian lama)
+    const langsung = pertama;
+    pertama = false;
+    utama = STATUS.includes(d.utama) ? d.utama : 'diam';
+    aturKepala();
     const daftar = (Array.isArray(d.divisi) ? d.divisi : []).slice(0, MAKS_DIVISI).map(rapikan).filter(Boolean);
     const baru = new Map();
     for (const x of daftar) { const k = peranPendek(x.peran) + '#' + x.ke; if (!baru.has(k)) baru.set(k, x); }
     for (const a of [...aktor.values()]) if (!baru.has(a.kunci)) pulangkan(a);
     for (const [k, x] of baru) {
       let a = aktor.get(k);
-      if (!a) { a = hadirkan(k, x); if (!a) continue; }
+      if (!a) { a = hadirkan(k, x, langsung); if (a) perbaruiLabel(a); continue; }
+      const lama = a.data.status;
       a.data = x; perbaruiLabel(a);
-      if (!a.berjalan) posisikan(a);
+      if (a.berjalan || a.diKepala) continue;   // diterapkan saat tiba di meja
+      if (lama !== 'diam' && x.status === 'diam') lapor(a);
+      else if (lama === 'diam' && x.status !== 'diam') brief(a);
+      else posisikan(a);
     }
-    const aktif = daftar.filter(x => x.status !== 'diam').length;
+    const aktif = daftar.filter(x => x.status !== 'diam').length + (utama !== 'diam' ? 1 : 0);
     $('judul').textContent = (teks(d.proyek, 60) || 'Kantor') + (aktif ? ' · ' + aktif + ' aktif' : daftar.length ? '' : ' · sepi');
     $('titik').className = 'titik' + (aktif ? ' aktif' : '');
     $('info').hidden = false;

@@ -33,6 +33,19 @@ class _LayarKantorState extends State<LayarKantor> {
     NamaPegawai.muat().then((_) {
       if (mounted) setState(() {});
     });
+    widget.sumber.kantorTerlihat = widget.aktif;
+  }
+
+  @override
+  void didUpdateWidget(LayarKantor lama) {
+    super.didUpdateWidget(lama);
+    widget.sumber.kantorTerlihat = widget.aktif;
+  }
+
+  @override
+  void dispose() {
+    widget.sumber.kantorTerlihat = false;
+    super.dispose();
   }
 
   @override
@@ -98,7 +111,7 @@ class _LayarKantorState extends State<LayarKantor> {
               borderRadius: BorderRadius.circular(14),
               child: SizedBox(
                 height: (MediaQuery.sizeOf(context).height * .5).clamp(300.0, 520.0),
-                child: _pernahAktif ? Kantor3d(proyek: p.nama, divisi: divisi, aktif: widget.aktif) : ColoredBox(color: w.panel),
+                child: _pernahAktif ? Kantor3d(proyek: p.nama, divisi: divisi, utama: p.utama, aktif: widget.aktif) : ColoredBox(color: w.panel),
               ),
             ),
             const SizedBox(height: 12),

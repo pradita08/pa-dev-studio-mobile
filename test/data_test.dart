@@ -72,7 +72,8 @@ void main() {
                 {'peran': 'general-purpose', 'status': 'bekerja'},
               ],
             },
-            {'id': 'b', 'nama': 'B', 'akun': [], 'hp': 'rencana', 'sibuk': false, 'divisi': 2},
+            {'id': 'b', 'nama': 'B', 'akun': [], 'hp': 'rencana', 'sibuk': false, 'divisi': 2, 'utama': 'menunggu_izin'},
+            {'id': 'c', 'nama': 'C', 'akun': [], 'hp': 'rencana', 'sibuk': false, 'utama': '<script>'},
           ],
         },
       });
@@ -80,7 +81,10 @@ void main() {
     expect(d.map((x) => x.nama), ['Bima', 'Rizky', 'QA', 'General-purpose']);
     expect(d.map((x) => x.ke), [1, 2, 1, 1]);
     expect(d.first.peranTampil, 'programmer');
-    expect(s.proyek.last.divisi, isEmpty);
+    expect(s.proyek[1].divisi, isEmpty);
+    expect(s.proyek[1].utama, 'menunggu_izin');
+    expect(s.proyek.last.utama, 'diam');
+    expect(s.proyek.first.utama, 'diam');
     NamaPegawai.atur(const {});
   });
 

@@ -363,6 +363,7 @@ const cm = C.buatCermin({ cfg, log: () => {}, folder: folderPel, rumah: tmp });
   // F2 tab Kantor: tim = daftar {peran, status, ke} saja (tanpa teks/alat/agentId), yang bekerja dapat slot dulu
   let tim = cm3.ringkasStatus().tim.get('proj');
   cek('ringkasStatus.tim: menunggu_izin + bentuk tetap', JSON.stringify(tim) === JSON.stringify([{ peran: 'divisi-qa', status: 'menunggu_izin', ke: 1 }]), JSON.stringify(tim));
+  cek('ringkasStatus.utama: Kepala menunggu izin', cm3.ringkasStatus().utama.get('proj') === 'menunggu_izin');
   cm3.terimaHook(evB({ kind: 'tool_done', tool: 'Bash' }));
   cm3.terimaHook(evB({ kind: 'agent_stop', who: 'divisi-qa', agentId: 'ag1' }));
   cm3.terimaHook(evB({ kind: 'agent_start', who: 'divisi-qa', agentId: 'ag2' }));
@@ -373,6 +374,7 @@ const cm = C.buatCermin({ cfg, log: () => {}, folder: folderPel, rumah: tmp });
       { peran: 'divisi-qa', status: 'diam', ke: 2 }]) && !JSON.stringify(tim).includes('RAHASIA'), JSON.stringify(tim));
   cm3.terimaHook(evB({ kind: 'agent_stop', who: 'divisi-qa', agentId: 'ag2' }));
   cm3.terimaHook(evB({ kind: 'agent_stop', who: 'divisi-programmer', agentId: 'ag3' }));
+  cek('ringkasStatus.utama: Kepala bekerja setelah izin selesai', cm3.ringkasStatus().utama.get('proj') === 'bekerja');
   cm3.terimaHook(evB({ kind: 'stop' }));
   cek('hook stop → tidak bekerja', !['bekerja', 'menunggu_izin'].includes(cm3.statusSesi(s1)), cm3.statusSesi(s1));
   const evHp = cm3.kejadianUntukHp(evB({ kind: 'tool', tool: 'Bash', detail: 'ls' }));

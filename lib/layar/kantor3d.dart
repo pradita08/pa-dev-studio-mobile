@@ -16,9 +16,12 @@ import '../tema/token.dart';
 import 'data.dart';
 
 class Kantor3d extends StatefulWidget {
-  const Kantor3d({super.key, required this.proyek, required this.divisi, required this.aktif});
+  const Kantor3d({super.key, required this.proyek, required this.divisi, required this.aktif, this.utama = 'diam'});
   final String proyek;
   final List<Divisi> divisi;
+
+  /// Status Claude utama (Kepala): 'bekerja' | 'menunggu_izin' | 'diam'.
+  final String utama;
 
   /// false = tab Kantor tidak terlihat → render dijeda (hemat baterai).
   final bool aktif;
@@ -71,6 +74,7 @@ class _Kantor3dState extends State<Kantor3d> with WidgetsBindingObserver {
   String _json(BuildContext context) => jsonEncode({
         'tema': Theme.of(context).brightness == Brightness.dark ? 'gelap' : 'terang',
         'proyek': widget.proyek,
+        'utama': widget.utama,
         'divisi': [
           for (final d in widget.divisi.take(10))
             {'nama': d.nama, 'peran': d.peran, 'status': d.status, 'ke': d.ke, if (d.ringkas != null) 'ringkas': d.ringkas},
