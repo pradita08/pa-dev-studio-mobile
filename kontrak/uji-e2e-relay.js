@@ -139,6 +139,9 @@ async function pasang(hp, { jawab = 'ya', rusakAtestasi = false, atestasi } = {}
     const pb = await pasang(hpBuruk, { rusakAtestasi: true });
     cek('QR Terminal terbaca (CoreImage)', !!pb.qr && pb.qr.mac_id === MAC_ID && pb.qr.relay === URL_UJI);
     cek('atestasi salah → pasang ditolak', pb.kode === 1 && /atestasi_sertifikat_apk/.test(pb.galat), pb.galat);
+    // owner bisa mencatat APK-nya sendiri: SHA-256 sertifikat APK yang memindai + perintah siap salin (tetap ditolak)
+    cek('sertifikat tak dikenal → SHA-256 APK + perintah siapkan-hp.sh', /Sertifikat APK yang memindai: [0-9a-f]{64}/.test(pb.galat)
+      && /bash siapkan-hp\.sh --sertifikat [0-9a-f]{64}/.test(pb.galat), pb.galat);
     // SEC-83: serial daun ada di daftar cabut (berkas uji) → ditolak dengan pesan jelas
     const pc = await pasang(H.buatHp('HP Dicabut'), { atestasi: { serialDaun: SERIAL_CABUT } });
     cek('serial dicabut Google → pasang ditolak (SEC-83)', pc.kode === 1 && /atestasi_dicabut/.test(pc.galat) && /sertifikat dicabut Google/.test(pc.galat), pc.galat);
