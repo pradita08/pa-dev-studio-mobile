@@ -5494,7 +5494,8 @@ chEl.ganti.addEventListener('click', () => { chMintaKunci(''); chEl.kunciI.focus
    menampilkan & meneruskan jawaban owner. Polling GET /chat/pasang tiap 1 dtk selama dialog terbuka. Teks lewat textContent. --- */
 const hpEl = {dlg:$('#hpDlg'), st:$('#hpSt'), qr:$('#hpQr'), sas:$('#hpSas'), kode:$('#hpKode'), nama:$('#hpNama'), kerjakan:$('#hpKerjakan'),
   kerjakanL:$('#hpKerjakanL'), darurat:$('#hpDarurat'), daruratK:$('#hpDaruratK'), sert:$('#hpSert'), sertB:$('#hpSertB'),
-  mulai:$('#hpMulai'), ya:$('#hpYa'), tidak:$('#hpTidak'), tutup:$('#hpTutup'), buka:$('#chHp')};
+  mulai:$('#hpMulai'), ya:$('#hpYa'), tidak:$('#hpTidak'), tutup:$('#hpTutup'), buka:$('#chHp'), kj:$('#hpKj'), kjB:$('#hpKjB'), kjI:$('#hpKjI')};
+const HP_KJ_AWAL = hpEl.kjI.textContent;
 let hpT = 0, hpO = {tahap:'diam'}, hpSertSha = '', hpPesanSendiri = '';
 const HP_AKTIF = new Set(['menunggu', 'qr', 'sas', 'menyimpan']);
 function hpGambarQr(modul){
@@ -5537,6 +5538,14 @@ function hpTampil(o){
     : 'Klik "Tampilkan QR", lalu pindai dari APK PADEV Studio di HP.';
   hpEl.st.textContent = hpPesanSendiri || teks;
   hpPesanSendiri = '';
+  // Kerjakan semua proyek (HP yang sudah terpasang); disembunyikan selama pemasangan berjalan
+  const kj = hpO.kerjakan;
+  hpEl.kj.hidden = HP_AKTIF.has(t);
+  hpEl.kjB.disabled = !!(kj && kj.tahap === 'menunggu');
+  if (kj && kj.tahap === 'menunggu') hpEl.kjI.textContent = 'Mengaktifkan Kerjakan di Mac…';
+  else if (kj && kj.tahap === 'selesai') hpEl.kjI.textContent = `✅ Kerjakan aktif di ${kj.proyek} proyek` + (kj.hp ? ` · ${kj.hp} HP dinaikkan` : '') + '. Di HP: tarik untuk segarkan (≤ 1 menit).';
+  else if (kj && kj.tahap === 'gagal') hpEl.kjI.textContent = 'Gagal: ' + (kj.pesan || 'gagal');
+  else hpEl.kjI.textContent = HP_KJ_AWAL;
 }
 async function hpMuat(){
   try {
@@ -5566,6 +5575,7 @@ hpEl.mulai.addEventListener('click', () => hpKirim('/chat/pasang/mulai'));
 hpEl.ya.addEventListener('click', () => hpKirim('/chat/pasang/jawab', {setuju:true, kerjakan:hpEl.kerjakan.checked}));
 hpEl.tidak.addEventListener('click', () => hpKirim('/chat/pasang/jawab', {setuju:false, kerjakan:false}));
 hpEl.sertB.addEventListener('click', () => hpKirim('/chat/pasang/sertifikat', {sha:hpSertSha}));
+hpEl.kjB.addEventListener('click', () => hpKirim('/chat/pasang/kerjakan'));
 hpEl.tutup.addEventListener('click', () => hpEl.dlg.close());
 hpEl.dlg.addEventListener('close', () => {
   clearTimeout(hpT);

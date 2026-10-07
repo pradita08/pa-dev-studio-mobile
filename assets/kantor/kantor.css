@@ -996,6 +996,8 @@ html.rm .lp-xp .car{transition:none}
 .hp-dlg canvas[hidden],.hp-sas[hidden],.hp-darurat[hidden],.hp-dlg [hidden]{display:none}
 .hp-sas{display:flex;flex-direction:column;align-items:center;gap:4px;margin:8px 0 12px}
 .hp-kode{font:800 34px/1.1 ui-monospace,Menlo,monospace;letter-spacing:4px}
+.hp-kj{display:flex;flex-direction:column;gap:6px;margin:0 0 10px;padding:10px;border-radius:10px;border:1px dashed var(--line);font-size:12.5px}
+.hp-kj[hidden]{display:none}
 .hp-cek{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;line-height:1.4;margin:0 0 10px}
 .hp-darurat{display:flex;flex-direction:column;gap:6px;margin:0 0 10px;padding:10px;border-radius:10px;border:1px solid var(--ch-or);font-size:12.5px}
 .hp-darurat code{font:700 16px/1.3 ui-monospace,Menlo,monospace;user-select:all;word-break:break-all}

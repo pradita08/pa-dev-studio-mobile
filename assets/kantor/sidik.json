@@ -1,9 +1,9 @@
 {
   "sumber": "pa-dev-studio-claude-divisi-3d (buat-kantor-apk.js)",
   "berkas": {
-    "index.html": "e020e18fc6acf8e8c72e29775ccfe37d0a49e8285a7ad1c0dc2e08e319dafa8d",
-    "kantor.css": "a612ab4bd20510a79e9e1aa88dcc57d2ef5a835d3bd2a5e02f07455c15f8f1f8",
-    "kantor-app.js": "eb0b8e1b166bf03d10d677a314c5e4761a17f07791020f7b7c9e75afc6217b53",
+    "index.html": "478142c6374bb2ad654d80d28fae80f6993979aa44a54ae9c2d6068c50b46201",
+    "kantor.css": "f8e338e9f3d17ce74f3f32aef6a9dc3794b746bcf5f3dce2791499227f3a02d9",
+    "kantor-app.js": "ec120092be3cf373c19ad49ce1fc58e9e7647bccb4ecdd30a6d23829bd421d70",
     "jembatan.js": "7d5e107739c372730400861787450783fdef3088b290c6f69fad6eaeb5932ea8",
     "tambahan.css": "c84e9f9a99cc38c1a7ae6918143d59b3c4e5ac0d1f32d2581623ff19ad61beb3",
     "three-kantor.js": "06d6869829696b1355ff5b3eb8d3288c4a36b2bf67fe6f8f8f24db322d5b89a6",
