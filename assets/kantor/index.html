@@ -2,35 +2,412 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<!-- Kantor 3D untuk tab Kantor APK (F2). Disalin ke APK oleh buat-kantor-apk.js; dibuka di WebView terkunci (tanpa jaringan,
-     tanpa jembatan native). CSP: hanya berkas sendiri, tanpa skrip/gaya sebaris, tanpa koneksi keluar. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Dibuat buat-kantor-apk.js dari office.html — jangan diedit. Dibuka di WebView terkunci APK (tanpa jaringan, tanpa
+     jembatan native); data hanya masuk lewat window.kantorHp.terima (jembatan.js). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <title>Kantor 3D</title>
-<link rel="stylesheet" href="kantor-hp.css">
-<!-- Urutan wajib (desain/API.md): three-kantor.js → orang3d.js → kantor3d.js; peta.js = tabel divisi dari office.html -->
+<link rel="icon" id="favicon" href="data:,">
+<link rel="stylesheet" href="kantor.css">
+<link rel="stylesheet" href="tambahan.css">
+<script src="jembatan.js"></script>
 <script src="three-kantor.js"></script>
 <script src="orang3d.js"></script>
 <script src="kantor3d.js"></script>
-<script src="peta.js"></script>
 </head>
 <body>
-<div id="stage"></div>
-<div id="info" class="chip" hidden><span id="titik" class="titik"></span><span id="judul"></span></div>
-<div class="lantai" role="group" aria-label="Pilih lantai">
-  <button type="button" data-m="l1" aria-pressed="false">Lt 1</button>
-  <button type="button" data-m="l2" aria-pressed="false">Lt 2</button>
-  <button type="button" data-m="terpisah" aria-pressed="true">Semua</button>
+<div id="app">
+  <!-- panel kiri ditaruh lebih dulu di DOM supaya urutan Tab: panel → area 3D (tampilan diatur CSS order) -->
+  <aside id="panel">
+    <div class="p-head">
+      <h2><img class="logo" data-logo alt="Logo PADEV" width="20" height="20"><span id="divTitle">Kantor</span></h2>
+      <p id="divSub">Memuat kantor…</p>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Isi panel">
+      <button class="tab" type="button" role="tab" id="tabTim" aria-controls="pTim" aria-selected="true">Tim</button>
+      <button class="tab" type="button" role="tab" id="tabKet" aria-controls="pKet" aria-selected="false" tabindex="-1">Keterangan</button>
+      <button class="tab" type="button" role="tab" id="tabPeg" aria-controls="pPeg" aria-selected="false" tabindex="-1">Pegawai</button>
+      <button class="tab" type="button" role="tab" id="tabSet" aria-controls="pSet" aria-selected="false" tabindex="-1">Pengaturan</button>
+      <button class="tab" type="button" role="tab" id="tabTok" aria-controls="pTok" aria-selected="false" tabindex="-1">Token</button>
+      <button class="tab" type="button" role="tab" id="tabLap" aria-controls="pLap" aria-selected="false" tabindex="-1">Laporan</button>
+      <button class="tab" type="button" role="tab" id="tabCht" aria-controls="pCht" aria-selected="false" tabindex="-1">Perintah</button>
+    </div>
+    <div class="tabp" id="pTim" role="tabpanel" aria-labelledby="tabTim">
+      <details class="flow" id="flowD">
+        <summary class="flow-t"><span id="flowT">Alur kerja</span><span class="rk" id="flowRk"></span></summary>
+        <div class="flow-r" id="flow" role="group" aria-labelledby="flowT"></div>
+      </details>
+      <div class="tb-row"><span class="flow-t" id="divsT">Divisi &amp; anggota</span><button class="lnk" id="bGrpAll" type="button">Buka semua</button></div>
+      <div id="divs" role="group" aria-labelledby="divsT"></div>
+    </div>
+    <div class="tabp scrl" id="pKet" role="tabpanel" aria-labelledby="tabKet" tabindex="0" hidden></div>
+    <div class="tabp scrl" id="pPeg" role="tabpanel" aria-labelledby="tabPeg" tabindex="0" hidden></div>
+    <div class="tabp scrl" id="pSet" role="tabpanel" aria-labelledby="tabSet" tabindex="0" hidden></div>
+    <div class="tabp scrl" id="pTok" role="tabpanel" aria-labelledby="tabTok" tabindex="0" hidden>
+      <fieldset class="fs tk-akun" id="tkAkunF" hidden>
+        <legend>Akun Claude Code</legend>
+        <div class="seg" id="tkAkun"></div>
+      </fieldset>
+      <section class="fs tk-5j" aria-labelledby="tk5T">
+        <h3 class="flow-t" id="tk5T">Blok 5 jam aktif · semua proyek</h3>
+        <div class="tk-big"><b id="tk5N">–</b><span id="tk5U">token setara</span></div>
+        <p class="tk-rm tk-rsm" id="tkRsm" hidden></p>
+        <div class="tk-kt" id="tkKt" hidden>
+          <div class="tk-bar tk-bar-l" aria-hidden="true"><i id="tkKtI"></i></div>
+        </div>
+        <p class="tk-bk" id="tkBk"><b id="tkBkJ">–</b><span id="tkBkS"></span></p>
+        <p class="tk-sb" id="tkBkSb"></p>
+        <p class="tk-rm tk-kt" id="tkKtT" hidden></p>
+        <p class="tk-rm tk-sbr" id="tkSbr"></p>
+        <p class="tk-lama" id="tkLama" hidden><button class="lnk" type="button" id="bTkLama" aria-controls="tkCat">Perkiraan makin kasar — catat % terbaru (✍️)</button></p>
+        <dl class="tk-rinci" id="tk5R"></dl>
+        <p class="hintk tk-lj" id="tk5L"></p>
+        <p class="hintk">Setara = perkiraan beban kuota (cache baca ×0,1, output ×5). Bukan angka resmi.</p>
+      </section>
+      <section class="fs tk-7h" aria-labelledby="tk7T">
+        <h3 class="flow-t" id="tk7T">Limit 7 hari</h3>
+        <div class="tk-big"><b id="tk7N">–</b><span id="tk7U"></span></div>
+        <div class="tk-kt" id="tk7K" hidden>
+          <div class="tk-bar tk-bar-l" aria-hidden="true"><i id="tk7I"></i></div>
+        </div>
+        <p class="tk-rm" id="tk7S">Belum ada data resmi — jalankan Claude lewat terminal / catat manual</p>
+        <p class="tk-rm tk-sbr" id="tk7Kal"></p>
+      </section>
+      <details class="ket tk-cat" id="tkCat">
+        <summary><span class="ic" aria-hidden="true">✍️</span><span>Catat % dari VS Code</span></summary>
+        <form class="tk-cat-f" id="tkCatF" novalidate>
+          <div class="tk-cat-g">
+            <label for="tkC5">Limit 5 jam (Session) <small>wajib</small></label>
+            <span class="tk-cat-i"><input id="tkC5" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" maxlength="6" required aria-describedby="tkCatH tkCatS"><i aria-hidden="true">%</i></span>
+            <label for="tkC7">Limit 7 hari (Weekly) <small>opsional</small></label>
+            <span class="tk-cat-i"><input id="tkC7" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" maxlength="6" aria-describedby="tkCatH tkCatS"><i aria-hidden="true">%</i></span>
+          </div>
+          <p class="hintk" id="tkCatH">Lihat meter Session (5hr) &amp; Weekly di VS Code (/usage). Isi angka 0–&#8288;100.</p>
+          <p class="hintk" id="tkCatA"></p>
+          <div class="tk-aksi"><button class="btn sm" type="submit" id="bTkCat">Simpan</button><span class="tk-cst" id="tkCatS" role="status" aria-live="polite"></span></div>
+        </form>
+      </details>
+      <section class="fs" aria-labelledby="tkBtT">
+        <h3 class="flow-t" id="tkBtT">Perkiraan batas kuota</h3>
+        <p class="tk-bt" id="tkBt">–</p>
+        <p class="tk-rm tk-sbr" id="tkBtSb"></p>
+        <p class="hintk">Batas resmi tidak dipublikasikan. Perkiraan dari riwayat limit Anda; pemakaian di Claude Desktop/claude.ai/perangkat lain tidak tercatat di sini.</p>
+      </section>
+      <fieldset class="fs">
+        <legend>Rentang</legend>
+        <div class="seg" id="tkHari">
+          <label><input type="radio" name="tkHari" value="1"><span>1 hari</span></label>
+          <label><input type="radio" name="tkHari" value="7"><span>7 hari</span></label>
+          <label><input type="radio" name="tkHari" value="30" checked><span>30 hari</span></label>
+        </div>
+        <div class="tk-aksi"><button class="btn sm" type="button" id="bTok">↻ Muat ulang</button><span class="hintk" id="tkWaktu"></span></div>
+      </fieldset>
+      <p class="tk-st" id="tkSt" role="status" aria-live="polite"></p>
+      <section class="tk-sek" aria-labelledby="tkBlT" id="tkBlS" hidden>
+        <h3 class="flow-t tk-h" id="tkBlT">Rekap blok 5 jam</h3>
+        <p class="tk-lb" id="tkBlK"></p>
+        <div id="tkBlok"></div>
+      </section>
+      <h3 class="flow-t tk-h" id="tkPrT" hidden>Per proyek</h3>
+      <div id="tkList"></div>
+    </div>
+    <div class="tabp scrl" id="pLap" role="tabpanel" aria-labelledby="tabLap" tabindex="0" hidden>
+      <section class="fs" aria-labelledby="lpAlT">
+        <h3 class="flow-t" id="lpAlT">Alur kerja agen</h3>
+        <p class="lp-p">Dari prompt Anda sampai laporan akhir: siapa mengerjakan apa di tiap tahap, jalur mana yang dipakai, dan kapan QA wajib.</p>
+        <p class="lp-now" id="lpNow" role="status" aria-live="polite"><i aria-hidden="true"></i><small>Sekarang:</small><span id="lpNowT">–</span></p>
+        <div class="lp-buka"><button class="btn sm" type="button" id="bLapAlur" aria-haspopup="dialog">Buka diagram</button></div>
+      </section>
+      <section class="fs" aria-labelledby="lpTkT">
+        <h3 class="flow-t" id="lpTkT">Laporan token</h3>
+        <dl class="tk-rinci lp-ring" id="lpRing">
+          <div><dt id="lpR1T">Total setara</dt><dd id="lpR1">–</dd></div>
+          <div><dt>Kepala · divisi</dt><dd id="lpR2">–</dd></div>
+          <div><dt>Limit 5 j · 7 h</dt><dd id="lpR3">–</dd></div>
+        </dl>
+        <p class="hintk" id="lpRingK"></p>
+        <div class="lp-buka"><button class="btn sm" type="button" id="bLapTok" aria-haspopup="dialog">Buka laporan</button></div>
+        <p class="hintk">Laporan lengkap per akun, proyek, model, dan agen; bisa dicetak/disimpan PDF dan diunduh CSV.</p>
+      </section>
+    </div>
+    <!-- tab Perintah: chat ke Claude Code di Mac owner (KONTRAK-chat.md §9). Semua teks chat lewat textContent (SEC-31). -->
+    <div class="tabp" id="pCht" role="tabpanel" aria-labelledby="tabCht" hidden>
+      <p class="ch-demo" id="chDemo" hidden><span>Mode demo · balasan palsu lokal, tanpa request.</span><button class="lnk" type="button" id="chDemoPl">Simulasi pelaksana putus</button></p>
+      <form class="fs ch-kunci" id="chKunciF" novalidate hidden>
+        <h3 class="flow-t">Kunci perintah</h3>
+        <p class="lp-p">Perintah dijalankan Claude Code di Mac Anda. Masukkan kunci perintah (berbeda dari kunci akses halaman). Kunci hanya disimpan di tab ini dan hilang saat tab ditutup.</p>
+        <label class="subl" for="chKunciI">Kunci perintah</label>
+        <div class="ch-kr"><input id="chKunciI" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" required aria-describedby="chKunciS"><button class="btn ch-utama" type="submit">Buka</button></div>
+        <p class="hintk ch-msg" id="chKunciS" role="status" aria-live="polite"></p>
+      </form>
+      <section class="fs ch-info" id="chInfo" aria-live="polite" hidden>
+        <p class="ch-info-t" id="chInfoT"></p>
+        <p class="hintk" id="chInfoK"></p>
+        <div class="tk-aksi"><button class="btn sm" type="button" id="chUlang">↻ Coba lagi</button><button class="lnk" type="button" id="chGanti">Ganti kunci perintah</button></div>
+      </section>
+      <div class="ch-isi" id="chIsi" hidden>
+        <div class="ch-atas" id="chAtas">
+          <label class="sr" for="chProyek">Proyek</label><select class="ch-sel" id="chProyek"></select>
+          <label class="sr" for="chAkun">Akun Claude</label><select class="ch-sel" id="chAkun"></select>
+          <label class="sr" for="chModel">Model</label><select class="ch-sel" id="chModel"></select>
+        </div>
+        <div class="ch-st">
+          <span class="ch-pl" id="chPl"><i aria-hidden="true"></i><span id="chPlT">Memuat…</span></span>
+          <span class="ch-aksi">
+            <button class="lnk" type="button" id="chBaru" aria-pressed="false" aria-label="Percakapan baru"><span class="ch-pj">Percakapan baru</span><span class="ch-pk" aria-hidden="true">Baru</span></button>
+            <button class="lnk" type="button" id="chHapus" aria-haspopup="dialog" aria-label="Hapus riwayat"><span class="ch-pj">Hapus riwayat</span><span class="ch-pk" aria-hidden="true">Hapus</span></button>
+            <button class="lnk" type="button" id="chHp" aria-haspopup="dialog" aria-label="Pasangkan HP"><span class="ch-pj">📱 Pasangkan HP</span><span class="ch-pk" aria-hidden="true">HP</span></button>
+            <button class="lnk" type="button" id="chTutup" title="Hapus kunci perintah dari tab ini" aria-label="Kunci panel"><span class="ch-pj">Kunci panel</span><span class="ch-pk" aria-hidden="true">Kunci</span></button>
+          </span>
+        </div>
+        <div class="ch-log" id="chLog" role="log" aria-live="off" aria-label="Percakapan dengan Claude" tabindex="0"></div>
+        <div class="ch-kerja" id="chKerja" hidden><span class="ch-chip" id="chKerjaM"></span><span id="chKerjaT"></span><button class="btn sm ch-stop" type="button" id="chStop">Hentikan</button></div>
+        <ol class="ch-antre" id="chAntre" aria-label="Antrean pesan" hidden></ol>
+        <form class="ch-tulis" id="chF" novalidate>
+          <div class="ch-mrow">
+            <div class="seg ch-mode" role="radiogroup" aria-label="Mode perintah">
+              <label><input type="radio" name="chMode" value="rencana" checked><span>Rencana</span></label>
+              <label><input type="radio" name="chMode" value="kerjakan"><span>Kerjakan</span></label>
+            </div>
+            <span class="ch-hint" id="chHint"></span>
+          </div>
+          <label class="sr" for="chPesan">Perintah untuk Claude</label>
+          <textarea id="chPesan" rows="2" maxlength="8000" placeholder="Ketik perintah untuk Claude…" aria-describedby="chHint chFS"></textarea>
+          <button class="btn ch-kirim" type="submit" id="chKirim">Kirim</button>
+          <p class="ch-msg" id="chFS" role="status" aria-live="polite"></p>
+        </form>
+        <p class="sr" id="chUm" role="status" aria-live="polite"></p>
+      </div>
+    </div>
+  </aside>
+  <div id="pegPanel"><button id="bPeg" type="button" aria-expanded="true" aria-controls="panel" aria-label="Ciutkan panel" title="Ciutkan panel"><span class="pd" aria-hidden="true">‹</span><span class="pv" aria-hidden="true">˅</span></button></div>
+  <div id="stage">
+    <div id="hud-top" class="hud">
+      <div class="card" id="kartu">
+        <b><img class="logo" data-logo alt="" width="22" height="22">PADEV STUDIO CLAUDE</b>
+        <span id="summary">Kantor 2 lantai · 20 ruang · memuat…</span>
+        <span id="jam" class="jam" aria-label="Jam"></span>
+      </div>
+      <div id="pill" role="status"><i></i><span>Menghubungkan…</span></div>
+      <section class="card" id="aktivitas" aria-labelledby="akT">
+        <div class="ak-h">
+          <button class="ak-t" id="bAk" type="button" aria-expanded="true" aria-controls="log" title="Ciutkan/lebarkan daftar aktivitas">
+            <span class="ic" aria-hidden="true">📜</span><span id="akT">Aktivitas</span><span class="ak-n" id="akN"></span><span class="car" aria-hidden="true"></span>
+          </button>
+          <button class="lnk" id="bClear" type="button">Bersihkan</button>
+        </div>
+        <p id="akLast"></p>
+        <div id="log" role="log" aria-live="polite" aria-labelledby="akT"></div>
+      </section>
+    </div>
+    <div id="lantai" class="hud grup" role="group" aria-label="Pilih lantai">
+      <button class="bb" type="button" data-m="l1" aria-pressed="false" aria-label="Lantai 1" title="Lantai 1 (L)"><span class="pj">Lantai </span><span class="pk">Lt </span>1</button>
+      <button class="bb" type="button" data-m="l2" aria-pressed="false" aria-label="Lantai 2" title="Lantai 2 (L)"><span class="pj">Lantai </span><span class="pk">Lt </span>2</button>
+      <button class="bb" type="button" data-m="terpisah" aria-pressed="true" aria-label="Terpisah" title="Kedua lantai terpisah (L)">Terpisah</button>
+    </div>
+    <div id="hud-bottom" class="hud grup" role="group" aria-label="Kontrol kamera dan kantor">
+      <button class="bb" id="bReset" type="button" aria-label="Reset kamera" title="Reset kamera (R)"><span aria-hidden="true">↺</span><span class="bl">Reset kamera</span></button>
+      <button class="bb" id="bAtas" type="button" aria-label="Tampak atas" title="Tampak atas (T)"><span aria-hidden="true">🗺️</span><span class="bl">Tampak atas</span></button>
+      <div class="mwrap">
+        <button class="bb" id="bCam" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="camMenu" aria-label="Sudut kamera" title="Sudut kamera (1–8)"><span aria-hidden="true">🎥</span><span class="bl">Sudut kamera</span><span aria-hidden="true">▾</span></button>
+        <div class="menu" id="camMenu" role="menu" aria-label="Sudut kamera" hidden></div>
+      </div>
+      <button class="bb" id="bDemo" type="button" aria-label="Demo" aria-pressed="false" title="Mode demo"><span aria-hidden="true">▶️</span><span class="bl">Demo</span></button>
+      <button class="bb" id="bHelp" type="button" aria-label="Cara pakai" title="Cara pakai"><span aria-hidden="true">❓</span><span class="bl">Cara pakai</span></button>
+      <span class="sep" aria-hidden="true"></span>
+      <button class="bb ik" id="bPad" type="button" aria-pressed="false" aria-controls="pad" aria-label="Tombol arah" title="Tombol arah di layar (geser, putar, zoom)"><span aria-hidden="true">🕹️</span></button>
+      <button class="bb ik" id="bPanel" type="button" aria-expanded="true" aria-controls="panel" aria-label="Panel" title="Tampilkan/sembunyikan panel"><span aria-hidden="true">📋</span></button>
+    </div>
+    <div id="pad" class="hud" role="group" aria-label="Tombol arah kamera" hidden>
+      <button type="button" data-gerak="putarKiri" aria-label="Putar kiri (Q)" title="Putar kiri (Q)">⟲</button>
+      <button type="button" data-gerak="maju" aria-label="Geser maju (W)" title="Geser maju (W)">▲</button>
+      <button type="button" data-gerak="putarKanan" aria-label="Putar kanan (E)" title="Putar kanan (E)">⟳</button>
+      <button type="button" data-gerak="kiri" aria-label="Geser kiri (A)" title="Geser kiri (A)">◀</button>
+      <button type="button" data-sudut="iso" aria-label="Kembali ke sudut awal (R)" title="Kembali ke sudut awal (R)">⌂</button>
+      <button type="button" data-gerak="kanan" aria-label="Geser kanan (D)" title="Geser kanan (D)">▶</button>
+      <button type="button" data-gerak="jauh" aria-label="Zoom keluar (−)" title="Zoom keluar (−)">−</button>
+      <button type="button" data-gerak="mundur" aria-label="Geser mundur (S)" title="Geser mundur (S)">▼</button>
+      <button type="button" data-gerak="dekat" aria-label="Zoom masuk (+)" title="Zoom masuk (+)">+</button>
+    </div>
+    <div id="note" role="status" aria-live="polite"></div>
+    <div id="hint">Seret: putar · Scroll: zoom · Klik kanan-seret: geser · Klik orang: detail · L: ganti lantai · ❓ semua kontrol</div>
+    <aside id="detail" aria-labelledby="dNama" tabindex="-1" hidden>
+      <div class="d-h"><span class="d-ic" id="dIc" aria-hidden="true"></span><div><h3 id="dNama"></h3><p id="dSub"></p></div></div>
+      <div class="d-st"><span class="st" id="dSt"></span><span id="dAct"></span></div>
+      <div class="d-btn">
+        <button class="btn sm" type="button" id="dIkut" aria-pressed="false">🎯 Ikuti kamera</button>
+        <button class="btn sm" type="button" id="dBahu">🎬 Orang ke-3</button>
+        <button class="btn sm" type="button" id="dMeja">🪑 Ke mejanya</button>
+        <button class="btn sm" type="button" id="dSkill">🧰 Skill divisi</button>
+        <button class="btn sm" type="button" id="dUbah">👕 Ubah pegawai</button>
+        <button class="btn sm" type="button" id="dTutup">Tutup</button>
+      </div>
+      <dl class="d-dl" id="dDl"></dl>
+      <p class="d-desc" id="dDesc"></p>
+      <div class="d-sk" id="dSk"></div>
+      <div class="d-rw"><div class="flow-t" id="dRwT">Riwayat aktivitas</div><ol id="dRw" aria-labelledby="dRwT"></ol></div>
+    </aside>
+  </div>
 </div>
-<div id="kartu" class="kartu" hidden role="dialog" aria-live="polite">
-  <button type="button" id="tutup" class="tutup" aria-label="Tutup">×</button>
-  <b id="kNama"></b>
-  <span id="kPeran"></span>
-  <span id="kStatus" class="status"></span>
-  <p id="kRingkas"></p>
-</div>
-<p id="pesan" class="pesan" hidden></p>
-<script src="kantor-hp.js"></script>
+
+<div id="pegDlg" class="dlg"><div class="pg-box" role="dialog" aria-modal="true" aria-labelledby="pgTitle" aria-describedby="pgSub">
+  <div class="pg-hd"><div><h3 id="pgTitle">Penampilan</h3><p id="pgSub"></p></div><button class="btn sm" type="button" id="pgX">Selesai</button></div>
+  <div class="pg-grid">
+    <div class="pg-prev">
+      <canvas id="pgCanvas" tabindex="0" role="img" aria-label="Pratinjau 3D pegawai. Tombol panah kiri/kanan untuk memutar."></canvas>
+      <div class="pg-rot"><button class="btn sm" type="button" data-putar="-1" aria-label="Putar pratinjau ke kiri">⟲ Putar</button>
+        <button class="btn sm" type="button" data-putar="1" aria-label="Putar pratinjau ke kanan">Putar ⟳</button></div>
+    </div>
+    <form id="pgForm" class="pg-form" autocomplete="off"></form>
+  </div>
+  <div class="pg-act">
+    <button class="btn sm" type="button" id="pgAcak">🎲 Acak</button>
+    <button class="btn sm" type="button" id="pgRef">↺ Referensi</button>
+    <button class="btn sm" type="button" id="pgBatal">Batalkan perubahan</button>
+    <button class="btn sm utama" type="button" id="pgSelesai">Selesai</button>
+  </div>
+  <p class="pg-note" id="pgInfo" aria-live="polite"></p>
+</div></div>
+
+<div id="help"><div class="box" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+  <button class="btn x" id="bHelpX" type="button">Tutup</button>
+  <h3 id="helpTitle">Cara pakai</h3>
+  <p class="intro">Kantor 2 lantai: lantai 1 (lobby, studio, open workspace, ruang rapat, pantry, lounge, taman) dan lantai 2 (Ruang Pimpinan,
+    DevOps · NOC, ruang server, Divisi Programmer, lounge, teras). Tombol <b>Lantai 1 / Lantai 2 / Terpisah</b> di kanan atas memilih lantai yang dilihat.
+    Klik orang atau nama anggota untuk melihat <b>detailnya</b> (termasuk skill divisinya). Di tab <b>Tim</b>, tombol 🧰 di kartu divisi
+    membuka skill wajib, skill opsional, dan alat tiap divisi. Tab <b>Keterangan</b> menjelaskan arti status, warna layar, gerakan, ruang, dan sudut kamera.
+    Tab <b>Pegawai</b> untuk memberi nama tiap anggota dan mengatur penampilannya (kulit, rambut/hijab, atasan, bawahan, sepatu, aksesori; bisa diacak, ekspor/impor JSON).
+    Tab <b>Pengaturan</b> untuk kualitas grafis (Desain sampai Ultra HD), lingkungan luar &amp; suasana, label, kamera, dan kurangi gerakan.</p>
+  <h4>Menggerakkan kamera</h4>
+  <div class="hgrid" id="helpGerak"></div>
+  <h4>Menyambungkan ke Claude Code</h4>
+  <ol>
+    <li>Buka terminal di folder <code>_app_padev_studio_3d</code>.</li>
+    <li>Sekali saja: jalankan <code>node setup.js</code> (memasang pemantau di Claude Code).</li>
+    <li>Jalankan <code>node server.js</code> lalu buka <code>http://localhost:4545</code>.</li>
+    <li>Pakai Claude Code seperti biasa. Setiap divisi punya 3 anggota tetap di mejanya. Saat Kepala menugaskan, satu anggota dipanggil ke Ruang Pimpinan (lantai 2) untuk brief, lalu kembali ke mejanya dan bekerja; setelah selesai ia melapor lagi ke Ruang Pimpinan.</li>
+  </ol>
+  <p style="font-size:13px;color:var(--muted)">Kalau halaman dibuka tanpa server, kantor berjalan dalam <b>mode demo</b>.</p>
+</div></div>
+
+<!-- dialog Laporan (gelombang 5; KONTRAK-laporan.md §2): alur kerja agen + laporan token. Semua teks dari server lewat textContent. -->
+<dialog id="lapDlg" aria-labelledby="lpTitle">
+  <header class="lp-hd">
+    <button class="btn sm lp-kembali" type="button" id="bLpKembali" aria-label="Kembali ke kantor"><span aria-hidden="true">←</span><span>Kembali<span class="bl"> ke kantor</span></span></button>
+    <h2 id="lpTitle"><img class="logo" data-logo alt="" width="20" height="20">Laporan kantor</h2>
+    <div class="tabs" role="tablist" aria-label="Isi laporan">
+      <button class="tab" type="button" role="tab" id="lpTabAlur" aria-controls="lpAlur" aria-selected="true">Alur kerja</button>
+      <button class="tab" type="button" role="tab" id="lpTabTok" aria-controls="lpTok" aria-selected="false" tabindex="-1">Laporan token</button>
+    </div>
+    <div class="lp-aksi">
+      <button class="btn sm" type="button" id="bLpCetak" aria-label="Cetak atau simpan PDF"><span aria-hidden="true">🖨</span><span class="bl">Cetak/Simpan PDF</span></button>
+      <button class="btn sm lp-x" type="button" id="bLpX" aria-label="Tutup laporan" title="Tutup (Esc)">✕</button>
+    </div>
+  </header>
+  <div class="lp-isi">
+    <section id="lpAlur" role="tabpanel" aria-labelledby="lpTabAlur" tabindex="0">
+      <p class="lp-cetak" id="lpCetakA"></p>
+      <fieldset class="fs lp-jl">
+        <legend>Jalur</legend>
+        <div class="seg" id="lpJalur"></div>
+        <p class="lp-jk" id="lpJalurK" aria-live="polite"></p>
+      </fieldset>
+      <div class="lp-al">
+        <div class="lp-dg" id="lpDg">
+          <svg class="lp-gr" id="lpGr" aria-hidden="true" focusable="false">
+            <defs>
+              <marker id="lpMkN" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker>
+              <marker id="lpMkH" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker>
+              <marker id="lpMkE" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker>
+            </defs>
+            <g id="lpGrE"></g>
+          </svg>
+          <div class="lp-fs" id="lpFase" role="group" aria-label="Tahap alur kerja (16 tahap). Pilih tahap untuk melihat penjelasannya."></div>
+        </div>
+        <div class="lp-sisi" id="lpSisi">
+          <section class="lp-inf" id="lpInf" aria-labelledby="lpInfT">
+            <h3 id="lpInfT" aria-live="polite"></h3>
+            <p id="lpInfP"></p>
+            <dl id="lpInfD"></dl>
+          </section>
+          <section aria-labelledby="lpAtrT">
+            <h3 class="lp-h" id="lpAtrT">Aturan yang selalu berlaku</h3>
+            <ul class="lp-atr">
+              <li><b>Git satu branch <code>master</code></b>: tanpa branch baru; commit/push hanya bila owner minta.</li>
+              <li><b>Perintah owner selalu menang</b>: <code>/quickfix</code>, "lewat analis", "langsung ke &lt;divisi&gt;", "berurutan saja", "tanpa QA".</li>
+              <li><b>Model</b>: opus, kecuali QA &amp; dokumentasi (sonnet).</li>
+              <li><b>Hemat token</b>: Graphify dulu, laporan divisi ≤12 baris, QA proporsional jalur.</li>
+            </ul>
+          </section>
+        </div>
+      </div>
+      <div class="lp-lg">
+        <span><i class="ln" aria-hidden="true"></i>alur</span><span><i class="ln opt" aria-hidden="true"></i>bila perlu</span><span><i class="ln balik" aria-hidden="true"></i>bila QA GAGAL → kembali ke pelaksana</span>
+        <span><i class="on" aria-hidden="true"></i>tahap aktif menyala (live)</span><span><i class="ok" aria-hidden="true"></i>sudah selesai di sesi ini</span><span><i class="rd" aria-hidden="true"></i>redup = di luar jalur terpilih</span>
+      </div>
+      <div class="lp-cetak-daftar" id="lpCetakD"></div>
+    </section>
+    <section id="lpTok" role="tabpanel" aria-labelledby="lpTabTok" tabindex="0" hidden>
+      <p class="lp-cetak" id="lpCetakT"></p>
+      <div class="lp-ktl">
+        <fieldset class="fs">
+          <legend>Rentang</legend>
+          <div class="seg" id="lpHari">
+            <label><input type="radio" name="lpHari" value="1"><span>1 hari</span></label>
+            <label><input type="radio" name="lpHari" value="7"><span>7 hari</span></label>
+            <label><input type="radio" name="lpHari" value="30" checked><span>30 hari</span></label>
+          </div>
+        </fieldset>
+        <fieldset class="fs" id="lpAkunF">
+          <legend>Akun</legend>
+          <div class="seg" id="lpAkun"></div>
+        </fieldset>
+        <div class="lp-tb">
+          <button class="btn sm" type="button" id="bLpMuat">↻ Muat ulang</button>
+          <button class="btn sm" type="button" id="bLpCsv">⬇ Unduh CSV</button>
+          <button class="btn sm" type="button" id="bLpCetak2">🖨 Cetak/Simpan PDF</button>
+          <span class="hintk" id="lpWaktu"></span>
+        </div>
+      </div>
+      <p class="lp-st" id="lpSt" role="status" aria-live="polite"></p>
+      <div id="lpLap" aria-live="off"></div>
+    </section>
+  </div>
+</dialog>
+<!-- dialog konfirmasi tab Perintah (mode Kerjakan / hapus riwayat); isi diisi lewat textContent -->
+<dialog id="chDlg" aria-labelledby="chDlgT" aria-describedby="chDlgP">
+  <div class="ch-dlg">
+    <h3 id="chDlgT"></h3>
+    <p id="chDlgP"></p>
+    <dl class="ch-dl" id="chDlgDl"></dl>
+    <p class="ch-psn" id="chDlgPsn"></p>
+    <div class="pg-act"><button class="btn" type="button" id="chDlgBatal">Batal</button><button class="btn" type="button" id="chDlgYa"></button></div>
+  </div>
+</dialog>
+
+<!-- Pasangkan HP (APK PADEV Studio) dari laptop: QR & kode 6 digit dari pelaksana (--pasang-hp --mesin) lewat /chat/pasang.
+     Server menolak dialog ini dari pintu HP/Tailscale. Semua teks lewat textContent. -->
+<dialog id="hpDlg" aria-labelledby="hpDlgT">
+  <div class="ch-dlg hp-dlg">
+    <h3 id="hpDlgT">Pasangkan HP</h3>
+    <p id="hpSt" role="status" aria-live="polite"></p>
+    <canvas id="hpQr" width="280" height="280" hidden aria-label="QR pemasangan — pindai dengan APK PADEV Studio"></canvas>
+    <div class="hp-sas" id="hpSas" hidden><span class="hp-kode" id="hpKode"></span><span class="hintk" id="hpNama"></span></div>
+    <label class="hp-cek" id="hpKerjakanL"><input type="checkbox" id="hpKerjakan" checked> Izinkan <b>Kerjakan</b> dari HP (sidik jari tiap perintah)</label>
+    <div class="hp-darurat" id="hpDarurat" hidden><b>Kode darurat — tulis di kertas sekarang (hanya tampil sekali):</b><code id="hpDaruratK"></code>
+      <span class="hintk">Dipakai di halaman darurat bila HP hilang: semua HP dicabut dari Mac.</span></div>
+    <p class="hintk" id="hpSert" hidden></p>
+    <div class="pg-act">
+      <button class="btn" type="button" id="hpTutup">Tutup</button>
+      <button class="btn" type="button" id="hpSertB" hidden>Percayai APK ini</button>
+      <button class="btn" type="button" id="hpTidak" hidden>Kode beda</button>
+      <button class="btn ch-utama" type="button" id="hpYa" hidden>Kode sama — pasangkan</button>
+      <button class="btn ch-utama" type="button" id="hpMulai">Tampilkan QR</button>
+    </div>
+  </div>
+</dialog>
+
+<script type="module" src="kantor-app.js"></script>
 </body>
 </html>

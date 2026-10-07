@@ -69,6 +69,28 @@ void main() {
     b.dispose();
   });
 
+  test('F2b status.kantor → kejadian bersih untuk kantor 3D (field asing/isi dibuang); tanpa field → null', () {
+    final s = _SumberUji()
+      ..status({
+        'status': {
+          'proyek': [],
+          'kantor': [
+            {'ts': 1, 'kind': 'tool', 'tool': 'Edit', 'who': 'divisi-programmer', 'agentId': 'ag1', 'session': 'abc', 'detail': '/Users/x/rahasia.php', 'text': 'isi'},
+            {'ts': 2, 'kind': 'notify', 'type': 'permission_prompt'},
+            {'ts': 3, 'kind': 'hapus_semua'},
+            {'kind': 'prompt'},
+            'bukan peta',
+          ],
+        },
+      });
+    expect(s.kantor, [
+      {'ts': 1, 'kind': 'tool', 'session': 'abc', 'who': 'divisi-programmer', 'agentId': 'ag1', 'tool': 'Edit'},
+      {'ts': 2, 'kind': 'notify', 'type': 'permission_prompt'},
+    ]);
+    s.status({'status': {'proyek': []}});
+    expect(s.kantor, isNull);
+  });
+
   test('tugas yang terputus saat dikirim dipulihkan sebagai gagal kirim; entri rusak dibuang', () {
     final t = Tugas.dariEntri('a', {'id': 't-x-0123456789abcdef', 'waktu': 1, 'akun': 'akun1', 'mode': 'kerjakan', 'pesan': 'p', 'baru': false, 'tahap': 'mengirim'});
     expect(t!.tahap, TahapTugas.gagalKirim);

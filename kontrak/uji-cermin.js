@@ -489,6 +489,20 @@ const cm = C.buatCermin({ cfg, log: () => {}, folder: folderPel, rumah: tmp });
     && st.isi.status.proyek.find(p => p.id === 'projmati').hp === 'rencana' && st.isi.status.proyek.find(p => p.id === 'projmati').cermin === false);
   cek('status: setiap entri lolos bentuk Kotlin (id+nama teks; hp ∈ {rencana,kerjakan,false}; yang bisa diperintah punya akun)', st && st.isi.status.proyek.every(p =>
     typeof p.id === 'string' && typeof p.nama === 'string' && ['rencana', 'kerjakan', false].includes(p.hp) && (p.hp === false || Array.isArray(p.akun))));
+  // F2b status.kantor: kejadian kantor 3D HP (office.html) — bentuk normalize() server.js TANPA isi, sesi di-hash, ≤40
+  const nHalo = sk.halo.length;
+  cmJ.terimaHook(evB({ kind: 'tool', tool: 'Edit', detail: '/Users/uji/rahasia-kantor.php', agentId: 'agK1', who: 'divisi-programmer' }));
+  cmJ.terimaHook(evB({ kind: 'notify', type: 'permission_prompt', text: 'Claude perlu izin rahasia' }));
+  await tunggu(() => sk.halo.length > nHalo, 15000);
+  const stK = sk.halo.slice(nHalo).map(x => H.bukaKabar(hp, qr, x.amplop, R.buatPenyimpanReplayMemori())).filter(x => x.ok).pop();
+  const kantor = stK && stK.isi.status.kantor;
+  const tK = JSON.stringify(kantor || null);
+  cek('status.kantor: halo segera setelah kejadian, daftar ≤40 berisi tool Edit divisi & notify permission_prompt', Array.isArray(kantor) && kantor.length <= 40
+    && kantor.some(e => e.kind === 'tool' && e.tool === 'Edit' && e.who === 'divisi-programmer' && e.agentId === 'agK1')
+    && kantor.some(e => e.kind === 'notify' && e.type === 'permission_prompt'), tK.slice(0, 400));
+  cek('status.kantor: tanpa isi (detail/teks/path/cwd/transkrip) & sesi di-hash 16 heksa', Array.isArray(kantor) && !/rahasia|teks rahasia|\/Users\/|transcript|cwd/.test(tK)
+    && kantor.every(e => /^[0-9a-f]{16}$/.test(e.session) && e.detail === undefined && e.text === undefined && !tK.includes(s1) && !tK.includes(sCli)
+      && Object.keys(e).every(k => ['ts', 'session', 'kind', 'who', 'agentId', 'tool', 'sub', 'type'].includes(k))), tK.slice(0, 400));
   // cermin_tutup → berhenti
   const idT = kirimP('cermin_tutup', {});
   await tunggu(() => tt(idT));

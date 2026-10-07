@@ -1,7 +1,8 @@
 // Kantor 3D (F2, tab Kantor): PlatformView native `pro.padeveloper.studio/kantor3d` = WebView terkunci yang memuat aset
-// assets/kantor/ (dibuat buat-kantor-apk.js di repo kantor). Data mengalir SATU ARAH ke halaman (kanal per tampilan, metode
-// `terima` berisi JSON tim proyek); halaman tidak punya jalan ke native/kunci. Render dijeda saat tab tidak terlihat / aplikasi
-// ke latar. Di luar Android (uji widget, tangkapan layar) tampil pengganti statis.
+// assets/kantor/ = office.html kantor laptop (dibuat buat-kantor-apk.js di repo kantor). Data mengalir SATU ARAH ke halaman
+// (kanal per tampilan, metode `terima` berisi JSON {tema, tersambung, kejadian} — kejadian = status.kantor dari Mac, tanpa isi);
+// halaman tidak punya jalan ke native/kunci. Render dijeda saat tab tidak terlihat / aplikasi ke latar. Di luar Android (uji
+// widget, tangkapan layar) tampil pengganti statis.
 import 'dart:convert';
 import 'dart:io' show Platform;
 
@@ -13,15 +14,15 @@ import 'package:flutter/services.dart';
 
 import '../komponen/komponen.dart';
 import '../tema/token.dart';
-import 'data.dart';
 
 class Kantor3d extends StatefulWidget {
-  const Kantor3d({super.key, required this.proyek, required this.divisi, required this.aktif, this.utama = 'diam'});
-  final String proyek;
-  final List<Divisi> divisi;
+  const Kantor3d({super.key, required this.kejadian, required this.tersambung, required this.aktif});
 
-  /// Status Claude utama (Kepala): 'bekerja' | 'menunggu_izin' | 'diam'.
-  final String utama;
+  /// Kejadian kantor terbaru dari Mac (SumberData.kantor; kosong = kantor santai).
+  final List<Map<String, Object?>> kejadian;
+
+  /// Mac tersambung ke relay (false → "Mac tidak tersambung" di halaman).
+  final bool tersambung;
 
   /// false = tab Kantor tidak terlihat → render dijeda (hemat baterai).
   final bool aktif;
@@ -73,12 +74,8 @@ class _Kantor3dState extends State<Kantor3d> with WidgetsBindingObserver {
 
   String _json(BuildContext context) => jsonEncode({
         'tema': Theme.of(context).brightness == Brightness.dark ? 'gelap' : 'terang',
-        'proyek': widget.proyek,
-        'utama': widget.utama,
-        'divisi': [
-          for (final d in widget.divisi.take(10))
-            {'nama': d.nama, 'peran': d.peran, 'status': d.status, 'ke': d.ke, if (d.ringkas != null) 'ringkas': d.ringkas},
-        ],
+        'tersambung': widget.tersambung,
+        'kejadian': widget.kejadian.take(40).toList(),
       });
 
   void _kirim() {

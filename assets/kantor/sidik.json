@@ -1,12 +1,13 @@
 {
   "sumber": "pa-dev-studio-claude-divisi-3d (buat-kantor-apk.js)",
   "berkas": {
-    "index.html": "cb79ff77c6fae60c34e574bad029c21a7003b0f9e9bccd322ffb16e49cc7b4cc",
-    "kantor-hp.css": "8b178258c8ddfb2fd3b8a5513849e01bea09715e7d136ce4570ae3c0aa6c0233",
-    "kantor-hp.js": "5d8dfae1bfce7df7cda8b501fbd74efd8727453eb8df0d114d97b5a42362edc1",
+    "index.html": "e020e18fc6acf8e8c72e29775ccfe37d0a49e8285a7ad1c0dc2e08e319dafa8d",
+    "kantor.css": "a612ab4bd20510a79e9e1aa88dcc57d2ef5a835d3bd2a5e02f07455c15f8f1f8",
+    "kantor-app.js": "eb0b8e1b166bf03d10d677a314c5e4761a17f07791020f7b7c9e75afc6217b53",
+    "jembatan.js": "7d5e107739c372730400861787450783fdef3088b290c6f69fad6eaeb5932ea8",
+    "tambahan.css": "c84e9f9a99cc38c1a7ae6918143d59b3c4e5ac0d1f32d2581623ff19ad61beb3",
     "three-kantor.js": "06d6869829696b1355ff5b3eb8d3288c4a36b2bf67fe6f8f8f24db322d5b89a6",
     "orang3d.js": "8d3fe993c6737df54ccabe38c48742a8e751fd18304e23daf4ae6a83649b8b05",
-    "kantor3d.js": "4ef8182d21c9bbf6b95edcb10fb8b3449ed85faaa1cf3e01dd0d469a4be13fb6",
-    "peta.js": "6c6218e085b5b1db3401442ab8f61f630859df710084880ae79e96804fd8f704"
+    "kantor3d.js": "4ef8182d21c9bbf6b95edcb10fb8b3449ed85faaa1cf3e01dd0d469a4be13fb6"
   }
 }

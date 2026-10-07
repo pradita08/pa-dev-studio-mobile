@@ -389,6 +389,10 @@ abstract class SumberData extends ChangeNotifier {
   Map<String, String> namaProyekSemua = const {};
   String namaProyek(String id) => namaProyekSemua[id] ?? cariProyek(id)?.nama ?? id;
   List<LimitAkun>? limit;
+
+  /// Kejadian kantor terbaru dari Mac (`status.kantor`, F2b) untuk kantor 3D = office.html: bentuk normalize() server.js TANPA
+  /// isi (tanpa detail/teks/path; sesi di-hash). null = Mac belum mengirim field ini (pelaksana lama).
+  List<Map<String, Object?>>? kantor;
   String? versiMac;
   final List<ButirKabar> kabar = [];
   final Map<String, List<Tugas>> _chat = {};
@@ -733,6 +737,7 @@ abstract class SumberData extends ChangeNotifier {
       if (!_chatDimuat.contains(p.id)) unawaited(muatChat(p.id));
     }
     namaProyekSemua = nama;
+    kantor = st.containsKey('kantor') ? kejadianKantor(st['kantor']) : null;
     final lim = st['limit'];
     if (lim == null) {
       limit = null;
@@ -744,6 +749,29 @@ abstract class SumberData extends ChangeNotifier {
             if (_angka(m['persen5j']) case final p?) LimitAkun(akun: _teks(m['akun']) ?? '', persen: p.toDouble(), reset: _jamReset(m['reset5j'])),
       ];
     }
+  }
+
+  static const _kindKantor = {'session', 'session_end', 'prompt', 'tool', 'tool_done', 'tool_fail', 'agent_start', 'agent_stop', 'stop', 'notify'};
+
+  /// Saring `status.kantor`: hanya field & tipe yang dikenal (≤40 kejadian), panjang teks dibatasi.
+  @visibleForTesting
+  static List<Map<String, Object?>> kejadianKantor(Object? v) {
+    String? t(Object? x, int n) => x is String && x.isNotEmpty && x.length <= n ? x : null;
+    final hasil = <Map<String, Object?>>[];
+    for (final e in v is List ? v.take(40) : const []) {
+      if (e is! Map || e['ts'] is! num || !_kindKantor.contains(e['kind'])) continue;
+      hasil.add({
+        'ts': (e['ts'] as num).toInt(),
+        'kind': e['kind'],
+        'session': ?t(e['session'], 64),
+        'who': ?t(e['who'], 80),
+        'agentId': ?t(e['agentId'], 64),
+        'tool': ?t(e['tool'], 120),
+        'sub': ?t(e['sub'], 80),
+        'type': ?t(e['type'], 40),
+      });
+    }
+    return hasil;
   }
 
   List<Divisi> _divisi(Object? v) => [

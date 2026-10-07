@@ -1,6 +1,6 @@
-// L10 Kantor (DESAIN §4) + F2: kantor 3D (Kantor3d, WebView terkunci) di atas daftar "Di kantor sekarang" per proyek + lembar
-// detail divisi. Data dari `status.proyek[].divisi` (DESAIN §5: [{peran, status, ke}] dari Mac; nama dari pegawai-nama.json);
-// bila Mac belum mengirim field itu, tampil keterangan rapi. 3D bisa disembunyikan (daftar tetap lengkap tanpa 3D).
+// L10 Kantor (DESAIN §4) + F2: dua tampilan — "3D" = kantor laptop (office.html) layar penuh di WebView terkunci, digerakkan
+// kejadian live Mac (`status.kantor`); "Daftar" = "Di kantor sekarang" per proyek + lembar detail divisi dari
+// `status.proyek[].divisi` (DESAIN §5: [{peran, status, ke}]; nama dari pegawai-nama.json).
 import 'package:flutter/material.dart';
 
 import '../komponen/komponen.dart';
@@ -53,6 +53,43 @@ class _LayarKantorState extends State<LayarKantor> {
     final w = WarnaPadev.dari(context);
     final s = widget.sumber;
     if (widget.aktif) _pernahAktif = true;
+    final atas = MediaQuery.paddingOf(context).top + 8;
+    final kepala = Padding(
+      padding: EdgeInsets.fromLTRB(18, atas, 14, 10),
+      child: Row(children: [
+        Expanded(child: Semantics(header: true, child: Text('Kantor', style: TeksPadev.judulLayar(w)))),
+        SegmentedButton<bool>(
+          showSelectedIcon: false,
+          style: const ButtonStyle(visualDensity: VisualDensity.compact),
+          segments: const [
+            ButtonSegment(value: true, label: Text('3D'), icon: Icon(Simbol.kantor, size: 18)),
+            ButtonSegment(value: false, label: Text('Daftar'), icon: Icon(Simbol.tim, size: 18)),
+          ],
+          selected: {_tampil3d},
+          onSelectionChanged: (v) => setState(() => _tampil3d = v.first),
+        ),
+      ]),
+    );
+    if (!_tampil3d) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [kepala, Expanded(child: _daftar(context, w, s))]);
+    }
+    // 3D = kantor laptop (office.html) layar penuh; bergerak dari kejadian live Mac (status.kantor)
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      kepala,
+      if (s.kantor == null && s.proyek.isNotEmpty && !s.pratinjau)
+        const Padding(
+          padding: EdgeInsets.fromLTRB(12, 0, 12, 8),
+          child: Spanduk(jenis: JenisSpanduk.netral, ikon: Simbol.info, teks: 'Kantor live butuh pelaksana terbaru di Mac (git pull, lalu mulai ulang pelaksana).'),
+        ),
+      Expanded(
+        child: _pernahAktif
+            ? Kantor3d(kejadian: s.kantor ?? const [], tersambung: s.macTersambung != false, aktif: widget.aktif)
+            : ColoredBox(color: w.panel),
+      ),
+    ]);
+  }
+
+  Widget _daftar(BuildContext context, WarnaPadev w, SumberData s) {
     final daftarProyek = s.proyek;
     final Proyek? p = (_pilih == null ? null : s.cariProyek(_pilih!)) ??
         daftarProyek.where((x) => (x.divisi ?? const []).any((d) => d.status != 'diam')).firstOrNull ??
@@ -61,14 +98,14 @@ class _LayarKantorState extends State<LayarKantor> {
     final aktif = (divisi ?? const <Divisi>[]).where((d) => d.status != 'diam').length;
 
     return ListView(
-      padding: EdgeInsets.fromLTRB(14, MediaQuery.paddingOf(context).top + 8, 14, 20),
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 20),
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 0, 0, 12),
-          child: Row(children: [
-            Expanded(child: Semantics(header: true, child: Text('Kantor', style: TeksPadev.judulLayar(w)))),
-            if (daftarProyek.isNotEmpty)
-              PopupMenuButton<String>(
+        if (daftarProyek.isNotEmpty)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: PopupMenuButton<String>(
                 tooltip: 'Pilih proyek',
                 onSelected: (v) => setState(() => _pilih = v),
                 itemBuilder: (c) => [for (final x in daftarProyek) PopupMenuItem(value: x.id, child: Text(x.nama))],
@@ -83,8 +120,8 @@ class _LayarKantorState extends State<LayarKantor> {
                   ]),
                 ),
               ),
-          ]),
-        ),
+            ),
+          ),
         if (p == null)
           const IsiKosong(ikon: Simbol.kantor, judul: 'Belum ada proyek untuk HP', teks: 'Izinkan proyek untuk HP di konfigurasi pelaksana di laptop.')
         else if (divisi == null)
@@ -99,23 +136,8 @@ class _LayarKantorState extends State<LayarKantor> {
             Container(width: 8, height: 8, decoration: BoxDecoration(color: aktif > 0 ? w.ok : w.muted, shape: BoxShape.circle)),
             const SizedBox(width: 6),
             Expanded(child: Text(aktif > 0 ? 'Di kantor sekarang · $aktif aktif' : 'Di kantor sekarang', style: TeksPadev.label(w))),
-            TextButton.icon(
-              onPressed: () => setState(() => _tampil3d = !_tampil3d),
-              icon: Icon(_tampil3d ? Simbol.tutup : Simbol.kantor, size: 18),
-              label: Text(_tampil3d ? 'Sembunyikan 3D' : 'Tampilkan 3D'),
-            ),
           ]),
           const SizedBox(height: 8),
-          if (_tampil3d) ...[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: SizedBox(
-                height: (MediaQuery.sizeOf(context).height * .5).clamp(300.0, 520.0),
-                child: _pernahAktif ? Kantor3d(proyek: p.nama, divisi: divisi, utama: p.utama, aktif: widget.aktif) : ColoredBox(color: w.panel),
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
           if (divisi.isEmpty)
             IsiKosong(ikon: Simbol.tidur, judul: 'Kantor sepi', teks: 'Belum ada divisi yang bekerja di ${p.nama}.')
           else

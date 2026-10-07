@@ -24,8 +24,8 @@ import pro.padeveloper.studio.BuildConfig
 import java.io.ByteArrayInputStream
 
 /**
- * Kantor 3D di tab Kantor (F2): WebView TERKUNCI yang hanya memuat aset kantor dari APK sendiri (assets/kantor/, dibuat
- * buat-kantor-apk.js di repo kantor). Pagar:
+ * Kantor 3D di tab Kantor (F2): WebView TERKUNCI yang hanya memuat aset kantor dari APK sendiri (assets/kantor/ = office.html
+ * kantor laptop, dibuat buat-kantor-apk.js di repo kantor). Pagar:
  *  - semua request lewat [shouldInterceptRequest]: hanya GET https://[HOST]/<berkas di daftar tetap> dilayani dari aset; lainnya 403
  *    (tanpa jaringan sama sekali — tidak ada request yang diteruskan ke luar), navigasi selain halaman awal ditolak;
  *  - TANPA addJavascriptInterface (halaman tidak bisa memanggil native/kunci); data hanya mengalir native → halaman lewat
@@ -149,22 +149,25 @@ class Kantor3dView(context: Context, viewId: Int, messenger: BinaryMessenger, ge
     companion object {
         const val HOST = "kantor.padev-apk.invalid"
         const val ASAL = "https://$HOST/"
-        private const val MAKS_DATA = 64 * 1024
+        private const val MAKS_DATA = 96 * 1024
     }
 }
 
 /** Penyaji aset kantor: daftar TETAP (bukan path bebas) → tidak ada traversal; selain itu 403 tanpa isi. */
 internal object AsetKantor {
-    private const val CSP = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; " +
-        "connect-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'"
+    // style 'unsafe-inline': halaman = office.html (atribut style="--c:…" di templat); skrip tetap hanya berkas sendiri
+    private const val CSP = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " +
+        "font-src 'self'; connect-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; " +
+        "form-action 'none'"
     private val BERKAS = mapOf(
         "/" to Pair("assets/kantor/index.html", "text/html"),
-        "/kantor-hp.css" to Pair("assets/kantor/kantor-hp.css", "text/css"),
-        "/kantor-hp.js" to Pair("assets/kantor/kantor-hp.js", "text/javascript"),
+        "/kantor.css" to Pair("assets/kantor/kantor.css", "text/css"),
+        "/tambahan.css" to Pair("assets/kantor/tambahan.css", "text/css"),
+        "/jembatan.js" to Pair("assets/kantor/jembatan.js", "text/javascript"),
+        "/kantor-app.js" to Pair("assets/kantor/kantor-app.js", "text/javascript"),
         "/three-kantor.js" to Pair("assets/kantor/three-kantor.js", "text/javascript"),
         "/orang3d.js" to Pair("assets/kantor/orang3d.js", "text/javascript"),
         "/kantor3d.js" to Pair("assets/kantor/kantor3d.js", "text/javascript"),
-        "/peta.js" to Pair("assets/kantor/peta.js", "text/javascript"),
         "/font/PlusJakartaSans-SemiBold.ttf" to Pair("assets/fonts/PlusJakartaSans-SemiBold.ttf", "font/ttf"),
         "/font/PlusJakartaSans-ExtraBold.ttf" to Pair("assets/fonts/PlusJakartaSans-ExtraBold.ttf", "font/ttf"),
     )
