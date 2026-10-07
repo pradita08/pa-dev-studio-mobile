@@ -21,7 +21,62 @@ class _SumberUji extends SumberData {
   Future<void> mintaStatus() async {}
 }
 
+/// Sumber uji dengan "cache" di memori (meniru Kunci.simpanChat/muatChat).
+class _SumberSimpan extends _SumberUji {
+  _SumberSimpan(this.gudang);
+  final Map<String, List<Map<String, Object?>>> gudang;
+
+  @override
+  Future<void> transportSimpanChat(String proyek, List<Map<String, Object?>> entri) async => gudang[proyek] = entri;
+  @override
+  Future<List<Map<String, Object?>>?> transportMuatChat(String proyek) async => gudang[proyek];
+}
+
 void main() {
+  test('riwayat chat tersimpan & tampil lagi setelah aplikasi dibuka ulang (kosong hanya bila memang belum ada)', () async {
+    final gudang = <String, List<Map<String, Object?>>>{};
+    final status = {
+      'status': {
+        'proyek': [
+          {'id': 'simpeg', 'nama': 'SIMPEG', 'akun': ['akun1'], 'hp': 'kerjakan', 'sibuk': false},
+          {'id': 'etpp', 'nama': 'ETPP', 'akun': ['akun1'], 'hp': 'rencana', 'sibuk': false},
+        ],
+      },
+    };
+    final a = _SumberSimpan(gudang)..status(status);
+    await Future<void>.delayed(Duration.zero);
+    final t = await a.kirim(proyekId: 'simpeg', akun: 'akun1', mode: 'rencana', pesan: 'cek modul cuti');
+    a.kabarMasuk({'jenis': 'tanda_terima', 'tanda_terima': {'perintah_id': 'p1', 'hasil': 'diterima'}});
+    a.kabarMasuk({
+      'jenis': 'kabar',
+      'kabar': {'perintah_id': 'p1', 'tugas': t.tugas, 'tahap': 'selesai', 'urut': 1, 'teks': 'Modul cuti aman.', 'durasiMs': 900,
+        'ditolak': [{'alat': 'Bash', 'ringkas': 'rm'}]},
+    });
+    await a.simpanChatSekarang();
+    expect(gudang['simpeg']!.single['teks'], 'Modul cuti aman.');
+    a.dispose();
+
+    final b = _SumberSimpan(gudang)..status(status);
+    await Future<void>.delayed(Duration.zero);
+    final lama = b.chat('simpeg').single;
+    expect(lama.tugas, t.tugas);
+    expect(lama.pesan, 'cek modul cuti');
+    expect(lama.tahap, TahapTugas.selesai);
+    expect(lama.teks.toString(), 'Modul cuti aman.');
+    expect(lama.durasi, const Duration(milliseconds: 900));
+    expect(lama.ditolak.single.alat, 'Bash');
+    expect(b.chat('etpp'), isEmpty);
+    b.dispose();
+  });
+
+  test('tugas yang terputus saat dikirim dipulihkan sebagai gagal kirim; entri rusak dibuang', () {
+    final t = Tugas.dariEntri('a', {'id': 't-x-0123456789abcdef', 'waktu': 1, 'akun': 'akun1', 'mode': 'kerjakan', 'pesan': 'p', 'baru': false, 'tahap': 'mengirim'});
+    expect(t!.tahap, TahapTugas.gagalKirim);
+    expect(t.alasan, isNotNull);
+    expect(Tugas.dariEntri('a', {'id': 't-x', 'waktu': 'kemarin'}), isNull);
+    expect(Tugas.dariEntri('a', {'id': 't-x', 'waktu': 1, 'akun': 'a', 'mode': 'rencana', 'pesan': '', 'tahap': 'aneh'}), isNull);
+  });
+
   test('status tanpa field divisi/limit → disembunyikan (null), hp & sibuk terbaca', () {
     final s = _SumberUji()
       ..status({

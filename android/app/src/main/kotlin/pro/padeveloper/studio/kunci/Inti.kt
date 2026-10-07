@@ -20,6 +20,9 @@ class Inti(context: Context) {
     /** Cache riwayat cermin terenkripsi (K-06): kunci Keystore ber-syarat layar terbuka, di luar cadangan. */
     private val riwayat = CacheRiwayat(File(ctx.noBackupFilesDir, "riwayat"), KunciRiwayat::dapat)
 
+    /** Riwayat chat HP per proyek (RiwayatChat): berkas & aturan K-06 sama, folder terpisah. */
+    private val chat = CacheRiwayat(File(ctx.noBackupFilesDir, "chat"), KunciRiwayat::dapat)
+
     // ------------------------------------------------------------------ status pemasangan
 
     /** Status pemasangan tersimpan (kunci Mac dipin dari QR). */
@@ -340,9 +343,31 @@ class Inti(context: Context) {
         return runCatching { riwayat.baca(sesi) }.getOrNull()?.let { petaKeDart(it) }
     }
 
+    // ------------------------------------------------------------------ riwayat chat HP (per proyek, terenkripsi)
+
+    /** Simpan utuh riwayat chat [proyek] (entri sudah dicek RiwayatChat). Layar terkunci / kunci rusak → diam-diam dilewati. */
+    fun simpanChat(proyek: String, entri: List<Map<String, Any>>) {
+        val k = RiwayatChat.kunci(proyek)
+        runCatching { chat.ganti(k, entri) }
+    }
+
+    /** Daftar entri chat [proyek] (urut waktu) atau null bila belum ada / tidak terbaca. */
+    @Suppress("UNCHECKED_CAST")
+    fun muatChat(proyek: String): List<Map<String, Any?>>? {
+        val k = RiwayatChat.kunci(proyek)
+        val o = runCatching { chat.baca(k) }.getOrNull() ?: return null
+        return (o["entri"] as? List<Map<String, Any>>)?.map { petaKeDart(it) }
+    }
+
+    fun hapusChat(proyek: String) {
+        val k = RiwayatChat.kunci(proyek)
+        runCatching { chat.hapus(k) }
+    }
+
     /** Hapus semua riwayat lokal + kuncinya (Pengaturan, dicabut, kode darurat, lepas_diri, pasang ulang). */
     fun hapusRiwayatLokal() {
         runCatching { riwayat.hapusSemua() }
+        runCatching { chat.hapusSemua() }
         KunciRiwayat.hapus()
     }
 

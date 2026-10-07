@@ -98,6 +98,11 @@ class Proyek {
 class LangkahAlat {
   const LangkahAlat(this.alat, this.ringkas);
   final String alat, ringkas;
+
+  Map<String, Object?> keEntri() => {
+        'alat': alat.length > 80 ? alat.substring(0, 80) : alat,
+        'ringkas': ringkas.length > 300 ? ringkas.substring(0, 300) : ringkas,
+      };
 }
 
 enum TahapTugas { mengirim, gagalKirim, menungguDiambil, diterima, bekerja, selesai, gagal, dihentikan, batasWaktu, ditolak, kedaluwarsa }
@@ -130,6 +135,57 @@ class Tugas {
 
   bool get aktif =>
       tahap == TahapTugas.mengirim || tahap == TahapTugas.menungguDiambil || tahap == TahapTugas.diterima || tahap == TahapTugas.bekerja;
+
+  /// Bentuk simpan riwayat chat (Kotlin RiwayatChat.cekEntri memeriksa kunci & batas yang sama).
+  Map<String, Object?> keEntri() {
+    final t = teks.toString();
+    return {
+      'id': tugas,
+      'waktu': dibuat.millisecondsSinceEpoch,
+      'akun': akun,
+      'mode': mode,
+      'pesan': pesan,
+      'baru': baru,
+      'tahap': tahap.name,
+      'perintahId': ?perintahId,
+      'kedaluwarsa': ?kedaluwarsa?.millisecondsSinceEpoch,
+      'mulai': ?mulai?.millisecondsSinceEpoch,
+      'batasMenit': ?batasMenit,
+      'durasiMs': ?durasi?.inMilliseconds,
+      'urut': urut,
+      if (t.isNotEmpty) 'teks': t.length > 32000 ? t.substring(t.length - 32000) : t,
+      'alasan': ?(alasan == null || alasan!.length <= 500 ? alasan : alasan!.substring(0, 500)),
+      if (alat.isNotEmpty) 'alat': [for (final a in alat.skip(alat.length > 50 ? alat.length - 50 : 0)) a.keEntri()],
+      if (ditolak.isNotEmpty) 'ditolak': [for (final a in ditolak.take(10)) a.keEntri()],
+    };
+  }
+
+  /// Dari riwayat tersimpan; null bila bentuk tidak dikenal. Tugas yang terputus saat dikirim → gagal kirim (bisa dicoba lagi).
+  static Tugas? dariEntri(String proyek, Map<String, Object?> e) {
+    final id = e['id'], waktu = e['waktu'], akun = e['akun'], mode = e['mode'], pesan = e['pesan'];
+    if (id is! String || waktu is! int || akun is! String || mode is! String || pesan is! String) return null;
+    final tahap = TahapTugas.values.where((x) => x.name == e['tahap']).firstOrNull;
+    if (tahap == null) return null;
+    DateTime? jam(Object? v) => v is int ? DateTime.fromMillisecondsSinceEpoch(v) : null;
+    final t = Tugas(tugas: id, proyek: proyek, akun: akun, mode: mode, pesan: pesan, baru: e['baru'] == true, dibuat: jam(waktu)!)
+      ..perintahId = e['perintahId'] as String?
+      ..kedaluwarsa = jam(e['kedaluwarsa'])
+      ..mulai = jam(e['mulai'])
+      ..batasMenit = e['batasMenit'] as int?
+      ..alasan = e['alasan'] as String?
+      ..urut = e['urut'] is int ? e['urut'] as int : -1
+      ..tahap = tahap;
+    if (e['durasiMs'] case final int ms) t.durasi = Duration(milliseconds: ms);
+    if (e['teks'] case final String x) t.teks.write(x);
+    LangkahAlat? langkah(Object? v) => v is Map && v['alat'] is String && v['ringkas'] is String ? LangkahAlat(v['alat'] as String, v['ringkas'] as String) : null;
+    if (e['alat'] case final List l) t.alat.addAll(l.map(langkah).whereType<LangkahAlat>());
+    if (e['ditolak'] case final List l) t.ditolak.addAll(l.map(langkah).whereType<LangkahAlat>());
+    if (t.tahap == TahapTugas.mengirim) {
+      t.tahap = TahapTugas.gagalKirim;
+      t.alasan = 'Aplikasi ditutup saat mengirim. Coba lagi.';
+    }
+    return t;
+  }
 }
 
 enum JenisKabar { selesai, divisi, izin, macTerputus }
@@ -376,6 +432,59 @@ abstract class SumberData extends ChangeNotifier {
   @protected
   Future<(DateTime, List<Map<String, Object?>>)?> transportRiwayatLokal(String sesi) async => null;
 
+  // riwayat chat HP tersimpan (per proyek). Bawaan: tidak disimpan (pratinjau & uji).
+  @protected
+  Future<void> transportSimpanChat(String proyek, List<Map<String, Object?>> entri) async {}
+  @protected
+  Future<List<Map<String, Object?>>?> transportMuatChat(String proyek) async => null;
+  @protected
+  Future<void> transportHapusChat(String proyek) async {}
+
+  // ---- riwayat chat tersimpan: dimuat sekali per proyek, disimpan utuh (≤200 tugas terbaru) 1 dtk setelah berubah
+  final Set<String> _chatDimuat = {};
+  final Set<String> _chatBerubah = {};
+  Timer? _jamSimpanChat;
+
+  /// Muat riwayat chat tersimpan [proyekId] (sekali). Tugas yang sudah ada di memori (id sama) tidak ditimpa.
+  Future<void> muatChat(String proyekId) async {
+    if (!_chatDimuat.add(proyekId)) return;
+    List<Map<String, Object?>>? entri;
+    try {
+      entri = await transportMuatChat(proyekId);
+    } catch (_) {
+      entri = null; // layar terkunci / cache rusak → riwayat kosong, aplikasi tetap jalan
+    }
+    if (entri == null || entri.isEmpty || _dibuang) return;
+    final l = _chat[proyekId] ??= [];
+    final ada = {for (final t in l) t.tugas};
+    final lama = [for (final e in entri) ?Tugas.dariEntri(proyekId, e)].where((t) => !ada.contains(t.tugas));
+    l
+      ..insertAll(0, lama)
+      ..sort((a, b) => a.dibuat.compareTo(b.dibuat));
+    beritahu();
+  }
+
+  void _tandaiChat(String proyekId) {
+    _chatBerubah.add(proyekId);
+    _jamSimpanChat ??= Timer(const Duration(seconds: 1), simpanChatSekarang);
+  }
+
+  /// Tulis riwayat yang berubah sekarang (juga dipanggil saat aplikasi ke latar).
+  Future<void> simpanChatSekarang() async {
+    _jamSimpanChat?.cancel();
+    _jamSimpanChat = null;
+    final daftar = _chatBerubah.toList();
+    _chatBerubah.clear();
+    for (final p in daftar) {
+      final l = _chat[p] ?? const <Tugas>[];
+      try {
+        await transportSimpanChat(p, [for (final t in l.skip(l.length > 200 ? l.length - 200 : 0)) t.keEntri()]);
+      } catch (_) {
+        // layar terkunci / argumen ditolak: riwayat tetap di memori, dicoba lagi saat berubah berikutnya
+      }
+    }
+  }
+
   // ---- siklus hidup & polling
   Timer? _jam;
   bool _jalan = false;
@@ -390,6 +499,7 @@ abstract class SumberData extends ChangeNotifier {
   }
 
   void berhenti() {
+    if (_chatBerubah.isNotEmpty) unawaited(simpanChatSekarang()); // aplikasi ke latar: riwayat chat langsung ditulis
     _jalan = false;
     _jam?.cancel();
     _jam = null;
@@ -478,6 +588,7 @@ abstract class SumberData extends ChangeNotifier {
       dibuat: DateTime.now(),
     );
     (_chat[proyekId] ??= []).add(t);
+    _tandaiChat(proyekId);
     beritahu();
     await _kirimTugas(t);
     return t;
@@ -507,6 +618,7 @@ abstract class SumberData extends ChangeNotifier {
       }
       rethrow;
     } finally {
+      _tandaiChat(t.proyek);
       beritahu();
     }
   }
@@ -538,6 +650,7 @@ abstract class SumberData extends ChangeNotifier {
     await transportHapusSesi(proyekId, akun);
     _chat[proyekId]?.removeWhere((t) => !t.aktif);
     _baruBerikutnya[proyekId] = true;
+    _tandaiChat(proyekId);
     beritahu();
   }
 
@@ -567,6 +680,7 @@ abstract class SumberData extends ChangeNotifier {
       for (final t in l) {
         if (t.tahap == TahapTugas.menungguDiambil && t.kedaluwarsa != null && kini.isAfter(t.kedaluwarsa!)) {
           t.tahap = TahapTugas.kedaluwarsa;
+          _tandaiChat(t.proyek);
         }
       }
     }
@@ -614,6 +728,10 @@ abstract class SumberData extends ChangeNotifier {
       ));
     }
     proyek = daftar;
+    // riwayat chat tersimpan dimuat begitu proyek dikenal (sebelum kabar tugas lama diproses — kanal Kunci berurutan)
+    for (final p in daftar) {
+      if (!_chatDimuat.contains(p.id)) unawaited(muatChat(p.id));
+    }
     namaProyekSemua = nama;
     final lim = st['limit'];
     if (lim == null) {
@@ -675,6 +793,7 @@ abstract class SumberData extends ChangeNotifier {
     if (m == null) return;
     final t = _cariTugas(perintahId: _teks(m['perintah_id']));
     if (t == null) return;
+    _tandaiChat(t.proyek);
     final alasan = _teks(m['alasan']);
     switch (m['hasil']) {
       case 'diterima':
@@ -729,6 +848,7 @@ abstract class SumberData extends ChangeNotifier {
     final urut = _angka(m['urut'])?.toInt() ?? 0;
     if (urut <= t.urut) return; // buang urut lama
     t.urut = urut;
+    _tandaiChat(t.proyek);
     switch (m['tahap']) {
       case 'mulai':
         t.tahap = TahapTugas.bekerja;

@@ -86,6 +86,15 @@ class SumberNyata extends SumberData {
       Kunci.cerminRiwayat(sesi: sesi, proyek: proyek, akun: akun, sebelum: sebelum, batas: batas);
 
   @override
+  Future<void> transportSimpanChat(String proyek, List<Map<String, Object?>> entri) => Kunci.simpanChat(proyek, entri);
+
+  @override
+  Future<List<Map<String, Object?>>?> transportMuatChat(String proyek) => Kunci.muatChat(proyek);
+
+  @override
+  Future<void> transportHapusChat(String proyek) => Kunci.hapusChat(proyek);
+
+  @override
   Future<(DateTime, List<Map<String, Object?>>)?> transportRiwayatLokal(String sesi) async {
     final r = await Kunci.riwayatLokal(sesi);
     return r == null ? null : (r.diperbarui, r.entri);

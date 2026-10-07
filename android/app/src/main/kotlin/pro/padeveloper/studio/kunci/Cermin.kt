@@ -262,6 +262,29 @@ class CacheRiwayat(
         val lama = bacaMentah(sesi)?.let { it["entri"] as? List<Map<String, Any>> } ?: emptyList()
         val entri = AturanRiwayat.gabung(lama, baru, sekarang)
         if (entri.isEmpty()) return
+        tulis(sesi, entri, sekarang)
+    }
+
+    /**
+     * Ganti SELURUH isi [sesi] dengan [entri] (tanpa gabung; dipakai riwayat chat HP yang selalu dikirim utuh). Entri >7 hari
+     * dibuang; daftar kosong → berkas dihapus. Melempar bila kunci tidak bisa dipakai — pemanggil mengabaikan.
+     */
+    @Synchronized
+    fun ganti(sesi: String, entri: List<Map<String, Any>>) {
+        val s = sesi.lowercase()
+        val sekarang = jam()
+        val sisa = AturanRiwayat.saring(entri, sekarang)
+        if (sisa.isEmpty()) { hapus(s); return }
+        tulis(s, sisa, sekarang)
+    }
+
+    /** Hapus satu [sesi] dari cache. */
+    @Synchronized
+    fun hapus(sesi: String) {
+        berkas(sesi.lowercase()).delete()
+    }
+
+    private fun tulis(sesi: String, entri: List<Map<String, Any>>, sekarang: Long) {
         val isi = linkedMapOf<String, Any>("v" to 1L, "sesi" to sesi, "diperbarui" to sekarang, "entri" to entri)
         folder.mkdirs()
         val f = berkas(sesi)

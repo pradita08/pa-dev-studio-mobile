@@ -119,6 +119,9 @@ class PluginKunci(messenger: BinaryMessenger, private val aktivitas: FragmentAct
         )
         "riwayatLokal" -> inti.riwayatLokal(teks(c, "sesi", 36))
         "hapusRiwayatLokal" -> { inti.hapusRiwayatLokal(); null }
+        "simpanChat" -> { inti.simpanChat(teks(c, "proyek", 40), RiwayatChat.cekDaftar(c.argument<Any>("entri"))); null }
+        "muatChat" -> inti.muatChat(teks(c, "proyek", 40))
+        "hapusChat" -> { inti.hapusChat(teks(c, "proyek", 40)); null }
         "ujiBuatKunci" -> inti.ujiBuatKunci()
         "ujiTanda" -> inti.ujiTanda(aktivitas)
         "ujiKerjakan" -> inti.ujiKerjakan(aktivitas)

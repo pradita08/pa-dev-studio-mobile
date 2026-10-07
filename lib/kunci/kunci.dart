@@ -285,6 +285,15 @@ abstract final class Kunci {
   /// Hapus semua riwayat lokal + kuncinya (Pengaturan). Otomatis juga saat dicabut / kode darurat / lepas perangkat.
   static Future<void> hapusRiwayatLokal() => _p<void>('hapusRiwayatLokal');
 
+  /// Riwayat chat HP per proyek (terenkripsi di HP, ≤7 hari, ≤200 tugas; dihapus saat dicabut/lepas). Gagal → diam (null/no-op).
+  static Future<void> simpanChat(String proyek, List<Map<String, Object?>> entri) => _p<void>('simpanChat', {'proyek': proyek, 'entri': entri});
+  static Future<List<Map<String, Object?>>?> muatChat(String proyek) async {
+    final l = await _p<List>('muatChat', {'proyek': proyek});
+    return l?.whereType<Map>().map((m) => m.map((k, v) => MapEntry(k.toString(), v as Object?))).toList();
+  }
+
+  static Future<void> hapusChat(String proyek) => _p<void>('hapusChat', {'proyek': proyek});
+
   // ---- hanya build debug (layar uji); di profile & rilis melempar GalatKunci('tidak_tersedia') (SEC-86)
   static Future<Map> ujiBuatKunci() => _peta('ujiBuatKunci');
   static Future<Map> ujiTanda() => _peta('ujiTanda');
