@@ -199,6 +199,14 @@ class ButirKabar {
   bool dibaca = false;
 }
 
+/// HP yang terhubung ke Mac (dari `status.perangkat`; maks [SumberData.maksPerangkat]). [ini] = HP ini sendiri.
+class PerangkatTerhubung {
+  const PerangkatTerhubung({required this.nama, required this.kerjakan, this.dipasang, this.ini = false});
+  final String nama;
+  final bool kerjakan, ini;
+  final DateTime? dipasang;
+}
+
 class InfoPerangkat {
   const InfoPerangkat({
     required this.namaMac,
@@ -389,6 +397,10 @@ abstract class SumberData extends ChangeNotifier {
   Map<String, String> namaProyekSemua = const {};
   String namaProyek(String id) => namaProyekSemua[id] ?? cariProyek(id)?.nama ?? id;
   List<LimitAkun>? limit;
+
+  /// HP yang terhubung ke Mac (null = Mac belum mengirim field ini / pelaksana lama).
+  List<PerangkatTerhubung>? perangkatTerhubung;
+  int maksPerangkat = 2;
 
   /// Kejadian kantor terbaru dari Mac (`status.kantor`, F2b) untuk kantor 3D = office.html: bentuk normalize() server.js TANPA
   /// isi (tanpa detail/teks/path; sesi di-hash). null = Mac belum mengirim field ini (pelaksana lama).
@@ -738,6 +750,19 @@ abstract class SumberData extends ChangeNotifier {
     }
     namaProyekSemua = nama;
     kantor = st.containsKey('kantor') ? kejadianKantor(st['kantor']) : null;
+    perangkatTerhubung = st.containsKey('perangkat')
+        ? [
+            for (final e in _daftar(st['perangkat']).take(4))
+              if (_peta(e) case final m?)
+                PerangkatTerhubung(
+                  nama: _teks(m['nama']) ?? 'HP',
+                  kerjakan: m['mode'] == 'rencana+kerjakan',
+                  dipasang: _waktu(m['dipasang']),
+                  ini: m['ini'] == true,
+                ),
+          ]
+        : null;
+    maksPerangkat = _angka(st['maksPerangkat'])?.toInt().clamp(1, 10) ?? 2;
     final lim = st['limit'];
     if (lim == null) {
       limit = null;
@@ -753,12 +778,12 @@ abstract class SumberData extends ChangeNotifier {
 
   static const _kindKantor = {'session', 'session_end', 'prompt', 'tool', 'tool_done', 'tool_fail', 'agent_start', 'agent_stop', 'stop', 'notify'};
 
-  /// Saring `status.kantor`: hanya field & tipe yang dikenal (≤40 kejadian), panjang teks dibatasi.
+  /// Saring `status.kantor`: hanya field & tipe yang dikenal (≤60 kejadian), panjang teks dibatasi.
   @visibleForTesting
   static List<Map<String, Object?>> kejadianKantor(Object? v) {
     String? t(Object? x, int n) => x is String && x.isNotEmpty && x.length <= n ? x : null;
     final hasil = <Map<String, Object?>>[];
-    for (final e in v is List ? v.take(40) : const []) {
+    for (final e in v is List ? v.take(60) : const []) {
       if (e is! Map || e['ts'] is! num || !_kindKantor.contains(e['kind'])) continue;
       hasil.add({
         'ts': (e['ts'] as num).toInt(),
@@ -769,6 +794,7 @@ abstract class SumberData extends ChangeNotifier {
         'tool': ?t(e['tool'], 120),
         'sub': ?t(e['sub'], 80),
         'type': ?t(e['type'], 40),
+        'proyek': ?t(e['proyek'], 40),
       });
     }
     return hasil;

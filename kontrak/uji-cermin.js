@@ -502,7 +502,12 @@ const cm = C.buatCermin({ cfg, log: () => {}, folder: folderPel, rumah: tmp });
     && kantor.some(e => e.kind === 'notify' && e.type === 'permission_prompt'), tK.slice(0, 400));
   cek('status.kantor: tanpa isi (detail/teks/path/cwd/transkrip) & sesi di-hash 16 heksa', Array.isArray(kantor) && !/rahasia|teks rahasia|\/Users\/|transcript|cwd/.test(tK)
     && kantor.every(e => /^[0-9a-f]{16}$/.test(e.session) && e.detail === undefined && e.text === undefined && !tK.includes(s1) && !tK.includes(sCli)
-      && Object.keys(e).every(k => ['ts', 'session', 'kind', 'who', 'agentId', 'tool', 'sub', 'type'].includes(k))), tK.slice(0, 400));
+      && Object.keys(e).every(k => ['ts', 'session', 'kind', 'who', 'agentId', 'tool', 'sub', 'type', 'proyek'].includes(k))), tK.slice(0, 400));
+  cek('status.kantor: tiap kejadian membawa id proyek (alur kerja per proyek di HP)', Array.isArray(kantor) && kantor.length > 0 && kantor.every(e => e.proyek === 'proj'), tK.slice(0, 300));
+  const pr = stK && stK.isi.status.perangkat;
+  cek('status.perangkat: HP terhubung (nama, mode, dipasang, ini) maks 2, tanpa id/kunci', Array.isArray(pr) && pr.length >= 1 && stK.isi.status.maksPerangkat === 2
+    && pr.filter(e => e.ini === true).length === 1 && pr.every(e => typeof e.nama === 'string' && typeof e.dipasang === 'number' && e.perangkat_id === undefined
+      && e.k_rencana === undefined && e.e_hp === undefined), JSON.stringify(pr));
   // cermin_tutup → berhenti
   const idT = kirimP('cermin_tutup', {});
   await tunggu(() => tt(idT));

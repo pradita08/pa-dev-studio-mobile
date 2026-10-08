@@ -163,7 +163,17 @@ async function hpPindai(hp, qr) {   // HP: daftar dengan kode dari QR lalu kirim
     const t2 = jalan(['--pasang-hp']);
     cek('Terminal saat slot penuh → berhenti dengan petunjuk "Hubungkan HP" (tidak melepas HP diam-diam)', t2.status === 1 && /maks 2/.test(t2.stderr)
       && /Hubungkan HP/.test(t2.stderr) && R.bacaPerangkat(F).filter(e => e.dicabut === undefined).length === 2, t2.stderr);
-    cek('--cabut-hp memberi slot untuk Terminal', jalan(['--cabut-hp', b.hp.perangkat_id]).status === 0);
+    // daftar HP terhubung di dialog (laporan pelaksana) + Putuskan dari web
+    const stD = await tunggu(async () => { const x = await status(); return Array.isArray(x.perangkat) && x.perangkat.length === 2 ? x : null; }, 15000);
+    cek('dialog: daftar HP terhubung 2/2 (nama, mode, tanpa kunci/token)', !!stD && stD.maksPerangkat === 2
+      && stD.perangkat.map(e => e.id).sort().join() === [b.hp.perangkat_id, c.hp.perangkat_id].sort().join()
+      && stD.perangkat.every(e => Object.keys(e).sort().join() === 'dipasang,id,mode,nama'), JSON.stringify(stD && stD.perangkat));
+    cek('Putuskan id yang tidak ada di daftar → 409', (await minta('/chat/pasang/cabut', { metode: 'POST', isi: { id: a.hp.perangkat_id }, kunci: '' })).status === 409);
+    cek('Putuskan dari web → 202', (await minta('/chat/pasang/cabut', { metode: 'POST', isi: { id: b.hp.perangkat_id }, kunci: '' })).status === 202);
+    cek('HP diputuskan: dicabut di Mac & hilang dari daftar dialog', !!await tunggu(async () => {
+      const e = R.bacaPerangkat(F).find(x => x.perangkat_id === b.hp.perangkat_id), x = await status();
+      return e && e.dicabut !== undefined && Array.isArray(x.perangkat) && x.perangkat.length === 1;
+    }, 15000));
     const terminal = spawn(process.execPath, [SKRIP, '--folder', F, '--pasang-hp'], { env: ENV, stdio: ['pipe', 'pipe', 'pipe'] });
     let logT = ''; terminal.stdout.on('data', c2 => { logT += c2; }); terminal.stderr.on('data', c2 => { logT += c2; });
     cek('Terminal --pasang-hp menampilkan QR (memegang sesi)', !!await tunggu(() => /Berlaku sampai/.test(logT), 30000), logT.slice(-300));

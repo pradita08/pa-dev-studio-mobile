@@ -5494,7 +5494,8 @@ chEl.ganti.addEventListener('click', () => { chMintaKunci(''); chEl.kunciI.focus
    menampilkan & meneruskan jawaban owner. Polling GET /chat/pasang tiap 1 dtk selama dialog terbuka. Teks lewat textContent. --- */
 const hpEl = {dlg:$('#hpDlg'), st:$('#hpSt'), qr:$('#hpQr'), sas:$('#hpSas'), kode:$('#hpKode'), nama:$('#hpNama'), kerjakan:$('#hpKerjakan'),
   kerjakanL:$('#hpKerjakanL'), darurat:$('#hpDarurat'), daruratK:$('#hpDaruratK'), sert:$('#hpSert'), sertB:$('#hpSertB'),
-  mulai:$('#hpMulai'), ya:$('#hpYa'), tidak:$('#hpTidak'), tutup:$('#hpTutup'), buka:$('#chHp'), buka2:$('#hpBuka'), kj:$('#hpKj'), kjB:$('#hpKjB'), kjI:$('#hpKjI')};
+  mulai:$('#hpMulai'), ya:$('#hpYa'), tidak:$('#hpTidak'), tutup:$('#hpTutup'), buka:$('#chHp'), buka2:$('#hpBuka'), kj:$('#hpKj'), kjB:$('#hpKjB'), kjI:$('#hpKjI'),
+  daftar:$('#hpDaftar'), daftarT:$('#hpDaftarT'), daftarL:$('#hpDaftarL')};
 const HP_KJ_AWAL = hpEl.kjI.textContent;
 let hpT = 0, hpO = {tahap:'diam'}, hpSertSha = '', hpPesanSendiri = '', hpOtomatis = false;
 const HP_AKTIF = new Set(['menunggu', 'qr', 'sas', 'menyimpan']);
@@ -5514,7 +5515,11 @@ function hpTampil(o){
   hpEl.kerjakanL.hidden = t === 'selesai';
   let teks = '';
   // dialog dibuka → QR langsung dibuat sekali (seperti WhatsApp Web); berikutnya lewat tombol "QR baru"
-  if (!hpOtomatis && hpO.pelaksana === true && !HP_AKTIF.has(t)){ hpOtomatis = true; hpKirim('/chat/pasang/mulai'); return; }
+  // slot penuh (2/2) → QR TIDAK otomatis (membuat QR melepas HP terlama); owner memutuskan HP atau klik "Hubungkan HP baru"
+  const penuh = Array.isArray(hpO.perangkat) && hpO.perangkat.length >= (hpO.maksPerangkat || 2);
+  hpEl.mulai.textContent = penuh ? 'Hubungkan HP baru' : 'QR baru';
+  // QR otomatis hanya setelah daftar HP dari pelaksana diketahui (≤ 5 dtk setelah tersambung) dan slot masih ada
+  if (!hpOtomatis && hpO.pelaksana === true && !HP_AKTIF.has(t) && Array.isArray(hpO.perangkat) && !penuh){ hpOtomatis = true; hpKirim('/chat/pasang/mulai'); return; }
   if (t === 'menunggu') teks = hpO.pesan || 'Menyiapkan QR di Mac…';
   else if (t === 'qr' && Array.isArray(hpO.modul)) {
     hpGambarQr(hpO.modul); hpEl.qr.hidden = false;
@@ -5542,9 +5547,32 @@ function hpTampil(o){
     }
   } else if (t === 'sertifikat') teks = 'APK dicatat sebagai terpercaya. Klik "Tampilkan QR" lalu pindai lagi dari HP.';
   else teks = hpO.pelaksana === false ? 'Pelaksana di Mac belum berjalan — buka jendela "Kantor Pelaksana" (bash siapkan-hp.sh --kerjakan). QR tampil otomatis begitu tersambung.'
+    : !Array.isArray(hpO.perangkat) && !hpOtomatis ? 'Memuat daftar HP terhubung…'
+    : penuh ? `Sudah ${hpO.perangkat.length} HP terhubung (maks ${hpO.maksPerangkat || 2}). Putuskan salah satu, atau klik "Hubungkan HP baru" (HP terlama dilepas otomatis).`
     : 'Klik "QR baru", lalu pindai dari APK PADEV Studio di HP.';
   hpEl.st.textContent = hpPesanSendiri || teks;
   hpPesanSendiri = '';
+  // HP terhubung (maks 2) + Putuskan; disembunyikan selama pemasangan berjalan
+  const ph = Array.isArray(hpO.perangkat) ? hpO.perangkat : null;
+  hpEl.daftar.hidden = !ph || HP_AKTIF.has(t);
+  if (ph){
+    hpEl.daftarT.textContent = ph.length ? `HP terhubung (${ph.length}/${hpO.maksPerangkat || 2})` : 'Belum ada HP terhubung';
+    const sig = JSON.stringify(ph);
+    if (hpEl.daftarL.dataset.sig !== sig){
+      hpEl.daftarL.dataset.sig = sig; hpEl.daftarL.textContent = '';
+      for (const e of ph){
+        const li = document.createElement('li'), nm = document.createElement('span'), kc = document.createElement('small'), b = document.createElement('button');
+        nm.textContent = '📱 ' + e.nama;
+        kc.textContent = (e.mode === 'rencana+kerjakan' ? 'Rencana + Kerjakan' : 'Rencana') + ' · ' + new Date(e.dipasang).toLocaleDateString('id-ID', {day:'numeric', month:'short'});
+        b.type = 'button'; b.textContent = 'Putuskan'; b.setAttribute('aria-label', 'Putuskan ' + e.nama);
+        b.addEventListener('click', () => {
+          if (!confirm(`Putuskan "${e.nama}" dari Mac ini? HP itu tidak bisa memberi perintah lagi sampai dihubungkan ulang (QR).`)) return;
+          hpKirim('/chat/pasang/cabut', {id:e.id});
+        });
+        li.append(nm, kc, b); hpEl.daftarL.append(li);
+      }
+    }
+  }
   // Kerjakan semua proyek (HP yang sudah terpasang); disembunyikan selama pemasangan berjalan
   const kj = hpO.kerjakan;
   hpEl.kj.hidden = HP_AKTIF.has(t);
@@ -5581,7 +5609,14 @@ function hpBukaDialog(){
 }
 hpEl.buka.addEventListener('click', hpBukaDialog);
 hpEl.buka2.addEventListener('click', hpBukaDialog);
-hpEl.mulai.addEventListener('click', () => hpKirim('/chat/pasang/mulai'));
+hpEl.mulai.addEventListener('click', () => {
+  const ph = Array.isArray(hpO.perangkat) ? hpO.perangkat : [];
+  if (ph.length >= (hpO.maksPerangkat || 2)){
+    const lama = [...ph].sort((a, b) => a.dipasang - b.dipasang)[0];
+    if (!confirm(`Sudah ${ph.length} HP terhubung. Menghubungkan HP baru akan memutuskan "${lama.nama}" (paling lama). Lanjutkan?`)) return;
+  }
+  hpKirim('/chat/pasang/mulai');
+});
 hpEl.ya.addEventListener('click', () => hpKirim('/chat/pasang/jawab', {setuju:true, kerjakan:hpEl.kerjakan.checked}));
 hpEl.tidak.addEventListener('click', () => hpKirim('/chat/pasang/jawab', {setuju:false, kerjakan:false}));
 hpEl.sertB.addEventListener('click', () => hpKirim('/chat/pasang/sertifikat', {sha:hpSertSha}));

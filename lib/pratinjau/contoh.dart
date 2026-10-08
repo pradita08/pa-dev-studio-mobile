@@ -35,6 +35,31 @@ class SumberContoh extends SumberData {
       'dibuat': _kini,
       'status': {
         'versi': '0.9.0',
+        'maksPerangkat': 2,
+        'perangkat': [
+          {'nama': 'POCO F7', 'mode': 'rencana+kerjakan', 'dipasang': _lalu(const Duration(days: 2)), 'ini': true},
+          {'nama': 'Tab Kantor', 'mode': 'rencana', 'dipasang': _lalu(const Duration(days: 9))},
+        ],
+        // alur kerja live contoh (SIMPEG): perintah → analis selesai → programmer & QA bekerja → menunggu izin
+        if (!kosong)
+          'kantor': [
+            for (final (dtk, e) in <(int, Map<String, Object?>)>[
+              (300, {'kind': 'prompt'}),
+              (290, {'kind': 'tool', 'tool': 'Read'}),
+              (280, {'kind': 'tool', 'tool': 'Agent', 'sub': 'divisi-analis'}),
+              (275, {'kind': 'agent_start', 'who': 'divisi-analis', 'agentId': 'c-an'}),
+              (250, {'kind': 'tool', 'who': 'divisi-analis', 'agentId': 'c-an', 'tool': 'Grep'}),
+              (200, {'kind': 'agent_stop', 'who': 'divisi-analis', 'agentId': 'c-an'}),
+              (190, {'kind': 'tool', 'tool': 'Agent', 'sub': 'divisi-programmer'}),
+              (185, {'kind': 'agent_start', 'who': 'divisi-programmer', 'agentId': 'c-pr'}),
+              (120, {'kind': 'tool', 'who': 'divisi-programmer', 'agentId': 'c-pr', 'tool': 'Edit'}),
+              (100, {'kind': 'tool', 'tool': 'Agent', 'sub': 'divisi-qa'}),
+              (95, {'kind': 'agent_start', 'who': 'divisi-qa', 'agentId': 'c-qa'}),
+              (40, {'kind': 'tool', 'who': 'divisi-qa', 'agentId': 'c-qa', 'tool': 'Bash'}),
+              (10, {'kind': 'notify', 'type': 'permission_prompt'}),
+            ])
+              {'ts': _lalu(Duration(seconds: dtk)), 'session': 'a1b2c3d4e5f60718', 'proyek': 'simpeg', ...e},
+          ],
         'limit': [
           {'akun': 'akun2', 'persen5j': 62, 'reset5j': jamReset},
         ],

@@ -91,6 +91,29 @@ void main() {
     expect(s.kantor, isNull);
   });
 
+  test('status.perangkat → HP terhubung (n/maks, HP ini); tanpa field → null', () {
+    final s = _SumberUji()
+      ..status({
+        'status': {
+          'proyek': [],
+          'maksPerangkat': 2,
+          'perangkat': [
+            {'nama': 'POCO F7', 'mode': 'rencana+kerjakan', 'dipasang': 1791000000000, 'ini': true},
+            {'nama': 'Tab', 'mode': 'rencana', 'dipasang': 1791000001000},
+          ],
+          'kantor': [{'ts': 5, 'kind': 'prompt', 'proyek': 'simpeg'}],
+        },
+      });
+    expect(s.perangkatTerhubung!.length, 2);
+    expect(s.perangkatTerhubung!.first.ini, isTrue);
+    expect(s.perangkatTerhubung!.first.kerjakan, isTrue);
+    expect(s.perangkatTerhubung!.last.kerjakan, isFalse);
+    expect(s.maksPerangkat, 2);
+    expect(s.kantor!.single['proyek'], 'simpeg');
+    s.status({'status': {'proyek': []}});
+    expect(s.perangkatTerhubung, isNull);
+  });
+
   test('tugas yang terputus saat dikirim dipulihkan sebagai gagal kirim; entri rusak dibuang', () {
     final t = Tugas.dariEntri('a', {'id': 't-x-0123456789abcdef', 'waktu': 1, 'akun': 'akun1', 'mode': 'kerjakan', 'pesan': 'p', 'baru': false, 'tahap': 'mengirim'});
     expect(t!.tahap, TahapTugas.gagalKirim);

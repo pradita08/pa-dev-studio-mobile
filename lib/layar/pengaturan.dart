@@ -58,13 +58,13 @@ class LayarPengaturan extends StatelessWidget {
       (c) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Semantics(header: true, child: Text('Pasang perangkat cadangan', style: TextStyle(color: w.ink, fontSize: 19, fontWeight: FontWeight.w800))),
         const SizedBox(height: 10),
-        Text('Satu Mac boleh dipasangkan dengan maksimal 2 HP. Untuk menambah HP cadangan:', style: TeksPadev.redup(w, ukuran: 14)),
+        Text('Satu Mac terhubung dengan maksimal ${sumber.maksPerangkat} HP. Untuk menambah HP cadangan:', style: TeksPadev.redup(w, ukuran: 14)),
         const SizedBox(height: 12),
         for (final (i, t) in const [
           'Pasang APK PADEV Studio di HP cadangan.',
-          'Di Mac jalankan: node pelaksana.js --pasang-hp',
-          'Di HP cadangan, buka PADEV Studio lalu pindai QR di Terminal (berlaku 5 menit).',
-          'Cocokkan kode 6 digit, lalu ketik ya di Mac.',
+          'Di laptop buka kantor, klik "📱 Hubungkan HP" (kanan atas) — QR langsung tampil.',
+          'Di HP cadangan, buka PADEV Studio lalu pindai QR itu (berlaku 5 menit).',
+          'Bila kode 6 digit sama, klik "Kode sama — pasangkan" di laptop.',
         ].indexed)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -82,11 +82,41 @@ class LayarPengaturan extends StatelessWidget {
           ),
         const SizedBox(height: 6),
         // SEC-80: status sebenarnya — kode darurat / cabut tanpa laptop belum ada (SEC-52).
-        Text('Cabut darurat tanpa laptop belum tersedia. Bila HP hilang, cabut perangkat itu dari Mac.', style: TeksPadev.redup(w, ukuran: 12)),
+        Text('Sudah ${sumber.maksPerangkat} HP? Putuskan salah satu di laptop (dialog Hubungkan HP → Putuskan), atau hubungkan yang baru: HP terlama dilepas otomatis. '
+            'Bila HP hilang, putuskan dari laptop.', style: TeksPadev.redup(w, ukuran: 12)),
         const SizedBox(height: 14),
         OutlinedButton(onPressed: () => Navigator.of(c).pop(), child: const Text('Tutup')),
       ]),
     );
+  }
+
+  /// "HP terhubung ke Mac (n/maks)" dari status Mac; diputuskan dari laptop (dialog Hubungkan HP).
+  List<Widget> _hpTerhubung(WarnaPadev w) {
+    final l = sumber.perangkatTerhubung;
+    if (l == null) return const [];
+    String tgl(DateTime? d) => d == null ? '' : ' · dipasang ${d.day}/${d.month}/${d.year}';
+    return [
+      JudulBagian('HP terhubung ke Mac · ${l.length}/${sumber.maksPerangkat}'),
+      KartuDaftar(anak: [
+        for (final e in l)
+          BarisPengaturan(
+            ikon: Simbol.hp,
+            judul: e.nama,
+            sub: '${e.kerjakan ? 'Rencana + Kerjakan' : 'Rencana'}${tgl(e.dipasang)}',
+            ekor: e.ini
+                ? Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(color: w.accent.withValues(alpha: .14), borderRadius: BorderRadius.circular(99)),
+                    child: Text('HP ini', style: TextStyle(color: w.accent, fontSize: 11.5, fontWeight: FontWeight.w800)),
+                  )
+                : null,
+          ),
+      ]),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(4, 6, 4, 0),
+        child: Text('Putuskan HP lain dari laptop: kantor → 📱 Hubungkan HP → Putuskan.', style: TeksPadev.redup(w, ukuran: 12)),
+      ),
+    ];
   }
 
   @override
@@ -111,9 +141,10 @@ class LayarPengaturan extends StatelessWidget {
             sub: 'Rencana ${pendek(pr?.idKRencana)} · Kerjakan ${pendek(pr?.idKKerjakan)}',
             subMono: true,
           ),
-          BarisPengaturan(ikon: Simbol.tambah, judul: 'Pasang perangkat cadangan', ekor: Icon(Simbol.kanan, color: w.muted), onTap: () => _cadangan(context)),
+          BarisPengaturan(ikon: Simbol.tambah, judul: 'Hubungkan HP cadangan', ekor: Icon(Simbol.kanan, color: w.muted), onTap: () => _cadangan(context)),
           BarisPengaturan(ikon: Simbol.putus, judul: 'Lepas perangkat ini', warnaJudul: w.err, onTap: () => _lepas(context)),
         ]),
+        ..._hpTerhubung(w),
         const JudulBagian('Notifikasi'),
         KartuDaftar(anak: [
           BarisPengaturan(
