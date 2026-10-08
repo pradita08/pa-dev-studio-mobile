@@ -1,16 +1,40 @@
-// L03 Beranda — tab Proyek: kartu Mac (+ Blok 5 jam bila `limit` ada), kartu proyek, tarik-segarkan, kosong, memuat,
-// dan state L08: Mac tidak tersambung, tanpa internet (data terakhir), status belum diterima.
+// L03 Beranda — tab Proyek: kartu Mac (+ Blok 5 jam bila `limit` ada), cari proyek (nama/id, lokal di HP), kartu proyek,
+// tarik-segarkan, kosong, memuat, dan state L08: Mac tidak tersambung, tanpa internet (data terakhir), status belum diterima.
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../komponen/komponen.dart';
 import '../kunci/kunci.dart';
 import '../tema/token.dart';
 import 'data.dart';
 
-class LayarBeranda extends StatelessWidget {
+/// Proyek yang nama/id-nya memuat kata cari (tanpa beda huruf besar/kecil); kata kosong → semua.
+List<Proyek> saringProyek(List<Proyek> proyek, String kata) {
+  final k = kata.trim().toLowerCase();
+  if (k.isEmpty) return proyek;
+  return proyek.where((p) => p.nama.toLowerCase().contains(k) || p.id.toLowerCase().contains(k)).toList();
+}
+
+class LayarBeranda extends StatefulWidget {
   const LayarBeranda({super.key, required this.sumber, required this.onBukaChat});
   final SumberData sumber;
   final ValueChanged<String> onBukaChat;
+
+  @override
+  State<LayarBeranda> createState() => _LayarBerandaState();
+}
+
+class _LayarBerandaState extends State<LayarBeranda> {
+  final _ketik = TextEditingController();
+  String _kata = '';
+
+  SumberData get sumber => widget.sumber;
+
+  @override
+  void dispose() {
+    _ketik.dispose();
+    super.dispose();
+  }
 
   Future<void> _segarkan(BuildContext context) async {
     try {
@@ -85,10 +109,19 @@ class LayarBeranda extends StatelessWidget {
           teks: 'Izinkan proyek di laptop: setel hp: "rencana" pada proyek di konfigurasi pelaksana, lalu tarik untuk menyegarkan.',
         ));
       }
-      for (final p in s.proyek) {
+      if (s.proyek.isNotEmpty) butir.add(Padding(padding: const EdgeInsets.only(bottom: 10), child: _kolomCari(w)));
+      final tampil = saringProyek(s.proyek, _kata);
+      if (s.proyek.isNotEmpty && tampil.isEmpty) {
+        butir.add(IsiKosong(
+          ikon: Simbol.cari,
+          judul: 'Tidak ada proyek cocok',
+          teks: '"${_kata.trim()}" tidak ada di nama proyek.',
+        ));
+      }
+      for (final p in tampil) {
         butir.add(Padding(
           padding: const EdgeInsets.only(bottom: 10),
-          child: _KartuProyek(proyek: p, macPutus: s.macTersambung == false, onTap: () => onBukaChat(p.id)),
+          child: _KartuProyek(proyek: p, macPutus: s.macTersambung == false, onTap: () => widget.onBukaChat(p.id)),
         ));
       }
     }
@@ -102,6 +135,7 @@ class LayarBeranda extends StatelessWidget {
           onRefresh: () => _segarkan(context),
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: EdgeInsets.fromLTRB(14, MediaQuery.paddingOf(context).top + 8, 14, 20),
             children: butir,
           ),
@@ -109,6 +143,36 @@ class LayarBeranda extends StatelessWidget {
       ),
     ]);
   }
+
+  Widget _kolomCari(WarnaPadev w) => TextField(
+        controller: _ketik,
+        onChanged: (v) => setState(() => _kata = v),
+        textInputAction: TextInputAction.search,
+        enableIMEPersonalizedLearning: false,
+        inputFormatters: [LengthLimitingTextInputFormatter(40)],
+        style: TextStyle(color: w.ink, fontSize: 14.5),
+        decoration: InputDecoration(
+          hintText: 'Cari proyek',
+          hintStyle: TextStyle(color: w.muted),
+          prefixIcon: Icon(Simbol.cari, color: w.muted),
+          suffixIcon: _kata.isEmpty
+              ? null
+              : IconButton(
+                  tooltip: 'Hapus pencarian',
+                  icon: Icon(Simbol.tutup, color: w.muted),
+                  onPressed: () => setState(() {
+                    _ketik.clear();
+                    _kata = '';
+                  }),
+                ),
+          isDense: true,
+          filled: true,
+          fillColor: w.panel,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: w.line)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: w.line)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: w.accent, width: 1.5)),
+        ),
+      );
 }
 
 class _PitaTanpaInternet extends StatelessWidget {
