@@ -5494,9 +5494,9 @@ chEl.ganti.addEventListener('click', () => { chMintaKunci(''); chEl.kunciI.focus
    menampilkan & meneruskan jawaban owner. Polling GET /chat/pasang tiap 1 dtk selama dialog terbuka. Teks lewat textContent. --- */
 const hpEl = {dlg:$('#hpDlg'), st:$('#hpSt'), qr:$('#hpQr'), sas:$('#hpSas'), kode:$('#hpKode'), nama:$('#hpNama'), kerjakan:$('#hpKerjakan'),
   kerjakanL:$('#hpKerjakanL'), darurat:$('#hpDarurat'), daruratK:$('#hpDaruratK'), sert:$('#hpSert'), sertB:$('#hpSertB'),
-  mulai:$('#hpMulai'), ya:$('#hpYa'), tidak:$('#hpTidak'), tutup:$('#hpTutup'), buka:$('#chHp'), kj:$('#hpKj'), kjB:$('#hpKjB'), kjI:$('#hpKjI')};
+  mulai:$('#hpMulai'), ya:$('#hpYa'), tidak:$('#hpTidak'), tutup:$('#hpTutup'), buka:$('#chHp'), buka2:$('#hpBuka'), kj:$('#hpKj'), kjB:$('#hpKjB'), kjI:$('#hpKjI')};
 const HP_KJ_AWAL = hpEl.kjI.textContent;
-let hpT = 0, hpO = {tahap:'diam'}, hpSertSha = '', hpPesanSendiri = '';
+let hpT = 0, hpO = {tahap:'diam'}, hpSertSha = '', hpPesanSendiri = '', hpOtomatis = false;
 const HP_AKTIF = new Set(['menunggu', 'qr', 'sas', 'menyimpan']);
 function hpGambarQr(modul){
   const n = modul.length, tepi = 4, s = Math.max(3, Math.floor(300 / (n + tepi * 2))), c = hpEl.qr;
@@ -5513,7 +5513,9 @@ function hpTampil(o){
   hpEl.mulai.hidden = HP_AKTIF.has(t) || t === 'selesai';
   hpEl.kerjakanL.hidden = t === 'selesai';
   let teks = '';
-  if (t === 'menunggu') teks = 'Menyiapkan QR di Mac…';
+  // dialog dibuka → QR langsung dibuat sekali (seperti WhatsApp Web); berikutnya lewat tombol "QR baru"
+  if (!hpOtomatis && hpO.pelaksana === true && !HP_AKTIF.has(t)){ hpOtomatis = true; hpKirim('/chat/pasang/mulai'); return; }
+  if (t === 'menunggu') teks = hpO.pesan || 'Menyiapkan QR di Mac…';
   else if (t === 'qr' && Array.isArray(hpO.modul)) {
     hpGambarQr(hpO.modul); hpEl.qr.hidden = false;
     teks = `Di HP: buka APK PADEV Studio → Pindai kode QR. Berlaku sampai ${jam(hpO.sampai)}. Jangan difoto/dibagikan.`;
@@ -5522,9 +5524,14 @@ function hpTampil(o){
     hpEl.nama.textContent = 'HP: ' + (hpO.nama || 'HP');
     hpEl.sas.hidden = false; hpEl.ya.hidden = false; hpEl.tidak.hidden = false;
     teks = 'Apakah kode ini SAMA dengan kode di layar HP?';
+    if (hpO.sertifikat){
+      hpEl.sert.textContent = `APK di HP ini baru (sertifikat ${hpO.sertifikat.slice(0, 12)}…). Bila ini APK Anda sendiri (link GitHub Actions / bangun.sh) dan kodenya sama, "Kode sama" sekaligus mempercayai APK ini.`;
+      hpEl.sert.hidden = false;
+    }
   } else if (t === 'menyimpan') teks = 'Menyimpan pemasangan…';
   else if (t === 'selesai') {
-    teks = `✅ Terpasang: ${hpO.nama || 'HP'} · ${hpO.mode === 'rencana+kerjakan' ? 'Rencana + Kerjakan' : 'Rencana saja'}. Di HP ketuk Mulai.`;
+    teks = `✅ Terpasang: ${hpO.nama || 'HP'} · ${hpO.mode === 'rencana+kerjakan' ? 'Rencana + Kerjakan' : 'Rencana saja'}. Di HP ketuk Mulai.`
+      + (hpO.dilepas ? ` HP lama (${hpO.dilepas}) dilepas otomatis.` : '');
     if (hpO.darurat){ hpEl.daruratK.textContent = hpO.darurat; hpEl.darurat.hidden = false; }
   } else if (t === 'gagal') {
     teks = 'Pemasangan gagal: ' + (hpO.pesan || 'gagal');
@@ -5534,8 +5541,8 @@ function hpTampil(o){
       hpEl.sert.hidden = false; hpEl.sertB.hidden = false;
     }
   } else if (t === 'sertifikat') teks = 'APK dicatat sebagai terpercaya. Klik "Tampilkan QR" lalu pindai lagi dari HP.';
-  else teks = hpO.pelaksana === false ? 'Pelaksana di Mac belum berjalan — buka "Kantor Pelaksana" (bash siapkan-hp.sh) lalu coba lagi.'
-    : 'Klik "Tampilkan QR", lalu pindai dari APK PADEV Studio di HP.';
+  else teks = hpO.pelaksana === false ? 'Pelaksana di Mac belum berjalan — buka jendela "Kantor Pelaksana" (bash siapkan-hp.sh --kerjakan). QR tampil otomatis begitu tersambung.'
+    : 'Klik "QR baru", lalu pindai dari APK PADEV Studio di HP.';
   hpEl.st.textContent = hpPesanSendiri || teks;
   hpPesanSendiri = '';
   // Kerjakan semua proyek (HP yang sudah terpasang); disembunyikan selama pemasangan berjalan
@@ -5567,10 +5574,13 @@ async function hpKirim(jalur, isi){
     hpTampil(await r.json());
   } catch (e){ hpEl.st.textContent = 'Server kantor tidak terjangkau.'; }
 }
-hpEl.buka.addEventListener('click', () => {
-  hpEl.darurat.hidden = true; hpEl.daruratK.textContent = '';
+function hpBukaDialog(){
+  hpEl.darurat.hidden = true; hpEl.daruratK.textContent = ''; hpEl.sert.hidden = true; hpEl.sertB.hidden = true;
+  hpOtomatis = false; hpEl.st.textContent = 'Menyiapkan…';
   hpEl.dlg.showModal(); hpPutar();
-});
+}
+hpEl.buka.addEventListener('click', hpBukaDialog);
+hpEl.buka2.addEventListener('click', hpBukaDialog);
 hpEl.mulai.addEventListener('click', () => hpKirim('/chat/pasang/mulai'));
 hpEl.ya.addEventListener('click', () => hpKirim('/chat/pasang/jawab', {setuju:true, kerjakan:hpEl.kerjakan.checked}));
 hpEl.tidak.addEventListener('click', () => hpKirim('/chat/pasang/jawab', {setuju:false, kerjakan:false}));
@@ -5582,7 +5592,7 @@ hpEl.dlg.addEventListener('close', () => {
   hpEl.daruratK.textContent = ''; hpEl.darurat.hidden = true;   // kode darurat tidak tertinggal di halaman
   if (HP_AKTIF.has(hpO.tahap)) chFetch('/chat/pasang/batal', 'POST', {}).catch(() => {});
 });
-if (CH_DEMO) hpEl.buka.hidden = true;
+if (CH_DEMO || serverBase() === null){ hpEl.buka.hidden = true; hpEl.buka2.hidden = true; }
 chEl.ulang.addEventListener('click', () => { chInfo('Menghubungkan…', '', false); chSambung(); });
 function chPesanGalat(g){
   const tambah = g.pesan ? ' · ' + g.pesan : '';

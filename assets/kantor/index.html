@@ -190,6 +190,7 @@
         <span id="jam" class="jam" aria-label="Jam"></span>
       </div>
       <div id="pill" role="status"><i></i><span>Menghubungkan…</span></div>
+      <button class="bb" type="button" id="hpBuka" aria-haspopup="dialog" title="Hubungkan HP (APK PADEV Studio) — pindai QR, seperti WhatsApp Web">📱 Hubungkan HP</button>
       <section class="card" id="aktivitas" aria-labelledby="akT">
         <div class="ak-h">
           <button class="ak-t" id="bAk" type="button" aria-expanded="true" aria-controls="log" title="Ciutkan/lebarkan daftar aktivitas">
@@ -390,7 +391,7 @@
      Server menolak dialog ini dari pintu HP/Tailscale. Semua teks lewat textContent. -->
 <dialog id="hpDlg" aria-labelledby="hpDlgT">
   <div class="ch-dlg hp-dlg">
-    <h3 id="hpDlgT">Pasangkan HP</h3>
+    <h3 id="hpDlgT">Hubungkan HP</h3>
     <p id="hpSt" role="status" aria-live="polite"></p>
     <canvas id="hpQr" width="280" height="280" hidden aria-label="QR pemasangan — pindai dengan APK PADEV Studio"></canvas>
     <div class="hp-sas" id="hpSas" hidden><span class="hp-kode" id="hpKode"></span><span class="hintk" id="hpNama"></span></div>
@@ -405,7 +406,7 @@
       <button class="btn" type="button" id="hpSertB" hidden>Percayai APK ini</button>
       <button class="btn" type="button" id="hpTidak" hidden>Kode beda</button>
       <button class="btn ch-utama" type="button" id="hpYa" hidden>Kode sama — pasangkan</button>
-      <button class="btn ch-utama" type="button" id="hpMulai">Tampilkan QR</button>
+      <button class="btn ch-utama" type="button" id="hpMulai">QR baru</button>
     </div>
   </div>
 </dialog>

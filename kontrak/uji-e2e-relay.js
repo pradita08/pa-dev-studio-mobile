@@ -99,7 +99,14 @@ async function pasang(hp, { jawab = 'ya', rusakAtestasi = false, atestasi } = {}
   const baris = keluar.split('\n').filter(b => b.includes('\x1b[30;107m'));
   const png = path.join(dasar, 'qr.png');
   H.tulisPng(png, H.matriksDariTerminal(baris));
-  const teks = (H.dekodeQr(dasar, [png]) || [])[0];
+  // macOS: CoreImage (seperti kamera); Linux/CI: JSQR=<path jsqr> sebagai pembaca QR independen
+  let teks = process.env.JSQR ? null : (H.dekodeQr(dasar, [png]) || [])[0];
+  if (process.env.JSQR) {
+    const m = H.matriksDariTerminal(baris), s = 6, w = m[0].length * s, h = m.length * s, px = new Uint8ClampedArray(w * h * 4);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const v = m[Math.floor(y / s)][Math.floor(x / s)] ? 0 : 255, i = (y * w + x) * 4; px[i] = px[i + 1] = px[i + 2] = v; px[i + 3] = 255; }
+    const q = require(process.env.JSQR)(px, w, h);
+    teks = q ? q.data : null;
+  }
   const qr = teks ? JSON.parse(teks) : null;
   if (!qr) { p.kill(); return { kode: await selesai, keluar, galat, qr: null }; }
   hp.token = null;
@@ -107,7 +114,7 @@ async function pasang(hp, { jawab = 'ya', rusakAtestasi = false, atestasi } = {}
   hp.perangkat_id = d.data && d.data.perangkat_id; hp.token = d.data && d.data.token;
   const am = H.amplopPasang(hp, qr, akar, rusakAtestasi ? { digest: crypto.randomBytes(32).toString('hex') } : atestasi ? { atestasi } : {});
   await kirim(hp, am);
-  if (!rusakAtestasi && !atestasi) {
+  if (!atestasi) {   // sertifikat APK belum dikenal (rusakAtestasi) TIDAK ditolak: owner memutuskan saat kode pasang
     const m = await tunggu(() => /KODE PASANG: (\d{3}) (\d{3})/.exec(keluar), 30000, 200);
     const sasHp = R.kodeSas({ s_mac: qr.s_mac, e_mac: qr.e_mac, k_rencana: hp.k_rencana, k_kerjakan: hp.k_kerjakan, e_hp: hp.e_hp, mac_id: qr.mac_id, perangkat_id: hp.perangkat_id });
     hp.sasCocok = !!m && m[1] + m[2] === sasHp;
@@ -134,14 +141,14 @@ async function pasang(hp, { jawab = 'ya', rusakAtestasi = false, atestasi } = {}
     const c1 = jalan(['--cek']);
     cek('--cek dengan relay', c1.status === 0 && /Uji relay {7}: sehat 204 · halo 200/.test(c1.stdout), c1.stdout + c1.stderr);
 
-    // 2. pasang dengan atestasi sertifikat APK salah → ditolak, tidak tercatat
+    // 2. APK dengan sertifikat belum dikenal (atestasi lain sah) → TIDAK langsung ditolak: kode pasang + peringatan APK BARU + SHA;
+    //    owner menolak ("batal") → tidak dipasang & sertifikat tidak dicatat
     const hpBuruk = H.buatHp('HP Buruk');
-    const pb = await pasang(hpBuruk, { rusakAtestasi: true });
-    cek('QR Terminal terbaca (CoreImage)', !!pb.qr && pb.qr.mac_id === MAC_ID && pb.qr.relay === URL_UJI);
-    cek('atestasi salah → pasang ditolak', pb.kode === 1 && /atestasi_sertifikat_apk/.test(pb.galat), pb.galat);
-    // owner bisa mencatat APK-nya sendiri: SHA-256 sertifikat APK yang memindai + perintah siap salin (tetap ditolak)
-    cek('sertifikat tak dikenal → SHA-256 APK + perintah siapkan-hp.sh', /Sertifikat APK yang memindai: [0-9a-f]{64}/.test(pb.galat)
-      && /bash siapkan-hp\.sh --sertifikat [0-9a-f]{64}/.test(pb.galat), pb.galat);
+    const pb = await pasang(hpBuruk, { rusakAtestasi: true, jawab: 'batal' });
+    cek('QR Terminal terbaca', !!pb.qr && pb.qr.mac_id === MAC_ID && pb.qr.relay === URL_UJI);
+    cek('sertifikat tak dikenal → kode pasang dengan peringatan APK BARU + SHA-256', /APK BARU \(sertifikat [0-9a-f]{64}\)/.test(pb.keluar) && hpBuruk.sasCocok, pb.keluar.slice(-400));
+    const kfB = JSON.parse(fs.readFileSync(path.join(F, 'konfigurasi.json'), 'utf8'));
+    cek('owner batal → sertifikat APK baru tidak dicatat', !(kfB.apkSertifikatDebugSha256 || []).some(x => !(kfB.apkSertifikatSha256 || []).includes(x)) && /Dibatalkan/.test(pb.keluar), JSON.stringify(kfB.apkSertifikatDebugSha256));
     // SEC-83: serial daun ada di daftar cabut (berkas uji) → ditolak dengan pesan jelas
     const pc = await pasang(H.buatHp('HP Dicabut'), { atestasi: { serialDaun: SERIAL_CABUT } });
     cek('serial dicabut Google → pasang ditolak (SEC-83)', pc.kode === 1 && /atestasi_dicabut/.test(pc.galat) && /sertifikat dicabut Google/.test(pc.galat), pc.galat);

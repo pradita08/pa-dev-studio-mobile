@@ -156,6 +156,9 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 #pill.live i{background:#22c55e;box-shadow:0 0 0 4px rgba(34,197,94,.2);animation:pulse 1.6s infinite}
 #pill.demo i{background:#f59e0b}
 #pill.off i{background:#ef4444}
+#hpBuka{font:inherit;font-size:12.5px;font-weight:800;padding:7px 14px;border-radius:99px;background:var(--on-bg);color:var(--on-fg);border:0;cursor:pointer;box-shadow:var(--shadow)}
+#hpBuka:hover{filter:brightness(1.15)}
+#hpBuka:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 @keyframes pulse{50%{box-shadow:0 0 0 7px rgba(34,197,94,0)}}
 /* grup tombol: kotak putih + tombol transparan; aktif = latar gelap (persis .lantai preview) */
 .grup{display:flex;gap:4px;padding:4px;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}

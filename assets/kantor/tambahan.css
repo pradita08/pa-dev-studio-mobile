@@ -2,6 +2,6 @@
    hanya ada di kantor laptop (Token & Laporan butuh server.js; Perintah = chat APK sendiri; pasang HP dari laptop). */
 @font-face{font-family:"Plus Jakarta Sans";font-weight:400 600;font-style:normal;font-display:swap;src:url("font/PlusJakartaSans-SemiBold.ttf") format("truetype")}
 @font-face{font-family:"Plus Jakarta Sans";font-weight:700 800;font-style:normal;font-display:swap;src:url("font/PlusJakartaSans-ExtraBold.ttf") format("truetype")}
-#tabTok,#tabLap,#tabCht,#pTok,#pLap,#pCht,#lapDlg,#chDlg,#hpDlg,#chHp{display:none!important}
+#tabTok,#tabLap,#tabCht,#pTok,#pLap,#pCht,#lapDlg,#chDlg,#hpDlg,#chHp,#hpBuka{display:none!important}
 html,body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 input,textarea{-webkit-user-select:text;user-select:text}
