@@ -371,6 +371,53 @@ class RiwayatSesi {
   bool get lambat => memuat && diminta != null && DateTime.now().difference(diminta!) > const Duration(seconds: 30);
 }
 
+// ---------------------------------------------------------------------------------------------------- keputusan (F1b)
+
+/// Satu pertanyaan Claude (AskUserQuestion) di kartu keputusan.
+class PertanyaanKeputusan {
+  const PertanyaanKeputusan({required this.teks, required this.judul, required this.banyak, required this.pilihan});
+  final String teks, judul;
+
+  /// true = boleh pilih lebih dari satu.
+  final bool banyak;
+
+  /// (label, keterangan)
+  final List<(String, String)> pilihan;
+}
+
+/// Permintaan izin / pertanyaan Claude Code di Mac yang menunggu jawaban HP (kabar `keputusan`, pelaksana-keputusan.js).
+class Keputusan {
+  Keputusan({
+    required this.id,
+    required this.sesi,
+    required this.proyek,
+    required this.akun,
+    required this.jenis,
+    required this.alat,
+    required this.ringkas,
+    required this.boleh,
+    required this.dibuat,
+    required this.sampai,
+    this.pertanyaan = const [],
+  });
+  final String id, sesi, proyek, akun;
+
+  /// 'izin' (alat: Bash, Edit, …) | 'tanya' (AskUserQuestion) | 'rencana' (ExitPlanMode).
+  final String jenis;
+  final String alat, ringkas;
+
+  /// Pilihan yang diizinkan Mac untuk HP ini: 'tolak' | 'jawab' | 'izinkan' | 'izinkan_selalu' (tolak selalu ada).
+  final List<String> boleh;
+  final DateTime dibuat, sampai;
+  final List<PertanyaanKeputusan> pertanyaan;
+
+  /// Jawaban sudah dikirim dari HP ini (menunggu Mac menutupnya).
+  bool terkirim = false;
+  bool bisa(String pilih) => boleh.contains(pilih);
+  bool get kedaluwarsa => DateTime.now().isAfter(sampai);
+  Duration get sisa => sampai.difference(DateTime.now());
+}
+
 // ---------------------------------------------------------------------------------------------------- sumber data
 
 /// Satu kelas sumber data untuk semua layar. Turunan hanya mengganti "transport" (fasad Kunci atau data contoh).
@@ -406,6 +453,15 @@ abstract class SumberData extends ChangeNotifier {
   /// isi (tanpa detail/teks/path; sesi di-hash). null = Mac belum mengirim field ini (pelaksana lama).
   List<Map<String, Object?>>? kantor;
   String? versiMac;
+
+  /// Keputusan menunggu jawaban HP (snapshot terakhir dari Mac, F1b) + alasan selesai terbaru per id.
+  List<Keputusan> keputusan = const [];
+  final Map<String, String> keputusanSelesai = {};
+  int _urutKeputusan = -1;
+  bool _keputusanTersimpanDimuat = false;
+
+  /// Keputusan yang masih bisa dijawab (belum kedaluwarsa, belum dikirim).
+  List<Keputusan> get keputusanMenunggu => keputusan.where((k) => !k.kedaluwarsa && !k.terkirim).toList();
   final List<ButirKabar> kabar = [];
   final Map<String, List<Tugas>> _chat = {};
   final Map<String, bool> _baruBerikutnya = {};
@@ -443,6 +499,46 @@ abstract class SumberData extends ChangeNotifier {
   @protected
   Future<void> transportCerminRiwayat({required String sesi, required String proyek, required String akun, String? sebelum, int batas = 50}) async =>
       throw const GalatKunci('tidak_tersedia');
+
+  // transport keputusan (F1b). Bawaan: tidak tersedia.
+  @protected
+  Future<void> transportJawabKeputusan(Keputusan k, String pilih, {List<List<String>>? jawaban, String? pesan}) async =>
+      throw const GalatKunci('tidak_tersedia');
+  @protected
+  Future<Map<String, Object?>?> transportKeputusanTersimpan() async => null;
+
+  /// Jawab keputusan [k]: 'tolak' (opsional [pesan] untuk Claude), 'jawab' ([jawaban] per pertanyaan), 'izinkan' /
+  /// 'izinkan_selalu' (Kotlin meminta sidik jari, K_kerjakan). Melempar GalatKunci (mis. 'dibatalkan').
+  Future<void> jawabKeputusan(Keputusan k, String pilih, {List<List<String>>? jawaban, String? pesan}) async {
+    if (!k.bisa(pilih)) throw const GalatKunci('pilihan_tidak_diizinkan');
+    try {
+      await transportJawabKeputusan(k, pilih, jawaban: jawaban, pesan: pesan);
+      k.terkirim = true;
+      _jadwalkan();
+    } on GalatKunci catch (e) {
+      tanganiGalat(e);
+      if (e.kode == 'keputusan_tidak_ada' || e.kode == 'keputusan_kedaluwarsa') {
+        keputusan = keputusan.where((x) => x.id != k.id).toList();
+        keputusanSelesai[k.id] = 'kedaluwarsa';
+      }
+      rethrow;
+    } finally {
+      beritahu();
+    }
+  }
+
+  /// Snapshot keputusan tersimpan (Kotlin) saat aplikasi dibuka, sekali.
+  @protected
+  Future<void> muatKeputusanTersimpan() async {
+    if (_keputusanTersimpanDimuat) return;
+    _keputusanTersimpanDimuat = true;
+    try {
+      final isi = await transportKeputusanTersimpan();
+      if (isi != null) terapkanKabar(isi);
+    } catch (_) {
+      // tidak ada / build non-rilis: kartu muncul saat kabar berikutnya tiba
+    }
+  }
 
   /// (diperbarui, entri) dari cache lokal, atau null.
   @protected
@@ -522,7 +618,8 @@ abstract class SumberData extends ChangeNotifier {
   }
 
   /// 3 dtk saat ada tugas aktif, sesi sedang diikuti, atau jawaban cermin ditunggu.
-  bool get _butuhCepat => adaTugasAktif || _diikuti != null || _antreDaftar.isNotEmpty || _riwayat.values.any((r) => r.memuat);
+  bool get _butuhCepat =>
+      adaTugasAktif || _diikuti != null || _antreDaftar.isNotEmpty || _riwayat.values.any((r) => r.memuat) || keputusan.any((k) => k.terkirim);
 
   bool _kantorTerlihat = false;
 
@@ -830,6 +927,57 @@ abstract class SumberData extends ChangeNotifier {
         _cermin(_peta(isi['cermin']));
       case 'cermin_riwayat':
         _cerminRiwayat(_peta(isi['cermin_riwayat']));
+      case 'keputusan':
+        _keputusan(_peta(isi['keputusan']), _angka(isi['urut_mac'])?.toInt() ?? 0);
+    }
+  }
+
+  /// Snapshot `keputusan` (F1b) menggantikan daftar; snapshot yang lebih lama (urut_mac) diabaikan.
+  void _keputusan(Map<String, Object?>? m, int urut) {
+    if (m == null || urut < _urutKeputusan) return;
+    _urutKeputusan = urut;
+    final terkirim = {for (final k in keputusan) if (k.terkirim) k.id};
+    final baru = <Keputusan>[];
+    for (final b in _daftar(m['daftar']).take(10)) {
+      final x = _peta(b);
+      if (x == null) continue;
+      final id = _teks(x['id']), dibuat = _waktu(x['dibuat']), sampai = _waktu(x['sampai']);
+      if (id == null || dibuat == null || sampai == null) continue;
+      final k = Keputusan(
+        id: id,
+        sesi: _teks(x['sesi']) ?? '',
+        proyek: _teks(x['proyek']) ?? '',
+        akun: _teks(x['akun']) ?? '',
+        jenis: _teks(x['jenis']) ?? 'izin',
+        alat: _teks(x['alat']) ?? '',
+        ringkas: _teks(x['ringkas']) ?? '',
+        boleh: [for (final p in _daftar(x['boleh'])) p.toString()],
+        dibuat: dibuat,
+        sampai: sampai,
+        pertanyaan: [
+          for (final q in _daftar(x['pertanyaan']))
+            if (_peta(q) case final qq?)
+              PertanyaanKeputusan(
+                teks: _teks(qq['teks']) ?? '',
+                judul: _teks(qq['judul']) ?? '',
+                banyak: qq['banyak'] == true,
+                pilihan: [
+                  for (final o in _daftar(qq['pilihan']))
+                    if (_peta(o) case final oo?) (_teks(oo['label']) ?? '', _teks(oo['ket']) ?? ''),
+                ],
+              ),
+        ],
+      )..terkirim = terkirim.contains(id);
+      baru.add(k);
+    }
+    keputusan = baru;
+    for (final s in _daftar(m['selesai'])) {
+      final x = _peta(s);
+      final id = _teks(x?['id']), alasan = _teks(x?['alasan']);
+      if (id != null && alasan != null) keputusanSelesai[id] = alasan;
+    }
+    while (keputusanSelesai.length > 40) {
+      keputusanSelesai.remove(keputusanSelesai.keys.first);
     }
   }
 

@@ -1,12 +1,18 @@
 package pro.padeveloper.studio.kunci
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import pro.padeveloper.studio.PantauKeputusan
 import java.util.concurrent.Executors
 
 /**
@@ -117,6 +123,25 @@ class PluginKunci(messenger: BinaryMessenger, private val aktivitas: FragmentAct
                 "batas" to (bulat(c, "batas") ?: 50L),
             ).also { opsional(c, it, "sebelum") },
         )
+        // ---- keputusan dari HP (F1b): izin/pertanyaan Claude Code
+        "kirimKeputusan" -> inti.kirimKeputusan(
+            aktivitas, teks(c, "keputusan", 32), teks(c, "pilih", 20),
+            c.argument<List<Any?>>("jawaban")?.map { q -> (q as? List<*> ?: throw IllegalArgumentException("jawaban")).map { it as? String ?: throw IllegalArgumentException("jawaban") } },
+            c.argument<String>("pesan")?.also { require(it.length <= Keputusan.MAKS_PESAN) { "pesan" } },
+        )
+        "keputusanTersimpan" -> inti.keputusanTersimpan()
+        "pantauKeputusan" -> {
+            val nyala = c.argument<Boolean>("nyala") ?: throw IllegalArgumentException("nyala")
+            inti.pantauNyala = nyala
+            if (nyala) {
+                if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(aktivitas, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    aktivitas.runOnUiThread { ActivityCompat.requestPermissions(aktivitas, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 7101) }
+                }
+                PantauKeputusan.mulai(aktivitas)
+            } else PantauKeputusan.hentikan(aktivitas)
+            nyala
+        }
+        "statusPantau" -> inti.pantauNyala
         "riwayatLokal" -> inti.riwayatLokal(teks(c, "sesi", 36))
         "hapusRiwayatLokal" -> { inti.hapusRiwayatLokal(); null }
         "simpanChat" -> { inti.simpanChat(teks(c, "proyek", 40), RiwayatChat.cekDaftar(c.argument<Any>("entri"))); null }

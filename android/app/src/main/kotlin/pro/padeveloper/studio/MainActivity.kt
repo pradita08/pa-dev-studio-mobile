@@ -5,6 +5,7 @@ import android.view.WindowManager
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import pro.padeveloper.studio.kantor.PabrikKantor3d
+import pro.padeveloper.studio.kunci.Inti
 import pro.padeveloper.studio.kunci.PluginKunci
 
 /** FlutterFragmentActivity: dibutuhkan androidx.biometric (BiometricPrompt). */
@@ -21,6 +22,8 @@ class MainActivity : FlutterFragmentActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         plugin = PluginKunci(flutterEngine.dartExecutor.binaryMessenger, this)
+        // F1b: pemantau latar keputusan dinyalakan lagi saat aplikasi dibuka (bila owner menyalakannya di Pengaturan)
+        if (runCatching { Inti.dari(this).pantauNyala }.getOrDefault(false)) PantauKeputusan.mulai(this)
         // Kantor 3D (F2): WebView terkunci tanpa jembatan ke kunci (lihat kantor/Kantor3d.kt)
         flutterEngine.platformViewsController.registry
             .registerViewFactory(PabrikKantor3d.JENIS, PabrikKantor3d(flutterEngine.dartExecutor.binaryMessenger))

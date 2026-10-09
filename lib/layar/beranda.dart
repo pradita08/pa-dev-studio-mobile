@@ -7,6 +7,7 @@ import '../komponen/komponen.dart';
 import '../kunci/kunci.dart';
 import '../tema/token.dart';
 import 'data.dart';
+import 'keputusan.dart';
 
 /// Proyek yang nama/id-nya memuat kata cari (tanpa beda huruf besar/kecil); kata kosong → semua.
 List<Proyek> saringProyek(List<Proyek> proyek, String kata) {
@@ -80,6 +81,7 @@ class _LayarBerandaState extends State<LayarBeranda> {
         ));
       } else {
         butir.add(Padding(padding: const EdgeInsets.only(bottom: 10), child: _KartuMac(sumber: s)));
+        butir.add(PitaKeputusan(sumber: s)); // F1b: izin/pertanyaan Claude menunggu jawaban HP
       }
 
       if (s.statusBelumAda) {

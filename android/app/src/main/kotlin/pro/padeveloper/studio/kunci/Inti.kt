@@ -235,7 +235,7 @@ class Inti(context: Context) {
         }
         if (catat) brankas.simpan(K_REPLAY, penyimpan.keJson())
         // K-07/SEC-86: kabar cermin hanya diteruskan di build rilis (build lain = data contoh); dibuang diam (bukan serangan).
-        if (h.isi!!["jenis"] in Cermin.JENIS_KABAR && !BuildConfig.CERMIN_NYATA) return null
+        if ((h.isi!!["jenis"] in Cermin.JENIS_KABAR || h.isi["jenis"] in Keputusan.JENIS_KABAR) && !BuildConfig.CERMIN_NYATA) return null
         if (catat) terapkanKabar(h.isi)
         return h.isi
     }
@@ -248,6 +248,7 @@ class Inti(context: Context) {
                 ubahPasangan { it["status"] = if (ok) "aktif" else "ditolak"; it.remove("sas") }
             }
             "status" -> simpanStatus(isi)
+            "keputusan" -> simpanKeputusan(isi)
             // Riwayat cermin → cache terenkripsi. Layar terkunci/kunci tak bisa dipakai → dilewati (kabar tetap diteruskan ke Dart).
             "cermin_riwayat" -> {
                 @Suppress("UNCHECKED_CAST")
@@ -259,6 +260,61 @@ class Inti(context: Context) {
                 if (baru != null && baru.size == 32) ubahPasangan { it["e_mac"] = B64u.enk(baru) }
             }
         }
+    }
+
+    /** Snapshot keputusan terakhir (F1b) — sumber teks BiometricPrompt "izinkan" (SEC-51); tidak boleh mundur (urut_mac). */
+    private fun simpanKeputusan(isi: Map<String, Any>) {
+        val lama = brankas.baca(K_KEPUTUSAN)?.let { runCatching { JsonKetat.objek(it)["urut_mac"] as? Long }.getOrNull() } ?: -1L
+        if ((isi["urut_mac"] as Long) > lama) brankas.simpan(K_KEPUTUSAN, Jcs.teks(isi))
+    }
+
+    private fun snapshotKeputusan(): Map<String, Any>? = brankas.baca(K_KEPUTUSAN)?.let { runCatching { JsonKetat.objek(it) }.getOrNull() }
+
+    /** Snapshot keputusan tersimpan untuk Dart saat aplikasi dibuka (isi kabar `keputusan` yang sudah diverifikasi) atau null. */
+    fun keputusanTersimpan(): Map<String, Any?>? {
+        if (!BuildConfig.CERMIN_NYATA) return null
+        return snapshotKeputusan()?.let { petaKeDart(it) }
+    }
+
+    /**
+     * Jawaban keputusan (F1b): tolak/jawab ditandatangani K_rencana; izinkan/izinkan_selalu WAJIB K_kerjakan (BIOMETRIC_STRONG +
+     * CryptoObject) dengan teks prompt yang disusun Kotlin dari butir snapshot terverifikasi (alat, proyek, ringkas) — SEC-51.
+     * Pilihan harus ada di `boleh` butir itu (Mac memeriksa ulang). Hanya build rilis (K-07).
+     */
+    fun kirimKeputusan(aktivitas: FragmentActivity, keputusan: String, pilih: String, jawaban: List<List<String>>?, pesan: String?): Map<String, Any?> {
+        if (!BuildConfig.CERMIN_NYATA) throw GalatKunci("tidak_tersedia")
+        val butir = Keputusan.cariButir(snapshotKeputusan(), keputusan) ?: throw GalatKunci("keputusan_tidak_ada")
+        if ((butir["sampai"] as? Long ?: 0L) < System.currentTimeMillis()) throw GalatKunci("keputusan_kedaluwarsa")
+        if ((butir["boleh"] as? List<*>)?.contains(pilih) != true) throw GalatKunci("pilihan_tidak_diizinkan")
+        val tambahan = linkedMapOf<String, Any>("keputusan" to keputusan, "pilih" to pilih)
+        jawaban?.let { tambahan["jawaban"] = it }
+        pesan?.trim()?.takeIf { it.isNotEmpty() }?.let { tambahan["pesan"] = it }
+        try {
+            Perintah.isi("keputusan_jawab", NOL16, NOL16, NOL32, 0, 1, 2, tambahan)
+        } catch (e: GalatKunci) {
+            throw GalatKunci("argumen_tidak_sah")
+        }
+        if (pilih !in Keputusan.PILIH_KERJAKAN) return kirimPerintah(aktivitas, "keputusan_jawab", tambahan)
+        val p = pasanganAktif()
+        val kk = KunciKeystore.info(KunciKeystore.KERJAKAN) ?: throw GalatKunci("kunci_tidak_ada")
+        val sekarang = System.currentTimeMillis()
+        val id = Kripto.acakHeks(16)
+        val kd = Perintah.kedaluwarsa("keputusan_jawab", null, sekarang)
+        val isi = Perintah.isi("keputusan_jawab", p.macId, p.perangkatId, id, urutBerikut(), sekarang, kd, tambahan)
+        val draf = AmplopV1.siapkan("perintah", kk.id, p.eMac, isi, kd, id)
+        val alat = (butir["alat"] as? String ?: "alat").take(40)
+        val ringkas = (butir["ringkas"] as? String ?: "").replace(Regex("\\s+"), " ").trim().let { if (it.length > 200) it.take(200) + "…" else it }
+        val teks = Biometrik.Teks(
+            judul = if (butir["jenis"] == "rencana") "Setujui rencana · ${(butir["proyek"] as? String ?: "").take(40)}"
+            else "Izinkan $alat · ${(butir["proyek"] as? String ?: "").take(40)}",
+            subjudul = if (pilih == "izinkan_selalu") "Izinkan SELALU untuk input yang sama persis" else "Sekali ini saja",
+            keterangan = ringkas.ifEmpty { null },
+        )
+        val sig = Biometrik.konfirmasiKerjakan(aktivitas, teks, KunciKeystore.signature(KunciKeystore.KERJAKAN))
+            ?: throw GalatKunci("dibatalkan")
+        sig.update(draf.inputTanda)
+        val amplop = draf.selesaikan(sig.sign())
+        return kirimAmplop(p, id, amplop)
     }
 
     private fun simpanStatus(isi: Map<String, Any>) {
@@ -319,6 +375,50 @@ class Inti(context: Context) {
         }
         return hasil
     }
+
+    // ------------------------------------------------------------------ pemantau latar keputusan (F1b, PantauKeputusan)
+
+    /**
+     * MENGINTIP hp/kabar tanpa akui & tanpa memajukan kursor/anti-replay (kabar yang sama tetap diambil ambilKabar saat aplikasi
+     * dibuka): amplop diverifikasi seperti jalur FCM (catat = false). Mengembalikan butir keputusan menunggu yang BELUM pernah
+     * diberitahukan (id dicatat, ≤ 50). Hanya build rilis (K-07); belum terpasang/dicabut → kosong.
+     */
+    fun intipKeputusanBaru(): List<Map<String, Any>> {
+        if (!BuildConfig.CERMIN_NYATA) return emptyList()
+        val p = pasangan()?.takeIf { it.status == "aktif" } ?: return emptyList()
+        val r = relay(p)
+        var setelah = brankas.baca(K_KABAR_SETELAH)?.takeIf { Regex("^[0-9A-Za-z_-]{1,64}$").matches(it) }
+        var terbaru: Map<String, Any>? = null
+        for (halaman in 0 until 5) {
+            val d = r.panggil("GET", "hp/kabar?batas=20" + (setelah?.let { "&setelah=$it" } ?: "")).data ?: break
+            @Suppress("UNCHECKED_CAST")
+            val daftar = d["kabar"] as? List<Map<String, Any>> ?: break
+            for (k in daftar) {
+                val a = AmplopV1.teks(k["amplop"]) ?: continue
+                val isi = runCatching { periksaKabar(a, catat = false) }.getOrNull() ?: continue
+                if (isi["jenis"] == "keputusan" && (isi["urut_mac"] as Long) > ((terbaru?.get("urut_mac") as? Long) ?: -1L)) terbaru = isi
+            }
+            val akhir = daftar.lastOrNull()?.get("id")?.toString()?.takeIf { Regex("^[0-9A-Za-z_-]{1,64}$").matches(it) } ?: break
+            if (d["lagi"] != true || daftar.isEmpty()) break
+            setelah = akhir
+        }
+        val snap = terbaru ?: snapshotKeputusan() ?: return emptyList()
+        val kini = System.currentTimeMillis()
+        @Suppress("UNCHECKED_CAST")
+        val butir = ((snap["keputusan"] as? Map<String, Any>)?.get("daftar") as? List<Map<String, Any>> ?: emptyList())
+            .filter { ((it["sampai"] as? Long) ?: 0L) > kini }
+        val sudah = (brankas.baca(K_DIBERITAHU) ?: "").split(',').filter { it.isNotEmpty() }.toMutableList()
+        val baru = butir.filter { (it["id"] as? String) !in sudah }
+        if (baru.isNotEmpty()) {
+            sudah += baru.mapNotNull { it["id"] as? String }
+            brankas.simpan(K_DIBERITAHU, sudah.takeLast(50).joinToString(","))
+        }
+        return baru
+    }
+
+    var pantauNyala: Boolean
+        get() = brankas.baca(K_PANTAU) == "1"
+        set(v) = brankas.simpan(K_PANTAU, if (v) "1" else null)
 
     // ------------------------------------------------------------------ cermin sesi (KONTRAK-apk-v2 §2.1, §6.3; F1)
 
@@ -481,6 +581,9 @@ class Inti(context: Context) {
         private const val K_URUT = "urut"
         private const val K_REPLAY = "replay"
         private const val K_STATUS = "status"
+        private const val K_KEPUTUSAN = "keputusan"
+        private const val K_DIBERITAHU = "keputusan_diberitahu"
+        private const val K_PANTAU = "pantau_keputusan"
         private const val K_KABAR_SETELAH = "kabar_setelah"
         private const val K_TIDAK_SAH = "tidak_sah"
         private const val K_FCM = "fcm"

@@ -37,6 +37,9 @@ class GalatKunci implements Exception {
     'tidak_tersedia': 'Tidak tersedia di build ini.',
     'kamera_tidak_tersedia': 'HP ini tidak punya kamera yang bisa dipakai untuk memindai QR.',
     'sedang_memindai': 'Pemindai QR sedang terbuka.',
+    'keputusan_tidak_ada': 'Permintaan ini sudah tidak menunggu (dijawab di Mac atau dibatalkan).',
+    'keputusan_kedaluwarsa': 'Waktu menjawab sudah habis — Claude kembali menunggu di Mac.',
+    'pilihan_tidak_diizinkan': 'Pilihan ini tidak diizinkan untuk proyek/HP ini (atur tingkat keputusan di Mac).',
   };
 
   @override
@@ -275,6 +278,21 @@ abstract final class Kunci {
     int batas = 50,
   }) async =>
       HasilKirim._(await _peta('cerminRiwayat', {'sesi': sesi, 'proyek': proyek, 'akun': akun, 'sebelum': sebelum, 'batas': batas}));
+
+  /// Jawaban keputusan (F1b): tolak/jawab (K_rencana) atau izinkan/izinkan_selalu (Kotlin menampilkan BiometricPrompt sendiri,
+  /// K_kerjakan). [jawaban] = label/teks per pertanyaan, hanya untuk `jawab`. Hanya build rilis (K-07).
+  static Future<HasilKirim> kirimKeputusan({required String keputusan, required String pilih, List<List<String>>? jawaban, String? pesan}) async =>
+      HasilKirim._(await _peta('kirimKeputusan', {'keputusan': keputusan, 'pilih': pilih, 'jawaban': jawaban, 'pesan': pesan}));
+
+  /// Snapshot keputusan terakhir yang sudah diverifikasi Kotlin (isi kabar `keputusan`), atau null.
+  static Future<Map<String, Object?>?> keputusanTersimpan() async {
+    final m = await _p<Map>('keputusanTersimpan');
+    return m == null ? null : Map<String, Object?>.from(m);
+  }
+
+  /// Pemantau latar keputusan (layanan foreground, mengintip relay tiap 30 dtk → notifikasi "Claude butuh keputusan").
+  static Future<bool> pantauKeputusan(bool nyala) async => (await _p<bool>('pantauKeputusan', {'nyala': nyala})) ?? false;
+  static Future<bool> statusPantau() async => (await _p<bool>('statusPantau')) ?? false;
 
   /// Riwayat sesi dari cache lokal (tanpa jaringan). null = belum ada / layar terkunci / cache rusak (dibuang).
   static Future<RiwayatLokal?> riwayatLokal(String sesi) async {

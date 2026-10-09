@@ -15,6 +15,7 @@ class SumberNyata extends SumberData {
     if (t != null) macTerakhir = DateTime.fromMillisecondsSinceEpoch(t < 100000000000 ? t * 1000 : t);
     if (halo.perangkat == 'dicabut') dicabut = true;
     terapkanStatus(halo.status);
+    await muatKeputusanTersimpan();
     for (final isi in await Kunci.ambilKabar()) {
       terapkanKabar(isi);
     }
@@ -63,6 +64,14 @@ class SumberNyata extends SumberData {
 
   @override
   Future<void> transportHentikan(Tugas t) => Kunci.hentikan(t.tugas);
+
+  // ---- keputusan dari HP (F1b): izinkan* → Kotlin menampilkan BiometricPrompt sendiri (K_kerjakan)
+  @override
+  Future<void> transportJawabKeputusan(Keputusan k, String pilih, {List<List<String>>? jawaban, String? pesan}) =>
+      Kunci.kirimKeputusan(keputusan: k.id, pilih: pilih, jawaban: jawaban, pesan: pesan);
+
+  @override
+  Future<Map<String, Object?>?> transportKeputusanTersimpan() => Kunci.keputusanTersimpan();
 
   @override
   Future<void> transportHapusSesi(String proyek, String akun) => Kunci.hapusSesi(proyek: proyek, akun: akun);

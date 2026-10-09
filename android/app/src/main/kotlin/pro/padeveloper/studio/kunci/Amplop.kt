@@ -47,15 +47,16 @@ object AmplopV1 {
     val JENIS_KOTAK = listOf("perintah", "kabar", "pasang", "darurat")
     val JENIS_PERINTAH = listOf(
         "jalankan", "hentikan", "hapus_sesi", "minta_status", "perbarui_fcm", "rotasi_kunci", "lepas_diri", "cabut_perangkat",
-    ) + Cermin.JENIS_PERINTAH // KONTRAK-apk-v2 §2.1 (F1)
-    val JENIS_KABAR = listOf("tanda_terima", "kabar", "status", "notif", "pasang_hasil", "kunci_mac") + Cermin.JENIS_KABAR // v2 §2.2
+    ) + Cermin.JENIS_PERINTAH + Keputusan.JENIS_PERINTAH // KONTRAK-apk-v2 §2.1 (F1), keputusan_jawab (F1b)
+    val JENIS_KABAR = listOf("tanda_terima", "kabar", "status", "notif", "pasang_hasil", "kunci_mac") + Cermin.JENIS_KABAR +
+        Keputusan.JENIS_KABAR // v2 §2.2, keputusan (F1b)
     val HASIL_TANDA_TERIMA = listOf("diterima", "ditolak", "mulai", "selesai", "gagal", "dihentikan", "batas_waktu")
 
     /** Masa berlaku maksimum (dipaksakan Mac; HP memakai nilai yang sama saat membuat perintah). */
     val MASA_MAKS = mapOf(
         "jalankan_kerjakan" to 3 * MENIT, "jalankan_rencana" to 10 * MENIT, "hapus_sesi" to 10 * MENIT,
         "rotasi_kunci" to 10 * MENIT, "hentikan" to 30 * MENIT, "lainnya" to 10 * MENIT, "pasang" to 10 * MENIT,
-        "kabar" to 72 * 60 * MENIT,
+        "kabar" to 72 * 60 * MENIT, "keputusan_jawab" to 3 * MENIT,
     )
 
     private val AWALAN_TANDA = "PADEV-STUDIO-AMPLOP-v1\n".toByteArray(Charsets.UTF_8)
@@ -188,13 +189,15 @@ object AmplopV1 {
     /** Isi perintah HP→Mac (ketat: field asing ditolak). null = sah. */
     fun cekIsiPerintah(isi: Any?): String? {
         if (isi !is Map<*, *> || isi["jenis"] !in JENIS_PERINTAH) return Alasan.ISI_BENTUK
-        val skema = UMUM_PERINTAH + (isi["jenis"] as String).let { SKEMA_PERINTAH[it] ?: Cermin.SKEMA_PERINTAH.getValue(it) }
+        val skema = UMUM_PERINTAH + (isi["jenis"] as String).let {
+            SKEMA_PERINTAH[it] ?: Cermin.SKEMA_PERINTAH[it] ?: Keputusan.SKEMA_PERINTAH.getValue(it)
+        }
         for (k in isi.keys) if (k !in skema) return Alasan.ISI_BENTUK
         for ((k, aturan) in skema) {
             val (wajib, cek) = aturan
             if (isi.containsKey(k)) { if (!cek(isi[k])) return Alasan.ISI_BENTUK } else if (wajib) return Alasan.ISI_BENTUK
         }
-        return Cermin.cekSilangPerintah(isi)
+        return Cermin.cekSilangPerintah(isi) ?: Keputusan.cekSilangPerintah(isi)
     }
 
     /** Isi kabar Mac→HP (field umum + tanda_terima ketat; jenis lain bentuk bebas). null = sah. */
@@ -210,6 +213,7 @@ object AmplopV1 {
             ) return Alasan.ISI_BENTUK
         }
         if (isi["jenis"] in Cermin.JENIS_KABAR) return Cermin.cekIsiKabar(isi) // v2: ketat, field tak dikenal ditolak
+        if (isi["jenis"] in Keputusan.JENIS_KABAR) return Keputusan.cekIsiKabar(isi) // F1b: ketat
         return null
     }
 

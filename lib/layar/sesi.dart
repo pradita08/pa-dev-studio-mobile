@@ -12,6 +12,7 @@ import '../pratinjau/contoh.dart';
 import '../pratinjau/pita.dart';
 import '../tema/token.dart';
 import 'data.dart';
+import 'keputusan.dart';
 import 'sesi_detail.dart';
 
 class LayarSesi extends StatefulWidget {
@@ -103,6 +104,7 @@ class _LayarSesiState extends State<LayarSesi> {
       ),
     ];
 
+    butir.add(PitaKeputusan(sumber: s)); // F1b
     if (s.cerminTersedia == false) {
       butir.add(_TidakTersedia(rilis: kReleaseMode));
     } else if (s.cerminTersedia == null || (s.memuatDaftarSesi && !s.daftarSesiDiterima && !s.daftarLambat)) {

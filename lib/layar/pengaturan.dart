@@ -158,6 +158,7 @@ class LayarPengaturan extends StatelessWidget {
               bg: (pr?.fcmAktif ?? false) ? w.okb : w.chip,
             ),
           ),
+          if (!sumber.pratinjau) const _SakelarPantau(),
           BarisPengaturan(
             ikon: Simbol.terenkripsi,
             judul: 'Isi jawaban tidak pernah di notifikasi',
@@ -269,6 +270,53 @@ class LayarPengaturan extends StatelessWidget {
           ]),
         ],
       ],
+    );
+  }
+}
+
+/// F1b: pemantau latar keputusan (layanan foreground PantauKeputusan). Tidak tersedia (pratinjau/uji/build lama) → disembunyikan.
+class _SakelarPantau extends StatefulWidget {
+  const _SakelarPantau();
+  @override
+  State<_SakelarPantau> createState() => _SakelarPantauState();
+}
+
+class _SakelarPantauState extends State<_SakelarPantau> {
+  bool? _nyala;
+  bool _sibuk = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Kunci.statusPantau().then((v) {
+      if (mounted) setState(() => _nyala = v);
+    }, onError: (_) {});
+  }
+
+  Future<void> _ubah(bool v) async {
+    setState(() => _sibuk = true);
+    try {
+      final hasil = await Kunci.pantauKeputusan(v);
+      if (mounted) setState(() => _nyala = hasil);
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pemantau tidak bisa diubah di build ini.')));
+    } finally {
+      if (mounted) setState(() => _sibuk = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final w = WarnaPadev.dari(context);
+    final nyala = _nyala;
+    if (nyala == null) return const SizedBox.shrink();
+    return BarisPengaturan(
+      ikon: Simbol.tangan,
+      judul: 'Beri tahu saat Claude butuh keputusan',
+      sub: nyala
+          ? 'Aktif · cek ke Mac tiap 30 dtk walau aplikasi ditutup. POCO/HyperOS: Baterai PADEV Studio → Tanpa batasan.'
+          : 'Izin & pertanyaan Claude saat Anda tidak di Mac (aplikasi ditutup)',
+      ekor: Switch(value: nyala, activeTrackColor: w.accent, onChanged: _sibuk ? null : _ubah),
     );
   }
 }
