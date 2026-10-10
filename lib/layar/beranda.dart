@@ -154,7 +154,7 @@ class _LayarBerandaState extends State<LayarBeranda> {
             macPutus: s.macTersambung == false,
             onTap: cari ? null : () => s.bukaGrup(g, !buka),
           ));
-          if (buka) butir.addAll(daftar.map(kartu));
+          if (buka) butir.addAll(daftar.map((p) => Padding(padding: const EdgeInsets.only(left: 14), child: kartu(p))));
         }
       }
     }
@@ -215,7 +215,8 @@ class _LayarBerandaState extends State<LayarBeranda> {
       );
 }
 
-/// Kepala bagian grup: nama folder, jumlah proyek, ringkasan yang butuh izin / bekerja (tetap terlihat saat dilipat).
+/// Kepala bagian grup (baris seperti kartu): ikon folder, nama, jumlah proyek, ringkasan butuh izin / bekerja (tetap terlihat
+/// saat dilipat), panah di tepi kanan.
 class _KepalaGrup extends StatelessWidget {
   const _KepalaGrup({required this.nama, required this.proyek, required this.buka, required this.macPutus, this.onTap});
   final String nama;
@@ -229,48 +230,58 @@ class _KepalaGrup extends StatelessWidget {
     final bekerja = macPutus ? 0 : proyek.where((p) => p.status == StatusProyek.bekerja).length;
     final izin = macPutus ? 0 : proyek.where((p) => p.status == StatusProyek.menungguIzin).length;
     final ket = [if (izin > 0) '$izin butuh izin', if (bekerja > 0) '$bekerja bekerja'];
-    return Semantics(
-      button: onTap != null,
-      expanded: buka,
-      label: '$nama, ${proyek.length} proyek${ket.isEmpty ? '' : ', ${ket.join(', ')}'}',
-      excludeSemantics: true,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: onTap,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 44),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(4, 4, 4, 6),
-            child: Row(children: [
-              Icon(buka ? Simbol.folderBuka : Simbol.folder, size: 20, color: w.muted),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(nama,
-                    style: TextStyle(color: w.ink, fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: .3),
-                    overflow: TextOverflow.ellipsis),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-                decoration: BoxDecoration(color: w.chip, borderRadius: BorderRadius.circular(99)),
-                child: Text('${proyek.length}', style: TextStyle(color: w.muted, fontSize: 12, fontWeight: FontWeight.w700)),
-              ),
-              if (izin > 0) ...[
-                const SizedBox(width: 6),
-                ChipPadev(ikon: Simbol.tangan, label: '$izin', fg: w.warnt, bg: w.warnb),
-              ],
-              if (bekerja > 0) ...[
-                const SizedBox(width: 6),
-                ChipPadev(ikon: Simbol.putar, label: '$bekerja', fg: w.accent, bg: w.accb),
-              ],
-              const Spacer(),
-              if (onTap != null)
-                AnimatedRotation(
-                  turns: buka ? .5 : 0,
-                  duration: const Duration(milliseconds: 150),
-                  child: Icon(Simbol.bawah, color: w.muted),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Semantics(
+        button: onTap != null,
+        expanded: buka,
+        label: '$nama, ${proyek.length} proyek${ket.isEmpty ? '' : ', ${ket.join(', ')}'}',
+        excludeSemantics: true,
+        child: Material(
+          color: w.panel,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(UkuranPadev.radiusKartu), side: BorderSide(color: w.line)),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+              child: Row(children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(color: w.chip, borderRadius: BorderRadius.circular(10)),
+                  child: Icon(buka ? Simbol.folderBuka : Simbol.folder, size: 20, color: w.ink),
                 ),
-            ]),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Row(children: [
+                    Flexible(
+                      child: Text(nama,
+                          style: TextStyle(color: w.ink, fontSize: 15, fontWeight: FontWeight.w800, letterSpacing: .2),
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                    const SizedBox(width: 8),
+                    Text('${proyek.length}', style: TeksPadev.redup(w, ukuran: 13)),
+                    if (izin > 0) ...[
+                      const SizedBox(width: 8),
+                      ChipPadev(ikon: Simbol.tangan, label: '$izin', fg: w.warnt, bg: w.warnb),
+                    ],
+                    if (bekerja > 0) ...[
+                      const SizedBox(width: 6),
+                      ChipPadev(ikon: Simbol.putar, label: '$bekerja', fg: w.accent, bg: w.accb),
+                    ],
+                  ]),
+                ),
+                if (onTap != null) ...[
+                  const SizedBox(width: 8),
+                  AnimatedRotation(
+                    turns: buka ? .5 : 0,
+                    duration: const Duration(milliseconds: 150),
+                    child: Icon(Simbol.bawah, size: 24, color: w.muted),
+                  ),
+                ],
+              ]),
+            ),
           ),
         ),
       ),
