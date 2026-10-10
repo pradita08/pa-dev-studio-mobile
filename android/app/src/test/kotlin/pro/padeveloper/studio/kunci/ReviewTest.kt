@@ -98,13 +98,11 @@ class ReviewTest {
     @Test
     fun cariButirDanTeksSidikJari() {
         val b = butir("lebih" to 2L, "belumPush" to 3L)
-        @Suppress("UNCHECKED_CAST")
         val snap = mapOf<String, Any>("review" to mapOf("daftar" to listOf(b)))
         val ada = Review.cariButir(snap, id)
         assertNotNull(ada)
         assertNull(Review.cariButir(snap, "c".repeat(32)))
-        @Suppress("UNCHECKED_CAST")
-        val (judul, sub, ket) = Review.teksSidikJari(ada as Map<String, Any>, "commit", "Fitur A")
+        val (judul, sub, ket) = Review.teksSidikJari(ada!!, "commit", "Fitur A")
         assertEquals("Commit 3 berkas · p1", judul)
         assertEquals("Cabang main", sub)
         assertTrue(ket!!.contains("\"Fitur A\"") && ket.contains("src/a.php"))
