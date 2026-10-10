@@ -39,6 +39,13 @@ class LayananFcm : FirebaseMessagingService() {
                 "divisi" -> "Divisi selesai"
                 "izin" -> "Menunggu izin di laptop"
                 "mac_terputus" -> return "Mac terputus"
+                "antre" -> "Tugas antrean mulai (limit pulih)"
+                "limit" -> {
+                    val akun = (n["akun"] as? String)?.take(40) ?: "Akun"
+                    val persen = (n["persen"] as? Number)?.toInt()
+                    val batas = if (n["batas"] == "7h") "7 hari" else "5 jam"
+                    return "Limit $akun $batas${if (persen == null) "" else " $persen%"}"
+                }
                 else -> "Ada kabar baru"
             }
             return if (proyek.isNullOrBlank()) apa else "$proyek · $apa"

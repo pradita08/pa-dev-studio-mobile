@@ -167,6 +167,8 @@ object AmplopV1 {
             "mode" to (true to { v: Any? -> v == "rencana" || v == "kerjakan" }),
             "pesan" to (true to { v: Any? -> v is String && v.length <= MAKS_PESAN }),
             "baru" to (true to { v: Any? -> v is Boolean }), "model" to (false to { v: Any? -> str(v, 100) }),
+            // roadmap 3: Mac boleh memilih akun proyek lain dengan sisa limit terbanyak (hanya bila status.fitur berisi akun_otomatis)
+            "otomatis" to (false to { v: Any? -> v is Boolean }),
         ),
         "hentikan" to mapOf("tugas" to (true to { v: Any? -> str(v, 200) })),
         "hapus_sesi" to mapOf("proyek" to (true to { v: Any? -> str(v, 200) }), "akun" to (true to { v: Any? -> str(v, 200) })),

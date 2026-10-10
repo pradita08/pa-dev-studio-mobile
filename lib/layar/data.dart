@@ -37,11 +37,38 @@ class Divisi {
   final String? ringkas;
 }
 
+/// Limit akun Claude dari `status.limit` (roadmap 3; Mac: ambil-limit.js → limit.json). [persen]/[reset] = blok 5 jam
+/// (jam reset "HH:MM"), [persen7h]/[waktuReset7h] = 7 hari. [lama] = data Mac > 20 mnt (tidak dipakai menahan tugas).
 class LimitAkun {
-  const LimitAkun({required this.akun, required this.persen, this.reset});
+  const LimitAkun({required this.akun, this.persen, this.reset, this.waktuReset5j, this.persen7h, this.waktuReset7h, this.lama = false});
   final String akun;
-  final double persen;
+  final double? persen;
   final String? reset;
+  final DateTime? waktuReset5j;
+  final double? persen7h;
+  final DateTime? waktuReset7h;
+  final bool lama;
+}
+
+/// Pemakaian satu tugas (kabar akhir `pemakaian`): token (masuk+keluar+cache), giliran, biaya setara API (USD).
+class PemakaianTugas {
+  const PemakaianTugas({required this.token, required this.giliran, required this.biaya});
+  final int token, giliran;
+  final double biaya;
+}
+
+/// Ringkasan pemakaian dari `status.pemakaian` (hari ini + 7 hari per proyek & per akun).
+class RingkasPemakaian {
+  const RingkasPemakaian({required this.hariIni, required this.proyek, required this.akun});
+  final ButirPemakaian hariIni;
+  final List<ButirPemakaian> proyek, akun;
+}
+
+class ButirPemakaian {
+  const ButirPemakaian({this.nama = '', required this.token, required this.biaya, required this.tugas});
+  final String nama;
+  final int token, tugas;
+  final double biaya;
 }
 
 class Proyek {
@@ -109,7 +136,7 @@ class LangkahAlat {
       };
 }
 
-enum TahapTugas { mengirim, gagalKirim, menungguDiambil, diterima, bekerja, selesai, gagal, dihentikan, batasWaktu, ditolak, kedaluwarsa }
+enum TahapTugas { mengirim, gagalKirim, menungguDiambil, diterima, antre, bekerja, selesai, gagal, dihentikan, batasWaktu, ditolak, kedaluwarsa }
 
 class Tugas {
   Tugas({
@@ -120,11 +147,22 @@ class Tugas {
     required this.pesan,
     required this.baru,
     required this.dibuat,
+    this.otomatis = false,
   });
 
   final String tugas, proyek, akun, mode, pesan;
   final bool baru;
   final DateTime dibuat;
+
+  /// Roadmap 3: Mac boleh memilih akun lain dengan sisa limit terbanyak ([akun] = akun awal yang diminta).
+  final bool otomatis;
+
+  /// Akun yang benar-benar dipakai Mac (kabar `mulai`), bila berbeda dari [akun].
+  String? akunDipakai;
+
+  /// Tahap [TahapTugas.antre]: Mac mencoba lagi sendiri paling lambat jam ini (reset limit terdekat).
+  DateTime? antreSampai;
+  PemakaianTugas? pemakaian;
   String? perintahId;
   DateTime? kedaluwarsa;
   TahapTugas tahap = TahapTugas.mengirim;
@@ -138,7 +176,8 @@ class Tugas {
   int urut = -1;
 
   bool get aktif =>
-      tahap == TahapTugas.mengirim || tahap == TahapTugas.menungguDiambil || tahap == TahapTugas.diterima || tahap == TahapTugas.bekerja;
+      tahap == TahapTugas.mengirim || tahap == TahapTugas.menungguDiambil || tahap == TahapTugas.diterima || tahap == TahapTugas.antre ||
+      tahap == TahapTugas.bekerja;
 
   /// Bentuk simpan riwayat chat (Kotlin RiwayatChat.cekEntri memeriksa kunci & batas yang sama).
   Map<String, Object?> keEntri() {
@@ -157,6 +196,10 @@ class Tugas {
       'batasMenit': ?batasMenit,
       'durasiMs': ?durasi?.inMilliseconds,
       'urut': urut,
+      if (otomatis) 'otomatis': true,
+      'akunDipakai': ?akunDipakai,
+      'sampai': ?antreSampai?.millisecondsSinceEpoch,
+      if (pemakaian case final p?) ...{'token': p.token, 'giliran': p.giliran, 'biayaSen': (p.biaya * 100).round()},
       if (t.isNotEmpty) 'teks': t.length > 32000 ? t.substring(t.length - 32000) : t,
       'alasan': ?(alasan == null || alasan!.length <= 500 ? alasan : alasan!.substring(0, 500)),
       if (alat.isNotEmpty) 'alat': [for (final a in alat.skip(alat.length > 50 ? alat.length - 50 : 0)) a.keEntri()],
@@ -171,7 +214,10 @@ class Tugas {
     final tahap = TahapTugas.values.where((x) => x.name == e['tahap']).firstOrNull;
     if (tahap == null) return null;
     DateTime? jam(Object? v) => v is int ? DateTime.fromMillisecondsSinceEpoch(v) : null;
-    final t = Tugas(tugas: id, proyek: proyek, akun: akun, mode: mode, pesan: pesan, baru: e['baru'] == true, dibuat: jam(waktu)!)
+    final t = Tugas(
+        tugas: id, proyek: proyek, akun: akun, mode: mode, pesan: pesan, baru: e['baru'] == true, dibuat: jam(waktu)!, otomatis: e['otomatis'] == true)
+      ..akunDipakai = e['akunDipakai'] as String?
+      ..antreSampai = jam(e['sampai'])
       ..perintahId = e['perintahId'] as String?
       ..kedaluwarsa = jam(e['kedaluwarsa'])
       ..mulai = jam(e['mulai'])
@@ -180,6 +226,9 @@ class Tugas {
       ..urut = e['urut'] is int ? e['urut'] as int : -1
       ..tahap = tahap;
     if (e['durasiMs'] case final int ms) t.durasi = Duration(milliseconds: ms);
+    if (e['token'] case final int tk) {
+      t.pemakaian = PemakaianTugas(token: tk, giliran: e['giliran'] is int ? e['giliran'] as int : 0, biaya: (e['biayaSen'] is int ? e['biayaSen'] as int : 0) / 100);
+    }
     if (e['teks'] case final String x) t.teks.write(x);
     LangkahAlat? langkah(Object? v) => v is Map && v['alat'] is String && v['ringkas'] is String ? LangkahAlat(v['alat'] as String, v['ringkas'] as String) : null;
     if (e['alat'] case final List l) t.alat.addAll(l.map(langkah).whereType<LangkahAlat>());
@@ -192,14 +241,18 @@ class Tugas {
   }
 }
 
-enum JenisKabar { selesai, divisi, izin, macTerputus }
+enum JenisKabar { selesai, divisi, izin, macTerputus, limit, antre }
 
 class ButirKabar {
-  ButirKabar({required this.jenis, required this.waktu, this.proyek, this.proyekId, this.n, this.durasiDtk});
+  ButirKabar({required this.jenis, required this.waktu, this.proyek, this.proyekId, this.n, this.durasiDtk, this.akun, this.batas, this.reset});
   final JenisKabar jenis;
   final DateTime waktu;
   final String? proyek, proyekId;
+
+  /// [n] = jumlah divisi (divisi) / persen limit (limit). [akun] = akun limit / akun tugas antrean. [batas] = '5j' | '7h'.
   final int? n, durasiDtk;
+  final String? akun, batas;
+  final DateTime? reset;
   bool dibaca = false;
 }
 
@@ -546,6 +599,18 @@ abstract class SumberData extends ChangeNotifier {
   Map<String, String> namaProyekSemua = const {};
   String namaProyek(String id) => namaProyekSemua[id] ?? cariProyek(id)?.nama ?? id;
   List<LimitAkun>? limit;
+
+  /// Roadmap 3: ringkasan pemakaian token dari Mac (null = Mac lama / belum ada data).
+  RingkasPemakaian? pemakaian;
+
+  /// Fitur Mac dari `status.fitur` (mis. 'akun_otomatis', 'antre_limit'); kosong = pelaksana lama.
+  Set<String> fiturMac = const {};
+
+  /// Tugas HP ini yang menunggu limit akun pulih di Mac (`status.antre`).
+  int antreLimit = 0;
+
+  /// Mac bisa memilih akun otomatis (perintah `jalankan` dengan `otomatis`). Mac lama menolak field yang tidak dikenal.
+  bool get akunOtomatisDidukung => fiturMac.contains('akun_otomatis');
 
   /// HP yang terhubung ke Mac (null = Mac belum mengirim field ini / pelaksana lama).
   List<PerangkatTerhubung>? perangkatTerhubung;
@@ -992,7 +1057,7 @@ abstract class SumberData extends ChangeNotifier {
 
   /// Rencana: langsung. Kerjakan: Kotlin menampilkan BiometricPrompt sendiri (SEC-51) di dalam transportKirim.
   /// Melempar GalatKunci (mis. 'dibatalkan') agar layar bisa memberi tahu pengguna.
-  Future<Tugas> kirim({required String proyekId, required String akun, required String mode, required String pesan}) async {
+  Future<Tugas> kirim({required String proyekId, required String akun, required String mode, required String pesan, bool otomatis = false}) async {
     final t = Tugas(
       tugas: idTugas(),
       proyek: proyekId,
@@ -1001,6 +1066,7 @@ abstract class SumberData extends ChangeNotifier {
       pesan: pesan,
       baru: baruBerikutnya(proyekId),
       dibuat: DateTime.now(),
+      otomatis: otomatis && akunOtomatisDidukung,
     );
     (_chat[proyekId] ??= []).add(t);
     _tandaiChat(proyekId);
@@ -1168,12 +1234,46 @@ abstract class SumberData extends ChangeNotifier {
       limit = null;
     } else {
       final butir = lim is List ? lim : [lim];
+      double? persen(Object? v) => _angka(v)?.toDouble().clamp(0, 100).toDouble();
       limit = [
-        for (final b in butir)
+        for (final b in butir.take(10))
           if (_peta(b) case final m?)
-            if (_angka(m['persen5j']) case final p?) LimitAkun(akun: _teks(m['akun']) ?? '', persen: p.toDouble(), reset: _jamReset(m['reset5j'])),
+            if (persen(m['persen5j']) != null || persen(m['persen7h']) != null)
+              LimitAkun(
+                akun: _teks(m['akun']) ?? '',
+                persen: persen(m['persen5j']),
+                reset: _jamReset(m['reset5j']),
+                waktuReset5j: _waktu(m['reset5j']),
+                persen7h: persen(m['persen7h']),
+                waktuReset7h: _waktu(m['reset7h']),
+                lama: m['lama'] == true,
+              ),
       ];
     }
+    fiturMac = {for (final f in _daftar(st['fitur']).take(20)) if (f is String && f.length <= 40) f};
+    antreLimit = _daftar(st['antre']).length;
+    pemakaian = _ringkasPemakaian(_peta(st['pemakaian']));
+  }
+
+  RingkasPemakaian? _ringkasPemakaian(Map<String, Object?>? m) {
+    if (m == null) return null;
+    ButirPemakaian? butir(Object? v, String kunciNama) {
+      final x = _peta(v);
+      if (x == null) return null;
+      return ButirPemakaian(
+        nama: _teks(x[kunciNama]) ?? '',
+        token: _angka(x['token'])?.toInt() ?? 0,
+        biaya: _angka(x['biaya'])?.toDouble() ?? 0,
+        tugas: _angka(x['tugas'])?.toInt() ?? 0,
+      );
+    }
+    final hari = butir(m['hariIni'], '');
+    if (hari == null) return null;
+    return RingkasPemakaian(
+      hariIni: hari,
+      proyek: [for (final x in _daftar(m['proyek']).take(10)) ?butir(x, 'proyek')],
+      akun: [for (final x in _daftar(m['akun']).take(10)) ?butir(x, 'akun')],
+    );
   }
 
   static const _kindKantor = {'session', 'session_end', 'prompt', 'tool', 'tool_done', 'tool_fail', 'agent_start', 'agent_stop', 'stop', 'notify'};
@@ -1480,13 +1580,29 @@ abstract class SumberData extends ChangeNotifier {
     final t = _cariTugas(perintahId: _teks(m['perintah_id']), tugas: _teks(m['tugas']));
     if (t == null) return;
     final urut = _angka(m['urut'])?.toInt() ?? 0;
-    if (urut <= t.urut) return; // buang urut lama
+    // antrean limit: Mac mengirim ulang kabar `antre` (urut 0) bila jam coba-lagi berubah
+    final antreUlang = m['tahap'] == 'antre' && urut == 0 && t.urut == 0 && t.tahap == TahapTugas.antre;
+    if (urut <= t.urut && !antreUlang) return; // buang urut lama
     t.urut = urut;
     _tandaiChat(t.proyek);
+    if (_peta(m['pemakaian']) case final p?) {
+      final n = [p['masuk'], p['keluar'], p['cacheBaca'], p['cacheTulis']].fold<int>(0, (a, v) => a + (_angka(v)?.toInt() ?? 0));
+      t.pemakaian = PemakaianTugas(token: n, giliran: _angka(p['giliran'])?.toInt() ?? 0, biaya: _angka(p['biaya'])?.toDouble() ?? 0);
+    }
     switch (m['tahap']) {
+      case 'antre':
+        if (t.tahap == TahapTugas.menungguDiambil || t.tahap == TahapTugas.diterima || t.tahap == TahapTugas.antre) {
+          t.tahap = TahapTugas.antre;
+          t.antreSampai = _waktu(m['sampai']);
+          t.alasan = _teks(m['alasan']);
+        }
       case 'mulai':
         t.tahap = TahapTugas.bekerja;
         t.mulai ??= DateTime.now();
+        t.antreSampai = null;
+        if (t.alasan != null && t.alasan!.startsWith('menunggu limit')) t.alasan = null;
+        final ak = _teks(m['akun']);
+        if (ak != null && ak.isNotEmpty && ak != t.akun) t.akunDipakai = ak;
       case 'teks':
         if (t.tahap != TahapTugas.bekerja) t.tahap = TahapTugas.bekerja;
         t.teks.write(_teks(m['teks']) ?? '');
@@ -1526,9 +1642,12 @@ abstract class SumberData extends ChangeNotifier {
       'divisi' => JenisKabar.divisi,
       'izin' => JenisKabar.izin,
       'mac_terputus' => JenisKabar.macTerputus,
+      'limit' => JenisKabar.limit,
+      'antre' => JenisKabar.antre,
       _ => null,
     };
     if (jenis == null) return;
+    final batas = _teks(m['batas']);
     kabar.insert(
       0,
       ButirKabar(
@@ -1536,8 +1655,11 @@ abstract class SumberData extends ChangeNotifier {
         waktu: waktu,
         proyek: _teks(m['proyek']),
         proyekId: _teks(m['proyekId']),
-        n: _angka(m['n'])?.toInt(),
+        n: jenis == JenisKabar.limit ? _angka(m['persen'])?.toInt() : _angka(m['n'])?.toInt(),
         durasiDtk: _angka(m['durasiDtk'])?.toInt(),
+        akun: switch (_teks(m['akun'])) { final a? when a.length <= 40 => a, _ => null },
+        batas: batas == '5j' || batas == '7h' ? batas : null,
+        reset: _waktu(m['reset']),
       ),
     );
     if (kabar.length > 200) kabar.removeRange(200, kabar.length);
@@ -2065,6 +2187,14 @@ String tanggalPendek(DateTime w) => '${w.day} ${_bulan[w.month - 1]}';
 String lamaJalan(Duration d) {
   final j = d.inHours, m = d.inMinutes % 60, s = d.inSeconds % 60;
   return j > 0 ? '$j:${duaDigit(m)}:${duaDigit(s)}' : '$m:${duaDigit(s)}';
+}
+
+/// 950 → "950" · 12 340 → "12,3 rb" · 1 250 000 → "1,3 jt".
+String tokenBaca(int n) {
+  String satu(double x) => x >= 100 ? x.round().toString() : x.toStringAsFixed(1).replaceAll('.', ',').replaceAll(RegExp(r',0$'), '');
+  if (n < 1000) return '$n';
+  if (n < 1000000) return '${satu(n / 1000)} rb';
+  return '${satu(n / 1000000)} jt';
 }
 
 /// "2 mnt 10 dtk" / "48 dtk".

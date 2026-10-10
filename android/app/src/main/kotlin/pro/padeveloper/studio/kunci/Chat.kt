@@ -11,7 +11,7 @@ object RiwayatChat {
     private val POLA_PROYEK = Regex("^[a-z0-9-]{1,40}$")
     private val POLA_TUGAS = Regex("^t-[a-z0-9]{1,12}-[0-9a-f]{16}$")
     private val TAHAP = setOf(
-        "mengirim", "gagalKirim", "menungguDiambil", "diterima", "bekerja", "selesai", "gagal", "dihentikan", "batasWaktu", "ditolak",
+        "mengirim", "gagalKirim", "menungguDiambil", "diterima", "antre", "bekerja", "selesai", "gagal", "dihentikan", "batasWaktu", "ditolak",
         "kedaluwarsa",
     )
 
@@ -53,9 +53,10 @@ object RiwayatChat {
                 "perintahId" -> require(teks(v, 80, kosong = false)) { "perintahId" }
                 "teks" -> require(teks(v, 32_000)) { "teks" }
                 "alasan" -> require(teks(v, 500)) { "alasan" }
-                "baru" -> require(v is Boolean) { "baru" }
-                "waktu", "kedaluwarsa", "mulai" -> require((bulat(v) ?: -1L) in 0..JsonKetat.SAFE_MAKS) { k.toString() }
-                "batasMenit", "durasiMs" -> require((bulat(v) ?: -1L) in 0..JsonKetat.SAFE_MAKS) { k.toString() }
+                "baru", "otomatis" -> require(v is Boolean) { k.toString() }
+                "akunDipakai" -> require(v is String && POLA_PROYEK.matches(v)) { "akunDipakai" }
+                "waktu", "kedaluwarsa", "mulai", "sampai" -> require((bulat(v) ?: -1L) in 0..JsonKetat.SAFE_MAKS) { k.toString() }
+                "batasMenit", "durasiMs", "token", "giliran", "biayaSen" -> require((bulat(v) ?: -1L) in 0..JsonKetat.SAFE_MAKS) { k.toString() }
                 "urut" -> require((bulat(v) ?: -2L) in -1..JsonKetat.SAFE_MAKS) { "urut" }
                 "alat" -> { o["alat"] = langkah(v, 50); continue }
                 "ditolak" -> { o["ditolak"] = langkah(v, 10); continue }

@@ -35,6 +35,10 @@ class _LayarChatState extends State<LayarChat> {
   final _fokus = FocusNode();
   String _mode = 'rencana';
   String? _akun;
+
+  /// null = bawaan (otomatis bila Mac mendukung & proyek punya > 1 akun) · true/false = pilihan owner di menu akun.
+  bool? _pilihOtomatis;
+  static const _nilaiOtomatis = '\u0000otomatis';
   bool _mengirim = false;
   Timer? _detik;
 
@@ -124,17 +128,33 @@ class _LayarChatState extends State<LayarChat> {
       ..showSnackBar(SnackBar(content: Text(t)));
   }
 
+  /// Roadmap 3: Mac memilih akun dengan sisa limit terbanyak (akun awal tetap dipakai bila masih lega → percakapan berlanjut).
+  bool _otomatis(Proyek p) => s.akunOtomatisDidukung && p.akun.length > 1 && _akun == null && (_pilihOtomatis ?? true);
+
+  /// Akun yang dikirim ke Mac. Otomatis: akun yang terakhir dipakai proyek ini (agar percakapan berlanjut bila masih lega).
+  String _akunAwal(Proyek p) {
+    if (_akun != null) return _akun!;
+    if (_otomatis(p)) {
+      for (final t in s.chat(p.id).reversed) {
+        final a = t.akunDipakai ?? t.akun;
+        if (p.akun.contains(a)) return a;
+      }
+    }
+    return p.akun.isEmpty ? '' : p.akun.first;
+  }
+
   Future<void> _kirim(Proyek p) async {
     final pesan = _ketik.text.trim();
-    final akun = _akun ?? (p.akun.isEmpty ? '' : p.akun.first);
+    final akun = _akunAwal(p);
+    final otomatis = _otomatis(p);
     if (pesan.isEmpty || _mengirim) return;
     if (_mode == 'kerjakan') {
-      final ya = await _lembarKerjakan(p, akun, pesan);
+      final ya = await _lembarKerjakan(p, akun, pesan, otomatis: otomatis);
       if (ya != true) return;
     }
     setState(() => _mengirim = true);
     try {
-      await s.kirim(proyekId: p.id, akun: akun, mode: _mode, pesan: pesan);
+      await s.kirim(proyekId: p.id, akun: akun, mode: _mode, pesan: pesan, otomatis: otomatis);
       _ketik.clear();
     } on GalatKunci catch (e) {
       if (e.kode == 'dibatalkan') {
@@ -148,7 +168,7 @@ class _LayarChatState extends State<LayarChat> {
   }
 
   /// L05a — ringkasan sebelum prompt sidik jari sistem.
-  Future<bool?> _lembarKerjakan(Proyek p, String akun, String pesan) {
+  Future<bool?> _lembarKerjakan(Proyek p, String akun, String pesan, {bool otomatis = false}) {
     final w = WarnaPadev.dari(context);
     final cuplikan = pesan.length > 200 ? '${pesan.substring(0, 200)}…' : pesan;
     Widget baris(String k, Widget v) => Padding(
@@ -197,7 +217,11 @@ class _LayarChatState extends State<LayarChat> {
               ]),
             ),
             Divider(height: 1, color: w.line),
-            baris('Akun', Text(namaAkun(akun), style: TextStyle(color: w.ink, fontWeight: FontWeight.w700))),
+            baris(
+              'Akun',
+              Text(otomatis ? 'Otomatis · mulai ${namaAkun(akun)}' : namaAkun(akun),
+                  textAlign: TextAlign.right, style: TextStyle(color: w.ink, fontWeight: FontWeight.w700)),
+            ),
             Divider(height: 1, color: w.line),
             Padding(
               padding: const EdgeInsets.all(12),
@@ -228,7 +252,7 @@ class _LayarChatState extends State<LayarChat> {
   }
 
   Future<void> _hapusRiwayat(Proyek p) async {
-    final akun = _akun ?? (p.akun.isEmpty ? '' : p.akun.first);
+    final akun = _akunAwal(p);
     final w = WarnaPadev.dari(context);
     final ya = await showDialog<bool>(
       context: context,
@@ -388,7 +412,8 @@ class _LayarChatState extends State<LayarChat> {
   }
 
   Widget _panelKetik(WarnaPadev w, Proyek p, Tugas? aktif) {
-    final akun = _akun ?? (p.akun.isEmpty ? '' : p.akun.first);
+    final akun = _akunAwal(p);
+    final otomatis = _otomatis(p);
     final macPutus = s.macTersambung == false;
     final sibukLain = p.sibuk && aktif == null;
     final bisaKetik = !macPutus && !sibukLain && aktif == null;
@@ -417,14 +442,29 @@ class _LayarChatState extends State<LayarChat> {
           PopupMenuButton<String>(
             tooltip: 'Pilih akun',
             enabled: p.akun.length > 1,
-            onSelected: (v) => setState(() => _akun = v),
-            itemBuilder: (c) => [for (final a in p.akun) PopupMenuItem(value: a, child: Text(namaAkun(a)))],
+            onSelected: (v) => setState(() {
+              _akun = v == _nilaiOtomatis ? null : v;
+              _pilihOtomatis = v == _nilaiOtomatis;
+            }),
+            itemBuilder: (c) => [
+              if (s.akunOtomatisDidukung)
+                PopupMenuItem(
+                  value: _nilaiOtomatis,
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Simbol.putar, size: 20, color: w.accent),
+                    title: const Text('Otomatis'),
+                    subtitle: const Text('Akun dengan sisa limit terbanyak'),
+                  ),
+                ),
+              for (final a in p.akun) PopupMenuItem(value: a, child: Text(namaAkun(a))),
+            ],
             child: ConstrainedBox(
               constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Simbol.akun, size: 16, color: w.muted),
+                Icon(otomatis ? Simbol.putar : Simbol.akun, size: 16, color: otomatis ? w.accent : w.muted),
                 const SizedBox(width: 4),
-                Text(namaAkun(akun), style: TextStyle(color: w.ink, fontSize: 13, fontWeight: FontWeight.w600)),
+                Text(otomatis ? 'Otomatis' : namaAkun(akun), style: TextStyle(color: w.ink, fontSize: 13, fontWeight: FontWeight.w600)),
                 if (p.akun.length > 1) Icon(Simbol.bawah, size: 18, color: w.muted),
               ]),
             ),
@@ -474,7 +514,7 @@ class _LayarChatState extends State<LayarChat> {
             ),
           ),
           const SizedBox(width: 8),
-          if (aktif != null && (aktif.tahap == TahapTugas.bekerja || aktif.tahap == TahapTugas.diterima))
+          if (aktif != null && (aktif.tahap == TahapTugas.bekerja || aktif.tahap == TahapTugas.diterima || aktif.tahap == TahapTugas.antre))
             SizedBox(
               height: 48,
               child: FilledButton(
@@ -482,12 +522,12 @@ class _LayarChatState extends State<LayarChat> {
                 onPressed: () async {
                   try {
                     await s.hentikan(aktif);
-                    _pesan('Permintaan berhenti dikirim.');
+                    _pesan(aktif.tahap == TahapTugas.antre ? 'Pembatalan antrean dikirim.' : 'Permintaan berhenti dikirim.');
                   } on GalatKunci catch (e) {
                     _pesan(e.pesan);
                   }
                 },
-                child: const IsiTombol(Simbol.henti, 'Hentikan'),
+                child: IsiTombol(Simbol.henti, aktif.tahap == TahapTugas.antre ? 'Batalkan' : 'Hentikan'),
               ),
             )
           else
@@ -620,7 +660,9 @@ class _ButirTugas extends StatelessWidget {
           padding: const EdgeInsets.only(top: 3, right: 2),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             if (t.mode == 'kerjakan') Icon(Simbol.kilat, size: 12, color: w.warnt),
-            Text('${t.mode == 'kerjakan' ? 'Kerjakan' : 'Rencana'} · ${namaAkun(t.akun)} · ${jamMenit(t.dibuat)}${t.baru ? ' · percakapan baru' : ''}',
+            Text(
+                '${t.mode == 'kerjakan' ? 'Kerjakan' : 'Rencana'} · ${namaAkun(t.akunDipakai ?? t.akun)}${t.otomatis ? ' (otomatis)' : ''} · '
+                '${jamMenit(t.dibuat)}${t.baru ? ' · percakapan baru' : ''}',
                 style: TeksPadev.redup(w, ukuran: 11)),
           ]),
         ),
@@ -659,8 +701,24 @@ class _ButirTugas extends StatelessWidget {
         ));
       case TahapTugas.diterima:
         baris(const _StatusKecil(ikon: Simbol.pasir, teks: 'Diterima Mac, menunggu mulai…'));
+      case TahapTugas.antre:
+        final sebab = t.alasan?.replaceFirst('menunggu limit akun pulih: ', '');
+        baris(_Kotak(
+          fg: w.warnt,
+          bg: w.warnb,
+          ikon: Simbol.pasir,
+          teks: 'Antre: limit akun hampir habis. Mac menjalankannya sendiri saat limit pulih'
+              '${t.antreSampai == null ? '' : ' (sekitar ${jamMenit(t.antreSampai!)})'} — tidak perlu kirim ulang.',
+          mono: sebab == null || sebab.isEmpty ? null : sebab,
+        ));
       default:
         break;
+    }
+    if (t.akunDipakai != null && t.akunDipakai != t.akun) {
+      baris(_StatusKecil(
+        ikon: Simbol.putar,
+        teks: 'Akun dipindah otomatis: ${namaAkun(t.akun)} → ${namaAkun(t.akunDipakai!)} (limit). Percakapan baru di akun itu.',
+      ));
     }
 
     for (final a in t.alat) {
@@ -714,7 +772,8 @@ class _ButirTugas extends StatelessWidget {
           fg: w.okt,
           bg: w.okb,
           ikon: Simbol.centangLingkar,
-          teks: 'Selesai${t.durasi == null ? '' : ' · ${durasiBaca(t.durasi!)}'}',
+          teks: 'Selesai${t.durasi == null ? '' : ' · ${durasiBaca(t.durasi!)}'}'
+              '${t.pemakaian == null ? '' : ' · ${tokenBaca(t.pemakaian!.token)} token · ${t.pemakaian!.giliran} giliran'}',
         ));
         if (t.ditolak.isNotEmpty) {
           baris(_Kotak(

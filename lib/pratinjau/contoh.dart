@@ -61,8 +61,22 @@ class SumberContoh extends SumberData {
               {'ts': _lalu(Duration(seconds: dtk)), 'session': 'a1b2c3d4e5f60718', 'proyek': 'simpeg', ...e},
           ],
         'limit': [
-          {'akun': 'akun2', 'persen5j': 62, 'reset5j': jamReset},
+          {'akun': 'akun2', 'persen5j': 62, 'reset5j': jamReset, 'persen7h': 41, 'reset7h': _lalu(const Duration(days: -3))},
+          {'akun': 'akun1', 'persen5j': 88, 'reset5j': jamReset, 'persen7h': 73, 'reset7h': _lalu(const Duration(days: -5))},
         ],
+        'fitur': ['akun_otomatis', 'antre_limit'],
+        'pemakaian': {
+          'hariIni': {'token': 1840000, 'biaya': 3.12, 'tugas': 6},
+          'proyek': [
+            {'proyek': 'simpeg', 'token': 5200000, 'biaya': 9.4, 'tugas': 17},
+            {'proyek': 'simgaji', 'token': 2100000, 'biaya': 3.8, 'tugas': 8},
+            {'proyek': 'simpati', 'token': 640000, 'biaya': 1.1, 'tugas': 3},
+          ],
+          'akun': [
+            {'akun': 'akun2', 'token': 5900000, 'biaya': 10.6, 'tugas': 19},
+            {'akun': 'akun1', 'token': 2040000, 'biaya': 3.7, 'tugas': 9},
+          ],
+        },
         'proyek': kosong
             ? <Object>[]
             : [
@@ -131,6 +145,7 @@ class SumberContoh extends SumberData {
     notif(const Duration(minutes: 27), {'j': 'selesai', 'proyek': 'SIMPEG', 'proyekId': 'simpeg', 'durasiDtk': 720});
     notif(const Duration(minutes: 15), {'j': 'divisi', 'proyek': 'SIMPEG', 'proyekId': 'simpeg', 'n': 1}, dibaca: false);
     notif(const Duration(minutes: 3), {'j': 'izin', 'proyek': 'SIMPATI', 'proyekId': 'simpati'}, dibaca: false);
+    notif(const Duration(minutes: 2), {'j': 'limit', 'akun': 'akun1', 'batas': '5j', 'ambang': 80, 'persen': 88, 'reset': _lalu(const Duration(hours: -2))});
 
     // SIM GAJI PPPK: tugas selesai + langkah ditolak
     final selesai = tambahTugas(Tugas(
@@ -144,6 +159,7 @@ class SumberContoh extends SumberData {
     _kabarChat(selesai, 'selesai', {
       'teks': 'Query sudah diganti satu join. Export 2.400 pegawai turun dari 38 dtk ke 3 dtk. Tes lulus.',
       'durasiMs': 130000,
+      'pemakaian': {'masuk': 1200, 'keluar': 8400, 'cacheBaca': 210000, 'cacheTulis': 18000, 'giliran': 9, 'biaya': 0.42},
       'ditolak': [
         {'alat': 'Bash', 'ringkas': 'rm -rf build/'},
       ],

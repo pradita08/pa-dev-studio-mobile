@@ -98,12 +98,16 @@ class PluginKunci(messenger: BinaryMessenger, private val aktivitas: FragmentAct
                 "tugas" to teks(c, "tugas", 200), "proyek" to teks(c, "proyek", 200), "akun" to teks(c, "akun", 200),
                 "mode" to "rencana", "pesan" to teks(c, "pesan", AmplopV1.MAKS_PESAN, boleh_kosong = true),
                 "baru" to (c.argument<Boolean>("baru") ?: false),
-            ).apply { c.argument<String>("model")?.let { put("model", it) } },
+            ).apply {
+                c.argument<String>("model")?.let { put("model", it) }
+                if (c.argument<Boolean>("otomatis") == true) put("otomatis", true)
+            },
         )
         "kirimKerjakan" -> inti.kirimKerjakan(
             aktivitas, teks(c, "tugas", 200), teks(c, "proyek", 200), teks(c, "akun", 200),
             teks(c, "pesan", AmplopV1.MAKS_PESAN, boleh_kosong = true), c.argument<Boolean>("baru") ?: false,
             c.argument<String>("model")?.also { require(it.isNotEmpty() && it.length <= 100) { "model" } },
+            otomatis = c.argument<Boolean>("otomatis") == true,
         )
         "hentikan" -> inti.kirimPerintah(aktivitas, "hentikan", mapOf("tugas" to teks(c, "tugas", 200)))
         "hapusSesi" -> inti.kirimPerintah(aktivitas, "hapus_sesi", mapOf("proyek" to teks(c, "proyek", 200), "akun" to teks(c, "akun", 200)))

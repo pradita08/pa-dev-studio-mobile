@@ -143,6 +143,7 @@ class VektorE2eTest {
         val kasus = listOf(
             Triple("jalankan", "k_rencana", mapOf<String, Any>("tugas" to "t1", "proyek" to "p1", "akun" to "akun-uji", "mode" to "rencana", "pesan" to "Rencanakan perbaikan ✓", "baru" to true)),
             Triple("jalankan", "k_kerjakan", mapOf<String, Any>("tugas" to "t2", "proyek" to "p1", "akun" to "akun-uji", "mode" to "kerjakan", "pesan" to "Kerjakan", "baru" to false, "model" to "opus")),
+            Triple("jalankan", "k_rencana", mapOf<String, Any>("tugas" to "t3", "proyek" to "p1", "akun" to "akun-uji", "mode" to "rencana", "pesan" to "Akun otomatis", "baru" to false, "otomatis" to true)),
             Triple("hentikan", "k_rencana", mapOf<String, Any>("tugas" to "t1")),
             Triple("minta_status", "k_rencana", emptyMap()),
         )

@@ -428,32 +428,50 @@ class _KartuMac extends StatelessWidget {
             ]),
           ),
         ]),
-        for (final l in s.limit ?? const <LimitAkun>[]) ...[
+        if (s.limit case final lim? when lim.isNotEmpty) ...[
           const SizedBox(height: 12),
           Divider(height: 1, color: w.line),
+          for (final l in lim) _LimitAkun(limit: l, tampilNama: lim.length > 1 || l.akun.isNotEmpty),
+        ],
+        if (s.antreLimit > 0) ...[
           const SizedBox(height: 10),
+          Row(children: [
+            Icon(Simbol.pasir, size: 15, color: w.warnt),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text('${s.antreLimit} tugas dari HP ini menunggu limit pulih — jalan sendiri saat akun lega.',
+                  style: TextStyle(color: w.warnt, fontSize: 12.5, fontWeight: FontWeight.w600)),
+            ),
+          ]),
+        ],
+        if (s.pemakaian case final pk?) ...[
+          const SizedBox(height: 10),
+          Divider(height: 1, color: w.line),
           Semantics(
-            label: 'Blok 5 jam ${namaAkun(l.akun)}: ${l.persen.round()} persen${l.reset == null ? '' : ', reset ${l.reset}'}',
+            button: true,
+            label: 'Pemakaian token hari ini: ${pk.hariIni.tugas} tugas, ${tokenBaca(pk.hariIni.token)} token. Ketuk untuk laporan 7 hari',
             excludeSemantics: true,
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Row(children: [
-                Text.rich(TextSpan(style: TeksPadev.redup(w, ukuran: 12), children: [
-                  TextSpan(text: (s.limit!.length > 1 && l.akun.isNotEmpty) ? '${namaAkun(l.akun)} · Blok 5 jam: ' : 'Blok 5 jam: '),
-                  TextSpan(text: '${l.persen.round()}%', style: TextStyle(color: w.ink, fontWeight: FontWeight.w800)),
-                ])),
-                const Spacer(),
-                if (l.reset != null) Text('reset ${l.reset}', style: TeksPadev.redup(w, ukuran: 12)),
-              ]),
-              const SizedBox(height: 6),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(3),
-                child: LinearProgressIndicator(
-                  value: (l.persen / 100).clamp(0, 1),
-                  minHeight: 5,
-                  color: l.persen >= 90 ? w.err : (l.persen >= 75 ? w.warn : w.accent),
-                ),
+            child: InkWell(
+              onTap: () => _laporanPemakaian(context, s, pk),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Row(children: [
+                  Icon(Simbol.daftarCek, size: 16, color: w.muted),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text.rich(TextSpan(style: TeksPadev.redup(w, ukuran: 12.5), children: [
+                      const TextSpan(text: 'Hari ini: '),
+                      TextSpan(
+                        text: '${pk.hariIni.tugas} tugas · ${tokenBaca(pk.hariIni.token)} token',
+                        style: TextStyle(color: w.ink, fontWeight: FontWeight.w700),
+                      ),
+                    ])),
+                  ),
+                  Text('Laporan 7 hari', style: TextStyle(color: w.accent, fontSize: 12.5, fontWeight: FontWeight.w700)),
+                  Icon(Simbol.kanan, size: 18, color: w.accent),
+                ]),
               ),
-            ]),
+            ),
           ),
         ],
       ]),
@@ -541,4 +559,110 @@ class _KartuKerangka extends StatelessWidget {
           ]),
         ),
       );
+}
+
+/// Satu akun di kartu Mac: bar blok 5 jam & 7 hari (warna: ≥ 80% kuning = notifikasi, ≥ 95% merah = Mac menahan/antre).
+class _LimitAkun extends StatelessWidget {
+  const _LimitAkun({required this.limit, required this.tampilNama});
+  final LimitAkun limit;
+  final bool tampilNama;
+
+  @override
+  Widget build(BuildContext context) {
+    final w = WarnaPadev.dari(context);
+    final l = limit;
+    Widget bar(String judul, double persen, String? reset) {
+      final warna = persen >= 95 ? w.err : (persen >= 80 ? w.warn : w.accent);
+      return Semantics(
+        label: '${tampilNama ? '${namaAkun(l.akun)}, ' : ''}$judul: ${persen.round()} persen${reset == null ? '' : ', reset $reset'}',
+        excludeSemantics: true,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Row(children: [
+            SizedBox(width: 52, child: Text(judul, style: TeksPadev.redup(w, ukuran: 12))),
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: LinearProgressIndicator(value: (persen / 100).clamp(0, 1), minHeight: 6, color: warna, backgroundColor: w.chip),
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 38,
+              child: Text('${persen.round()}%', textAlign: TextAlign.right, style: TextStyle(color: w.ink, fontSize: 12.5, fontWeight: FontWeight.w800)),
+            ),
+            SizedBox(width: 74, child: Text(reset == null ? '' : 'reset $reset', textAlign: TextAlign.right, style: TeksPadev.redup(w, ukuran: 11.5))),
+          ]),
+        ),
+      );
+    }
+
+    String? reset7h(DateTime? t) {
+      if (t == null) return null;
+      final kini = DateTime.now();
+      return t.difference(kini).inHours < 24 && t.day == kini.day ? jamMenit(t) : tanggalPendek(t);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Opacity(
+        opacity: l.lama ? .6 : 1,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          if (tampilNama || l.lama)
+            Row(children: [
+              if (tampilNama) Text(namaAkun(l.akun), style: TextStyle(color: w.ink, fontSize: 12.5, fontWeight: FontWeight.w700)),
+              const Spacer(),
+              if (l.lama) Text('data lama', style: TeksPadev.redup(w, ukuran: 11.5)),
+            ]),
+          if (l.persen case final p?) bar('5 jam', p, l.reset),
+          if (l.persen7h case final p?) bar('7 hari', p, reset7h(l.waktuReset7h)),
+        ]),
+      ),
+    );
+  }
+}
+
+void _laporanPemakaian(BuildContext context, SumberData s, RingkasPemakaian pk) {
+  showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (c) {
+      final w = WarnaPadev.dari(c);
+      Widget baris(ButirPemakaian b, String nama) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 7),
+            child: Row(children: [
+              Expanded(child: Text(nama, style: TextStyle(color: w.ink, fontSize: 13.5, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+              Text('${b.tugas} tugas', style: TeksPadev.redup(w, ukuran: 12.5)),
+              SizedBox(
+                width: 92,
+                child: Text('${tokenBaca(b.token)} token', textAlign: TextAlign.right, style: TextStyle(color: w.ink, fontSize: 12.5, fontWeight: FontWeight.w700)),
+              ),
+            ]),
+          );
+      return SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(c).height * .8),
+          child: ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(20, 0, 20, 20), children: [
+            Text('Pemakaian token', style: TeksPadev.judulKartu(w)),
+            const SizedBox(height: 4),
+            Text('Tugas yang dijalankan pelaksana Mac (dari HP & laptop). Sesi yang dibuka langsung di VS Code tidak terhitung.',
+                style: TeksPadev.redup(w, ukuran: 12.5)),
+            const SizedBox(height: 14),
+            Kartu(
+              anak: Row(children: [
+                Expanded(child: Text('Hari ini', style: TextStyle(color: w.ink, fontWeight: FontWeight.w700))),
+                Text('${pk.hariIni.tugas} tugas · ${tokenBaca(pk.hariIni.token)} token', style: TextStyle(color: w.ink, fontWeight: FontWeight.w800)),
+              ]),
+            ),
+            if (pk.proyek.isNotEmpty) ...[const SizedBox(height: 14), JudulBagian('7 hari · per proyek'), for (final b in pk.proyek) baris(b, s.namaProyek(b.nama))],
+            if (pk.akun.isNotEmpty) ...[const SizedBox(height: 8), JudulBagian('7 hari · per akun'), for (final b in pk.akun) baris(b, namaAkun(b.nama))],
+            const SizedBox(height: 10),
+            Text('Token = masuk + keluar + cache. Tugas berat tercatat di sini — pakai mode Rencana atau model hemat (pengaturan hemat di Mac) '
+                'untuk menghemat limit.', style: TeksPadev.redup(w, ukuran: 11.5)),
+          ]),
+        ),
+      );
+    },
+  );
 }

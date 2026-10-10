@@ -40,6 +40,15 @@ class RiwayatChatTest {
         assertEquals(900L, e["durasiMs"])
         assertEquals(-1L, e["urut"])
         assertFalse(e.containsKey("perintahId"))
+        // roadmap 3: tugas antrean limit & akun otomatis + pemakaian
+        val a = RiwayatChat.cekEntri(
+            entri("t-abc-0123456789abcdef", 5, "tahap" to "antre", "otomatis" to true, "akunDipakai" to "akun2", "sampai" to 99,
+                "token" to 120000, "giliran" to 8, "biayaSen" to 42),
+        )
+        assertEquals("antre", a["tahap"])
+        assertEquals(99L, a["sampai"])
+        assertEquals(120000L, a["token"])
+        assertEquals(true, a["otomatis"])
     }
 
     @Test
@@ -51,6 +60,9 @@ class RiwayatChatTest {
             entri("t-abc-0123456789abcdef", 1, "tahap" to "<script>"),
             entri("t-abc-0123456789abcdef", 1, "pesan" to "x".repeat(AmplopV1.MAKS_PESAN + 1)),
             entri("t-abc-0123456789abcdef", 1, "asing" to "x"),
+            entri("t-abc-0123456789abcdef", 1, "akunDipakai" to "../akun"),
+            entri("t-abc-0123456789abcdef", 1, "otomatis" to "ya"),
+            entri("t-abc-0123456789abcdef", 1, "token" to -5),
             entri("t-abc-0123456789abcdef", 1, "ditolak" to List(11) { mapOf("alat" to "a", "ringkas" to "b") }),
             linkedMapOf("id" to "t-abc-0123456789abcdef"),
         )

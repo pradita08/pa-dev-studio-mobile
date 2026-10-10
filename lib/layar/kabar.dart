@@ -74,7 +74,7 @@ class _LayarKabarState extends State<LayarKabar> {
           IsiKosong(
             ikon: Simbol.lonceng,
             judul: _saring == _Saring.izin ? 'Tidak ada yang menunggu izin' : 'Belum ada kabar',
-            teks: 'Kabar muncul saat sesi selesai, divisi selesai, Claude menunggu izin, atau Mac terputus. '
+            teks: 'Kabar muncul saat sesi selesai, divisi selesai, Claude menunggu izin, limit akun hampir habis, atau Mac terputus. '
                 'Isi jawaban Claude tidak pernah ditampilkan di notifikasi.',
           ),
         for (final e in kelompok.entries) ...[
@@ -101,12 +101,17 @@ class _BarisKabar extends StatelessWidget {
       JenisKabar.divisi => (Simbol.tim, w.okt, w.okb),
       JenisKabar.izin => (Simbol.tangan, w.warnt, w.warnb),
       JenisKabar.macTerputus => (Simbol.putus, w.err, w.errb),
+      JenisKabar.limit => (Simbol.peringatan, (k.n ?? 0) >= 95 ? w.err : w.warnt, (k.n ?? 0) >= 95 ? w.errb : w.warnb),
+      JenisKabar.antre => (Simbol.putar, w.okt, w.okb),
     };
     final teks = switch (k.jenis) {
       JenisKabar.selesai => 'Selesai${k.durasiDtk == null ? '' : ' (${durasiBaca(Duration(seconds: k.durasiDtk!))})'}',
       JenisKabar.divisi => k.n == null ? 'Divisi selesai' : '${k.n} divisi selesai',
       JenisKabar.izin => 'Claude menunggu izin Anda (setujui di laptop)',
       JenisKabar.macTerputus => 'Mac tidak tersambung',
+      JenisKabar.limit => 'Limit ${k.akun == null ? 'akun' : namaAkun(k.akun!)} ${k.batas == '7h' ? '7 hari' : 'blok 5 jam'} '
+          '${k.n == null ? 'hampir habis' : '${k.n}%'}${k.reset == null ? '' : ' · reset ${k.batas == '7h' ? tanggalPendek(k.reset!) : jamMenit(k.reset!)}'}',
+      JenisKabar.antre => 'Tugas antrean mulai — limit pulih${k.akun == null ? '' : ' (${namaAkun(k.akun!)})'}',
     };
     final proyekId = k.proyekId;
     final bisaBuka = proyekId != null && sumber.cariProyek(proyekId) != null;
