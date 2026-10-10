@@ -40,6 +40,15 @@ class GalatKunci implements Exception {
     'keputusan_tidak_ada': 'Permintaan ini sudah tidak menunggu (dijawab di Mac atau dibatalkan).',
     'keputusan_kedaluwarsa': 'Waktu menjawab sudah habis — Claude kembali menunggu di Mac.',
     'pilihan_tidak_diizinkan': 'Pilihan ini tidak diizinkan untuk proyek/HP ini (atur tingkat keputusan di Mac).',
+    // roadmap 2: review hasil Kerjakan (pelaksana-review.js)
+    'review_tidak_ada': 'Review ini sudah tidak ada di Mac. Tarik untuk menyegarkan.',
+    'review_mati': 'Review hasil Kerjakan belum aktif di Mac (perbarui pelaksana: git pull lalu bash siapkan-hp.sh --usb).',
+    'isi_tidak_diizinkan': 'Isi perubahan hanya untuk proyek bertanda "Isi" (bash siapkan-hp.sh --isi <proyek>) dan bukan data pribadi.',
+    'aksi_tidak_diizinkan': 'Aksi ini tidak tersedia untuk review/HP ini (perlu HP mode Kerjakan & proyek hp:"kerjakan").',
+    'berkas_tidak_ada': 'Berkas ini tidak ada di review.',
+    'pesan_tidak_sah': 'Pesan commit wajib diisi: satu baris, maksimal 200 karakter.',
+    'berkas_berubah_sejak_review': 'Berkas sudah berubah sejak review dibuat (diedit di laptop?). Cek di laptop dulu.',
+    'proyek_sedang_bekerja': 'Claude masih bekerja di proyek ini. Tunggu tugasnya selesai.',
   };
 
   @override
@@ -293,6 +302,23 @@ abstract final class Kunci {
   /// Pemantau latar keputusan (layanan foreground, mengintip relay tiap 30 dtk → notifikasi "Claude butuh keputusan").
   static Future<bool> pantauKeputusan(bool nyala) async => (await _p<bool>('pantauKeputusan', {'nyala': nyala})) ?? false;
   static Future<bool> statusPantau() async => (await _p<bool>('statusPantau')) ?? false;
+
+  /// Review hasil Kerjakan (roadmap 2). Snapshot terakhir yang sudah diverifikasi Kotlin (isi kabar `review`), atau null.
+  static Future<Map<String, Object?>?> reviewTersimpan() async {
+    final m = await _p<Map>('reviewTersimpan');
+    return m == null ? null : Map<String, Object?>.from(m);
+  }
+
+  /// Berlangganan kabar review (Mac lalu mengirim snapshot & setiap perubahan). K_rencana.
+  static Future<HasilKirim> kirimReviewDaftar() async => HasilKirim._(await _peta('kirimReviewDaftar'));
+
+  /// Isi diff satu berkas review (proyek tingkat "isi"). K_rencana.
+  static Future<HasilKirim> kirimReviewBerkas({required String review, required String jalur}) async =>
+      HasilKirim._(await _peta('kirimReviewBerkas', {'review': review, 'jalur': jalur}));
+
+  /// Commit / buang / push: Kotlin menampilkan BiometricPrompt sendiri (K_kerjakan) dengan teks dari snapshot terverifikasi.
+  static Future<HasilKirim> kirimReviewAksi({required String review, required String aksi, String? pesan}) async =>
+      HasilKirim._(await _peta('kirimReviewAksi', {'review': review, 'aksi': aksi, 'pesan': pesan}));
 
   /// Tampilan tab Proyek (urutan bagian grup & bagian terbuka) — disimpan di HP (Brankas), tidak dikirim ke Mac.
   static Future<void> simpanTampilan(String isi) => _p<void>('simpanTampilan', {'isi': isi});

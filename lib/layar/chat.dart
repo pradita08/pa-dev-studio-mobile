@@ -1,6 +1,8 @@
-// L04 Chat perintah per proyek + L05a lembar ringkasan Kerjakan.
+// L04 Chat perintah per proyek + L05a lembar ringkasan Kerjakan. Halaman proyek juga menjadi pusat proyek: di atas kolom ketik
+// tampil keputusan (izin/pertanyaan Claude di Mac, dijawab di sini — F1b), review hasil Kerjakan (roadmap 2), dan Claude yang
+// sedang berjalan di Mac untuk proyek ini (cermin sesi → detail & riwayat langsung).
 // Kerjakan: setelah L05a, Kotlin menampilkan BiometricPrompt sistem sendiri (wajib sidik jari, tanpa PIN — DESAIN §3.1, SEC-51).
-// HP hanya melihat tugas yang dikirim dari HP (v1). Teks Claude ditampilkan sebagai teks biasa.
+// Teks Claude ditampilkan sebagai teks biasa.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -11,6 +13,10 @@ import '../kunci/kunci.dart';
 import '../pratinjau/pita.dart';
 import '../tema/token.dart';
 import 'data.dart';
+import 'keputusan.dart';
+import 'review.dart';
+import 'sesi.dart';
+import 'sesi_detail.dart';
 
 const _batasPesan = 8000;
 
@@ -38,8 +44,66 @@ class _LayarChatState extends State<LayarChat> {
     super.initState();
     _ketik.addListener(() => setState(() {}));
     _detik = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted && s.tugasAktif(widget.proyekId) != null) setState(() {});
+      // detik berjalan: lama tugas & sisa waktu kartu keputusan
+      if (mounted && (s.tugasAktif(widget.proyekId) != null || _keputusan().isNotEmpty)) setState(() {});
     });
+    // pusat proyek: daftar sesi Mac (dibatasi 1×/2 mnt) & langganan review (bila belum) — tanpa galat ke layar
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(s.mintaDaftarSesi(otomatis: true));
+      unawaited(s.langgananReview(olehOwner: true));
+    });
+  }
+
+  List<Keputusan> _keputusan() => s.keputusan.where((k) => k.proyek == widget.proyekId && !k.kedaluwarsa).toList();
+
+  /// Claude yang berjalan di Mac untuk proyek ini (VS Code/terminal; tugas dari HP sudah tampil sebagai chat).
+  List<SesiCermin> _sesiMac() {
+    final l = s.daftarSesi
+        .where((x) => x.proyek == widget.proyekId && x.asal != 'hp' && x.asal != 'pelaksana' && (x.terbuka || x.status != StatusSesi.selesai))
+        .toList()
+      ..sort((a, b) => (b.terakhir ?? DateTime(0)).compareTo(a.terakhir ?? DateTime(0)));
+    return l.take(3).toList();
+  }
+
+  /// Item yang disematkan di atas kolom ketik (urutan dari bawah ke atas, ListView terbalik).
+  List<Widget> _sematan(BuildContext context, WarnaPadev w, Proyek p) {
+    final kp = _keputusan();
+    final menungguTanpaKartu = p.status == StatusProyek.menungguIzin && s.macTersambung != false && !kp.any((k) => !k.terkirim);
+    final rv = s.reviewProyek(p.id).where((r) => r.terbuka || DateTime.now().difference(r.diperbarui) < const Duration(hours: 6)).toList();
+    final sesi = _sesiMac();
+    final usulan = s.chat(p.id).where((t) => t.mode == 'kerjakan').lastOrNull?.pesan;
+    Widget jarak(Widget c) => Padding(padding: const EdgeInsets.only(top: 10), child: c);
+    return [
+      for (final k in kp) jarak(KartuKeputusan(key: ValueKey('kp-${k.id}'), sumber: s, k: k)),
+      if (menungguTanpaKartu)
+        jarak(const Spanduk(
+          jenis: JenisSpanduk.peringatan,
+          ikon: Simbol.tangan,
+          teks: 'Claude menunggu izin di Mac. Kartu jawaban muncul di sini bila Mac tidak dipakai ≥ 1 menit — '
+              'atau di Mac jalankan: bash siapkan-hp.sh --keputusan izinkan 0 (semua pertanyaan ke HP).',
+        )),
+      for (final r in rv) jarak(KartuReview(key: ValueKey('rv-${r.id}'), sumber: s, review: r, pesanBawaan: usulan)),
+      if (sesi.isNotEmpty)
+        jarak(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 6),
+            child: Row(children: [
+              Icon(Simbol.laptop, size: 16, color: w.muted),
+              const SizedBox(width: 6),
+              Expanded(child: Text('Claude di Mac · ketuk untuk melihat aktivitas & riwayat', style: TeksPadev.label(w))),
+            ]),
+          ),
+          for (final x in sesi)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: KartuSesi(
+                sesi: x,
+                sumber: s,
+                onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => LayarSesiDetail(sumber: s, sesi: x))),
+              ),
+            ),
+        ])),
+    ];
   }
 
   @override
@@ -204,6 +268,8 @@ class _LayarChatState extends State<LayarChat> {
     final daftar = s.chat(p.id);
     final aktif = s.tugasAktif(p.id);
     final tim = (p.divisi ?? const []).where((d) => d.status != 'diam').toList();
+    // ListView terbalik: indeks 0 = paling bawah (dekat kolom ketik) → keputusan, review, lalu Claude di Mac, lalu chat terbaru
+    final sematan = _sematan(context, w, p);
 
     return Scaffold(
       backgroundColor: w.bg,
@@ -216,7 +282,14 @@ class _LayarChatState extends State<LayarChat> {
         title: Row(children: [
           Flexible(child: Text(p.nama, overflow: TextOverflow.ellipsis, style: TextStyle(color: w.ink, fontSize: 18, fontWeight: FontWeight.w800))),
           const SizedBox(width: 8),
-          ChipPadev.status(context, s.macTersambung == false ? StatusProyek.tidakDiketahui : p.status),
+          ChipPadev.status(
+            context,
+            s.macTersambung == false
+                ? StatusProyek.tidakDiketahui
+                : _keputusan().any((k) => !k.terkirim)
+                    ? StatusProyek.menungguIzin
+                    : p.status,
+          ),
         ]),
         actions: [
           PopupMenuButton<int>(
@@ -265,14 +338,9 @@ class _LayarChatState extends State<LayarChat> {
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
               child: Spanduk(jenis: JenisSpanduk.netral, ikon: Simbol.tanpaWifi, teks: 'HP tidak ada internet', aksi: () => s.segarkan(diam: true)),
             ),
-          if (p.status == StatusProyek.menungguIzin && s.macTersambung != false)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(12, 10, 12, 0),
-              child: Spanduk(jenis: JenisSpanduk.peringatan, ikon: Simbol.tangan, teks: 'Claude menunggu izin Anda — setujui di laptop'),
-            ),
           if (tim.isNotEmpty) _BarisTim(tim: tim),
           Expanded(
-            child: daftar.isEmpty
+            child: daftar.isEmpty && sematan.isEmpty
                 ? Center(
                     child: SingleChildScrollView(
                       child: IsiKosong(
@@ -296,10 +364,10 @@ class _LayarChatState extends State<LayarChat> {
                   )
                 : ListView.builder(
                     reverse: true,
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-                    itemCount: daftar.length,
-                    itemBuilder: (c, i) => _ButirTugas(
-                      tugas: daftar[daftar.length - 1 - i],
+                    padding: const EdgeInsets.fromLTRB(12, 2, 12, 12),
+                    itemCount: sematan.length + daftar.length,
+                    itemBuilder: (c, j) => j < sematan.length ? sematan[j] : _ButirTugas(
+                      tugas: daftar[daftar.length - 1 - (j - sematan.length)],
                       onKirimUlang: (t) async {
                         try {
                           await s.kirimUlang(t);

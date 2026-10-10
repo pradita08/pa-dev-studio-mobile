@@ -130,6 +130,14 @@ class PluginKunci(messenger: BinaryMessenger, private val aktivitas: FragmentAct
             c.argument<String>("pesan")?.also { require(it.length <= Keputusan.MAKS_PESAN) { "pesan" } },
         )
         "keputusanTersimpan" -> inti.keputusanTersimpan()
+        // ---- review hasil Kerjakan (roadmap 2)
+        "reviewTersimpan" -> inti.reviewTersimpan()
+        "kirimReviewDaftar" -> inti.kirimReviewDaftar(aktivitas)
+        "kirimReviewBerkas" -> inti.kirimReviewBerkas(aktivitas, teks(c, "review", 32), teks(c, "jalur", Review.MAKS_JALUR))
+        "kirimReviewAksi" -> inti.kirimReviewAksi(
+            aktivitas, teks(c, "review", 32), teks(c, "aksi", 10),
+            c.argument<String>("pesan")?.also { require(it.length <= Review.MAKS_PESAN) { "pesan" } },
+        )
         "pantauKeputusan" -> {
             val nyala = c.argument<Boolean>("nyala") ?: throw IllegalArgumentException("nyala")
             inti.pantauNyala = nyala

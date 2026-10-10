@@ -1,7 +1,10 @@
 // L11b Detail sesi (KONTRAK-apk-v2 §6.2, F1): riwayat per 50 (`cermin_riwayat`) + langsung (`cermin`) selama layar terbuka.
 // Hemat (K-04): `cermin_buka` hanya saat layar ini terbuka & aplikasi aktif, kirim ulang 7,5 mnt; `cermin_tutup` saat keluar/latar.
 // Celah `urut_cermin` → "Ada bagian yang hilang". Proyek tingkat ringkas → pesan/jawaban tanpa isi + keterangan.
-// Kartu keputusan (F1b) dan tombol Lanjutkan (F3) belum ditampilkan. Semua teks luar via Text (A-E1).
+// Kartu keputusan (F1b) sesi ini tampil paling bawah & bisa dijawab di sini. Tombol Lanjutkan (F3) belum ada.
+// Semua teks luar via Text (A-E1).
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../komponen/komponen.dart';
@@ -9,6 +12,7 @@ import '../kunci/kunci.dart';
 import '../pratinjau/pita.dart';
 import '../tema/token.dart';
 import 'data.dart';
+import 'keputusan.dart';
 
 class LayarSesiDetail extends StatefulWidget {
   const LayarSesiDetail({super.key, required this.sumber, required this.sesi});
@@ -22,6 +26,7 @@ class LayarSesiDetail extends StatefulWidget {
 class _LayarSesiDetailState extends State<LayarSesiDetail> with WidgetsBindingObserver {
   bool _aktif = true;
   DateTime? _keLatar;
+  Timer? _detik;   // sisa waktu kartu keputusan
 
   SumberData get s => widget.sumber;
   SesiCermin get x => s.cariSesi(widget.sesi.sesi) ?? widget.sesi;
@@ -30,6 +35,9 @@ class _LayarSesiDetailState extends State<LayarSesiDetail> with WidgetsBindingOb
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _detik = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && _keputusan().isNotEmpty) setState(() {});
+    });
     NamaPegawai.muat().then((_) {
       if (mounted) setState(() {});
     });
@@ -75,9 +83,12 @@ class _LayarSesiDetailState extends State<LayarSesiDetail> with WidgetsBindingOb
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _detik?.cancel();
     s.berhentiIkuti();
     super.dispose();
   }
+
+  List<Keputusan> _keputusan() => s.keputusan.where((k) => k.sesi == widget.sesi.sesi && !k.kedaluwarsa).toList();
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(listenable: s, builder: (c, _) => _bangun(c));
@@ -89,7 +100,15 @@ class _LayarSesiDetailState extends State<LayarSesiDetail> with WidgetsBindingOb
     final (ikonAsal, asal) = asalTampil(sesi.asal);
     final langsung = s.langsung(sesi.sesi);
 
+    final kp = _keputusan();
     final atas = <Widget>[
+      if (sesi.status == StatusSesi.menungguIzin && s.macTersambung != false && !kp.any((k) => !k.terkirim))
+        const Spanduk(
+          jenis: JenisSpanduk.peringatan,
+          ikon: Simbol.tangan,
+          teks: 'Claude menunggu izin di Mac. Kartu jawaban muncul di bawah bila Mac tidak dipakai ≥ 1 menit '
+              '(atau bash siapkan-hp.sh --keputusan izinkan 0: semua pertanyaan ke HP).',
+        ),
       if (!sesi.isi)
         const Spanduk(jenis: JenisSpanduk.netral, ikon: Simbol.tersembunyi, teks: 'Isi percakapan hanya untuk proyek yang dicentang di laptop'),
       if (s.macTersambung == false)
@@ -136,13 +155,19 @@ class _LayarSesiDetailState extends State<LayarSesiDetail> with WidgetsBindingOb
           if (s.pratinjau) PitaPratinjau(sumber: s),
           _BarisKeadaan(langsung: langsung, sesi: sesi, riwayat: r),
           for (final a in atas) Padding(padding: const EdgeInsets.fromLTRB(12, 8, 12, 0), child: a),
-          Expanded(child: _isi(context, w, sesi, r)),
+          Expanded(child: _isi(context, w, sesi, r, kp)),
         ]),
       ),
     );
   }
 
-  Widget _isi(BuildContext context, WarnaPadev w, SesiCermin sesi, RiwayatSesi r) {
+  Widget _isi(BuildContext context, WarnaPadev w, SesiCermin sesi, RiwayatSesi r, List<Keputusan> kp) {
+    final kartu = [
+      for (final k in kp) Padding(padding: const EdgeInsets.only(top: 10), child: KartuKeputusan(key: ValueKey('kp-${k.id}'), sumber: s, k: k)),
+    ];
+    if (r.entri.isEmpty && kartu.isNotEmpty) {
+      return ListView(reverse: true, padding: const EdgeInsets.fromLTRB(12, 2, 12, 16), children: kartu);
+    }
     if (r.entri.isEmpty) {
       if (r.galat != null) {
         return Center(
@@ -172,12 +197,14 @@ class _LayarSesiDetailState extends State<LayarSesiDetail> with WidgetsBindingOb
         child: SingleChildScrollView(child: IsiKosong(ikon: Simbol.obrolan, judul: 'Belum ada percakapan di sesi ini')),
       );
     }
-    final n = r.entri.length;
+    final n = r.entri.length, m = kartu.length;
     return ListView.builder(
       reverse: true,
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
-      itemCount: n + 1,
-      itemBuilder: (c, i) {
+      itemCount: m + n + 1,
+      itemBuilder: (c, j) {
+        if (j < m) return kartu[j];   // keputusan sesi ini: paling bawah
+        final i = j - m;
         if (i == n) return _KepalaRiwayat(riwayat: r, onMuat: () => _muat(lebihLama: true));
         return Padding(padding: const EdgeInsets.only(top: 8), child: ButirEntriSesi(entri: r.entri[n - 1 - i]));
       },

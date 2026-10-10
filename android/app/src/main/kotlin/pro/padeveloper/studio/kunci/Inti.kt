@@ -235,7 +235,9 @@ class Inti(context: Context) {
         }
         if (catat) brankas.simpan(K_REPLAY, penyimpan.keJson())
         // K-07/SEC-86: kabar cermin hanya diteruskan di build rilis (build lain = data contoh); dibuang diam (bukan serangan).
-        if ((h.isi!!["jenis"] in Cermin.JENIS_KABAR || h.isi["jenis"] in Keputusan.JENIS_KABAR) && !BuildConfig.CERMIN_NYATA) return null
+        if ((h.isi!!["jenis"] in Cermin.JENIS_KABAR || h.isi["jenis"] in Keputusan.JENIS_KABAR || h.isi["jenis"] in Review.JENIS_KABAR) &&
+            !BuildConfig.CERMIN_NYATA
+        ) return null
         if (catat) terapkanKabar(h.isi)
         return h.isi
     }
@@ -249,6 +251,7 @@ class Inti(context: Context) {
             }
             "status" -> simpanStatus(isi)
             "keputusan" -> simpanKeputusan(isi)
+            "review" -> simpanReview(isi)
             // Riwayat cermin → cache terenkripsi. Layar terkunci/kunci tak bisa dipakai → dilewati (kabar tetap diteruskan ke Dart).
             "cermin_riwayat" -> {
                 @Suppress("UNCHECKED_CAST")
@@ -315,6 +318,70 @@ class Inti(context: Context) {
         sig.update(draf.inputTanda)
         val amplop = draf.selesaikan(sig.sign())
         return kirimAmplop(p, id, amplop)
+    }
+
+    // ---------------------------------------------------------------- review hasil Kerjakan (roadmap 2, pelaksana-review.js)
+
+    /** Snapshot review terakhir — sumber teks BiometricPrompt commit/buang/push (SEC-51); tidak boleh mundur (urut_mac). */
+    private fun simpanReview(isi: Map<String, Any>) {
+        val lama = brankas.baca(K_REVIEW)?.let { runCatching { JsonKetat.objek(it)["urut_mac"] as? Long }.getOrNull() } ?: -1L
+        if ((isi["urut_mac"] as Long) > lama) brankas.simpan(K_REVIEW, Jcs.teks(isi))
+    }
+
+    private fun snapshotReview(): Map<String, Any>? = brankas.baca(K_REVIEW)?.let { runCatching { JsonKetat.objek(it) }.getOrNull() }
+
+    /** Snapshot review tersimpan untuk Dart saat aplikasi dibuka, atau null (build non-rilis: selalu null, K-07). */
+    fun reviewTersimpan(): Map<String, Any?>? {
+        if (!BuildConfig.CERMIN_NYATA) return null
+        return snapshotReview()?.let { petaKeDart(it) }
+    }
+
+    /** Berlangganan kabar review (Mac mencatat HP ini & mengirim snapshot). K_rencana. */
+    fun kirimReviewDaftar(aktivitas: FragmentActivity?): Map<String, Any?> {
+        if (!BuildConfig.CERMIN_NYATA) throw GalatKunci("tidak_tersedia")
+        return kirimPerintah(aktivitas, "review_daftar", emptyMap())
+    }
+
+    /** Minta isi diff satu berkas review (hanya bila butir `isi` = true). K_rencana. */
+    fun kirimReviewBerkas(aktivitas: FragmentActivity?, review: String, jalur: String): Map<String, Any?> {
+        if (!BuildConfig.CERMIN_NYATA) throw GalatKunci("tidak_tersedia")
+        val butir = Review.cariButir(snapshotReview(), review) ?: throw GalatKunci("review_tidak_ada")
+        if (butir["isi"] != true) throw GalatKunci("isi_tidak_diizinkan")
+        return kirimPerintah(aktivitas, "review_berkas", linkedMapOf("review" to review, "jalur" to jalur))
+    }
+
+    /**
+     * Aksi review (commit/buang/push): WAJIB K_kerjakan (BIOMETRIC_STRONG + CryptoObject) dengan teks prompt yang disusun Kotlin
+     * dari butir snapshot terverifikasi (jumlah berkas, proyek, cabang, pesan commit) — SEC-51. Aksi harus ada di `boleh` butir.
+     */
+    fun kirimReviewAksi(aktivitas: FragmentActivity, review: String, aksi: String, pesan: String?): Map<String, Any?> {
+        if (!BuildConfig.CERMIN_NYATA) throw GalatKunci("tidak_tersedia")
+        val butir = Review.cariButir(snapshotReview(), review) ?: throw GalatKunci("review_tidak_ada")
+        if ((butir["boleh"] as? List<*>)?.contains(aksi) != true) throw GalatKunci("aksi_tidak_diizinkan")
+        val tambahan = linkedMapOf<String, Any>("review" to review, "aksi" to aksi)
+        if (aksi == "commit") tambahan["pesan"] = pesan?.trim()?.takeIf { Review.pesanSah(it) } ?: throw GalatKunci("pesan_tidak_sah")
+        try {
+            Perintah.isi("review_aksi", NOL16, NOL16, NOL32, 0, 1, 2, tambahan)
+        } catch (e: GalatKunci) {
+            throw GalatKunci("argumen_tidak_sah")
+        }
+        val (judul, subjudul, keterangan) = Review.teksSidikJari(butir, aksi, tambahan["pesan"] as? String)
+        return kirimBerKerjakan(aktivitas, "review_aksi", tambahan, Biometrik.Teks(judul, subjudul, keterangan))
+    }
+
+    /** Perintah bertanda K_kerjakan setelah sidik jari dengan [teks] yang disusun Kotlin. */
+    private fun kirimBerKerjakan(aktivitas: FragmentActivity, jenis: String, tambahan: Map<String, Any>, teks: Biometrik.Teks): Map<String, Any?> {
+        val p = pasanganAktif()
+        val kk = KunciKeystore.info(KunciKeystore.KERJAKAN) ?: throw GalatKunci("kunci_tidak_ada")
+        val sekarang = System.currentTimeMillis()
+        val id = Kripto.acakHeks(16)
+        val kd = Perintah.kedaluwarsa(jenis, null, sekarang)
+        val isi = Perintah.isi(jenis, p.macId, p.perangkatId, id, urutBerikut(), sekarang, kd, tambahan)
+        val draf = AmplopV1.siapkan("perintah", kk.id, p.eMac, isi, kd, id)
+        val sig = Biometrik.konfirmasiKerjakan(aktivitas, teks, KunciKeystore.signature(KunciKeystore.KERJAKAN))
+            ?: throw GalatKunci("dibatalkan")
+        sig.update(draf.inputTanda)
+        return kirimAmplop(p, id, draf.selesaikan(sig.sign()))
     }
 
     private fun simpanStatus(isi: Map<String, Any>) {
@@ -590,6 +657,7 @@ class Inti(context: Context) {
         private const val K_DIBERITAHU = "keputusan_diberitahu"
         private const val K_PANTAU = "pantau_keputusan"
         private const val K_TAMPILAN = "tampilan_proyek"
+        private const val K_REVIEW = "review"
         private const val K_KABAR_SETELAH = "kabar_setelah"
         private const val K_TIDAK_SAH = "tidak_sah"
         private const val K_FCM = "fcm"

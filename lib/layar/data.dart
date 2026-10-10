@@ -422,6 +422,80 @@ class Keputusan {
   Duration get sisa => sampai.difference(DateTime.now());
 }
 
+/// Satu berkas yang berubah dalam review (jalur relatif folder proyek; path absolut tidak pernah dikirim Mac).
+class BerkasReview {
+  const BerkasReview({required this.jalur, required this.status, required this.tambah, required this.kurang, required this.biner});
+  final String jalur;
+
+  /// 'A' baru · 'M' diubah · 'D' dihapus · 'T' jenis berubah.
+  final String status;
+  final int tambah, kurang;
+  final bool biner;
+}
+
+/// Perintah tes yang dijalankan Claude selama tugas; [ok] null = hasil tidak diketahui.
+class TesReview {
+  const TesReview(this.perintah, this.ok);
+  final String perintah;
+  final bool? ok;
+}
+
+/// Review hasil Kerjakan dari HP (kabar `review`, pelaksana-review.js): perubahan berkas sejak tugas pertama yang belum ditutup.
+class Review {
+  const Review({
+    required this.id,
+    required this.proyek,
+    required this.status,
+    required this.dibuat,
+    required this.diperbarui,
+    required this.tugas,
+    required this.cabang,
+    required this.hulu,
+    required this.belumPush,
+    required this.berkas,
+    required this.lebih,
+    required this.tes,
+    required this.isi,
+    required this.boleh,
+    this.commit,
+    this.galat,
+  });
+  final String id, proyek;
+
+  /// 'terbuka' | 'dikomit' | 'didorong' | 'dibuang' | 'usang'.
+  final String status;
+  final DateTime dibuat, diperbarui;
+  final List<String> tugas;
+  final String cabang;
+  final bool hulu;
+  final int belumPush;
+  final List<BerkasReview> berkas;
+
+  /// Jumlah berkas yang tidak ikut dikirim (daftar dipangkas agar kabar ≤ 48 KB).
+  final int lebih;
+  final List<TesReview> tes;
+
+  /// Isi diff per berkas boleh diminta (proyek tingkat "isi", bukan data pribadi).
+  final bool isi;
+
+  /// Aksi yang diizinkan Mac untuk HP ini: 'commit' | 'buang' | 'push'.
+  final List<String> boleh;
+  final String? commit, galat;
+
+  int get jumlahBerkas => berkas.length + lebih;
+  int get tambah => berkas.fold(0, (a, b) => a + b.tambah);
+  int get kurang => berkas.fold(0, (a, b) => a + b.kurang);
+  bool get terbuka => status == 'terbuka';
+  bool bisa(String aksi) => boleh.contains(aksi);
+}
+
+/// Isi diff satu berkas (kabar `review_berkas`), sudah disamarkan Mac.
+class DiffBerkas {
+  const DiffBerkas({required this.teks, required this.terpotong, required this.biner, required this.disamarkan, required this.rahasia});
+  final String teks;
+  final bool terpotong, biner, disamarkan, rahasia;
+}
+
 // ---------------------------------------------------------------------------------------------------- sumber data
 
 /// Satu kelas sumber data untuk semua layar. Turunan hanya mengganti "transport" (fasad Kunci atau data contoh).
@@ -469,6 +543,22 @@ abstract class SumberData extends ChangeNotifier {
   final Map<String, String> keputusanSelesai = {};
   int _urutKeputusan = -1;
   bool _keputusanTersimpanDimuat = false;
+
+  /// Review hasil Kerjakan (roadmap 2): snapshot terakhir dari Mac, isi diff yang sudah diterima, aksi yang menunggu tanda terima.
+  List<Review> review = const [];
+  int _urutReview = -1;
+  bool _reviewTersimpanDimuat = false, _reviewBerlangganan = false, _reviewDicobaOtomatis = false;
+  final Map<String, DiffBerkas> _diff = {};
+  final Set<String> _diffDiminta = {};
+  final Map<String, (String, String)> _aksiReview = {};
+  final Map<String, String> galatAksiReview = {};
+
+  List<Review> reviewProyek(String proyekId) => review.where((r) => r.proyek == proyekId).toList();
+  DiffBerkas? diffBerkas(Review r, String jalur) => _diff['${r.id}|$jalur'];
+  bool memuatDiff(Review r, String jalur) => _diffDiminta.contains('${r.id}|$jalur') && diffBerkas(r, jalur) == null;
+
+  /// Aksi yang sudah dikirim untuk review [id] dan belum mendapat tanda terima ('commit' | 'buang' | 'push'), atau null.
+  String? aksiBerjalan(String id) => _aksiReview.values.where((x) => x.$1 == id).firstOrNull?.$2;
 
   /// Keputusan yang masih bisa dijawab (belum kedaluwarsa, belum dikirim).
   List<Keputusan> get keputusanMenunggu => keputusan.where((k) => !k.kedaluwarsa && !k.terkirim).toList();
@@ -553,6 +643,79 @@ abstract class SumberData extends ChangeNotifier {
   /// (diperbarui, entri) dari cache lokal, atau null.
   @protected
   Future<(DateTime, List<Map<String, Object?>>)?> transportRiwayatLokal(String sesi) async => null;
+
+  // ---- review hasil Kerjakan (roadmap 2). Bawaan: tidak tersedia (pratinjau memakai data contoh lewat terapkanKabar).
+  @protected
+  Future<Map<String, Object?>?> transportReviewTersimpan() async => null;
+  @protected
+  Future<void> transportReviewDaftar() async => throw const GalatKunci('tidak_tersedia');
+  @protected
+  Future<String?> transportReviewBerkas(Review r, String jalur) async => throw const GalatKunci('tidak_tersedia');
+  @protected
+  Future<String?> transportReviewAksi(Review r, String aksi, {String? pesan}) async => throw const GalatKunci('tidak_tersedia');
+
+  /// Snapshot review tersimpan (Kotlin) saat aplikasi dibuka, sekali.
+  @protected
+  Future<void> muatReviewTersimpan() async {
+    if (_reviewTersimpanDimuat) return;
+    _reviewTersimpanDimuat = true;
+    try {
+      final isi = await transportReviewTersimpan();
+      if (isi != null) terapkanKabar(isi);
+    } catch (_) {
+      // tidak ada / build non-rilis
+    }
+  }
+
+  /// Berlangganan kabar review (Mac menyimpan langganan; Mac lama menolak → diam). Otomatis hanya SEKALI per sesi aplikasi
+  /// (penyegaran latar tidak pernah memicu sidik jari); [olehOwner] = dari layar proyek, dicoba lagi bila belum berhasil.
+  Future<void> langgananReview({bool olehOwner = false}) async {
+    if (_reviewBerlangganan || (!olehOwner && _reviewDicobaOtomatis)) return;
+    _reviewDicobaOtomatis = true;
+    try {
+      await transportReviewDaftar();
+      _reviewBerlangganan = true;
+    } catch (_) {
+      // tidak tersedia / dibatalkan / Mac lama: kartu review tidak muncul, fitur lain tetap jalan
+    }
+  }
+
+  /// Minta isi diff [jalur] (hanya review dengan `isi`); jawaban datang sebagai kabar `review_berkas`.
+  Future<void> mintaDiff(Review r, String jalur) async {
+    if (!r.isi) throw const GalatKunci('isi_tidak_diizinkan');
+    final k = '${r.id}|$jalur';
+    if (_diff.containsKey(k) || _diffDiminta.contains(k)) return;
+    _diffDiminta.add(k);
+    beritahu();
+    try {
+      await transportReviewBerkas(r, jalur);
+      _jadwalkan();
+    } on GalatKunci catch (e) {
+      _diffDiminta.remove(k);
+      tanganiGalat(e);
+      beritahu();
+      rethrow;
+    }
+  }
+
+  /// Commit (dengan [pesan]) / buang / push review [r]. Kotlin meminta sidik jari (K_kerjakan). Hasil: snapshot review berikutnya
+  /// (status/galat) atau tanda terima "ditolak" (galatAksiReview).
+  Future<void> aksiReview(Review r, String aksi, {String? pesan}) async {
+    if (!r.bisa(aksi)) throw const GalatKunci('aksi_tidak_diizinkan');
+    final p = pesan?.trim();
+    if (aksi == 'commit' && (p == null || p.isEmpty || p.length > 200 || p.contains('\n'))) throw const GalatKunci('pesan_tidak_sah');
+    try {
+      final id = await transportReviewAksi(r, aksi, pesan: aksi == 'commit' ? p : null);
+      galatAksiReview.remove(r.id);
+      if (id != null) _aksiReview[id] = (r.id, aksi);
+      _jadwalkan();
+    } on GalatKunci catch (e) {
+      tanganiGalat(e);
+      rethrow;
+    } finally {
+      beritahu();
+    }
+  }
 
   // ---- tampilan tab Proyek (urutan & bagian terbuka). Bawaan: tidak disimpan (pratinjau & uji).
   @protected
@@ -675,7 +838,8 @@ abstract class SumberData extends ChangeNotifier {
 
   /// 3 dtk saat ada tugas aktif, sesi sedang diikuti, atau jawaban cermin ditunggu.
   bool get _butuhCepat =>
-      adaTugasAktif || _diikuti != null || _antreDaftar.isNotEmpty || _riwayat.values.any((r) => r.memuat) || keputusan.any((k) => k.terkirim);
+      adaTugasAktif || _diikuti != null || _antreDaftar.isNotEmpty || _riwayat.values.any((r) => r.memuat) || keputusan.any((k) => k.terkirim) ||
+      _diffDiminta.isNotEmpty || _aksiReview.isNotEmpty;
 
   bool _kantorTerlihat = false;
 
@@ -986,7 +1150,78 @@ abstract class SumberData extends ChangeNotifier {
         _cerminRiwayat(_peta(isi['cermin_riwayat']));
       case 'keputusan':
         _keputusan(_peta(isi['keputusan']), _angka(isi['urut_mac'])?.toInt() ?? 0);
+      case 'review':
+        _review(_peta(isi['review']), _angka(isi['urut_mac'])?.toInt() ?? 0);
+      case 'review_berkas':
+        _reviewBerkas(_peta(isi['review_berkas']));
     }
+  }
+
+  /// Snapshot `review` menggantikan daftar; snapshot yang lebih lama (urut_mac) diabaikan. Aksi yang sudah tercermin di
+  /// snapshot (status berubah / galat baru) dilepas dari daftar tunggu.
+  void _review(Map<String, Object?>? m, int urut) {
+    if (m == null || urut < _urutReview) return;
+    _urutReview = urut;
+    final baru = <Review>[];
+    for (final b in _daftar(m['daftar']).take(6)) {
+      final x = _peta(b);
+      if (x == null) continue;
+      final id = _teks(x['id']), dibuat = _waktu(x['dibuat']), diperbarui = _waktu(x['diperbarui']);
+      if (id == null || dibuat == null || diperbarui == null) continue;
+      baru.add(Review(
+        id: id,
+        proyek: _teks(x['proyek']) ?? '',
+        status: _teks(x['status']) ?? 'usang',
+        dibuat: dibuat,
+        diperbarui: diperbarui,
+        tugas: [for (final t in _daftar(x['tugas'])) t.toString()],
+        cabang: _teks(x['cabang']) ?? '',
+        hulu: x['hulu'] == true,
+        belumPush: _angka(x['belumPush'])?.toInt() ?? 0,
+        berkas: [
+          for (final f in _daftar(x['berkas']))
+            if (_peta(f) case final ff?)
+              BerkasReview(
+                jalur: _teks(ff['jalur']) ?? '?',
+                status: _teks(ff['status']) ?? 'M',
+                tambah: _angka(ff['tambah'])?.toInt() ?? 0,
+                kurang: _angka(ff['kurang'])?.toInt() ?? 0,
+                biner: ff['biner'] == true,
+              ),
+        ],
+        lebih: _angka(x['lebih'])?.toInt() ?? 0,
+        tes: [
+          for (final t in _daftar(x['tes']))
+            if (_peta(t) case final tt?) TesReview(_teks(tt['perintah']) ?? '?', tt['ok'] is bool ? tt['ok'] as bool : null),
+        ],
+        isi: x['isi'] == true,
+        boleh: [for (final a in _daftar(x['boleh'])) a.toString()],
+        commit: _teks(x['commit']),
+        galat: _teks(x['galat']),
+      ));
+    }
+    final lama = {for (final r in review) r.id: r};
+    for (final r in baru) {
+      final l = lama[r.id];
+      if (l != null && (l.status != r.status || l.galat != r.galat || l.belumPush != r.belumPush)) {
+        _aksiReview.removeWhere((_, v) => v.$1 == r.id);
+      }
+      if (l != null && !identical(l, r) && l.diperbarui != r.diperbarui) _diff.removeWhere((k, _) => k.startsWith('${r.id}|'));
+    }
+    review = baru;
+  }
+
+  void _reviewBerkas(Map<String, Object?>? m) {
+    final id = _teks(m?['review']), jalur = _teks(m?['jalur']);
+    if (m == null || id == null || jalur == null) return;
+    _diffDiminta.remove('$id|$jalur');
+    _diff['$id|$jalur'] = DiffBerkas(
+      teks: _teks(m['teks']) ?? '',
+      terpotong: m['terpotong'] == true,
+      biner: m['biner'] == true,
+      disamarkan: m['disamarkan'] == true,
+      rahasia: m['rahasia'] == true,
+    );
   }
 
   /// Snapshot `keputusan` (F1b) menggantikan daftar; snapshot yang lebih lama (urut_mac) diabaikan.
@@ -1050,7 +1285,14 @@ abstract class SumberData extends ChangeNotifier {
 
   void _tandaTerima(Map<String, Object?>? m) {
     if (m == null) return;
-    final t = _cariTugas(perintahId: _teks(m['perintah_id']));
+    final idP = _teks(m['perintah_id']);
+    final aksi = idP == null ? null : _aksiReview[idP];
+    if (aksi != null) {   // review_aksi: selesai → snapshot review berikutnya membawa status baru; ditolak → alasan di kartu
+      if (m['hasil'] == 'selesai' || m['hasil'] == 'ditolak') _aksiReview.remove(idP);
+      if (m['hasil'] == 'ditolak') galatAksiReview[aksi.$1] = _teks(m['alasan']) ?? 'ditolak';
+      return;
+    }
+    final t = _cariTugas(perintahId: idP);
     if (t == null) return;
     _tandaiChat(t.proyek);
     final alasan = _teks(m['alasan']);

@@ -138,7 +138,13 @@ class _LayarBerandaState extends State<LayarBeranda> {
       }
       Widget kartu(Proyek p) => Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: _KartuProyek(proyek: p, macPutus: s.macTersambung == false, onTap: () => widget.onBukaChat(p.id)),
+            child: _KartuProyek(
+              proyek: p,
+              macPutus: s.macTersambung == false,
+              keputusanN: s.keputusanMenunggu.where((k) => k.proyek == p.id).length,
+              reviewTerbuka: s.reviewProyek(p.id).where((r) => r.terbuka).firstOrNull,
+              onTap: () => widget.onBukaChat(p.id),
+            ),
           );
       if (!pakaiGrup) {
         butir.addAll(tampil.map(kartu));
@@ -456,10 +462,14 @@ class _KartuMac extends StatelessWidget {
 }
 
 class _KartuProyek extends StatelessWidget {
-  const _KartuProyek({required this.proyek, required this.macPutus, required this.onTap});
+  const _KartuProyek({required this.proyek, required this.macPutus, required this.onTap, this.keputusanN = 0, this.reviewTerbuka});
   final Proyek proyek;
   final bool macPutus;
   final VoidCallback onTap;
+
+  /// Keputusan menunggu jawaban HP untuk proyek ini (dijawab di halaman proyek) · review hasil Kerjakan yang belum ditutup.
+  final int keputusanN;
+  final Review? reviewTerbuka;
 
   @override
   Widget build(BuildContext context) {
@@ -469,8 +479,10 @@ class _KartuProyek extends StatelessWidget {
     String? sub;
     if (macPutus) {
       sub = 'Status terakhir: ${_namaStatus(p.status)}';
+    } else if (keputusanN > 0) {
+      sub = keputusanN == 1 ? 'Claude butuh keputusan Anda — ketuk untuk menjawab' : 'Claude butuh $keputusanN keputusan — ketuk untuk menjawab';
     } else if (p.status == StatusProyek.menungguIzin) {
-      sub = 'Claude butuh izin menjalankan perintah (setujui di laptop)';
+      sub = 'Claude menunggu izin di laptop';
     } else if (bekerja.isNotEmpty) {
       sub = bekerja.map((d) => d.peran.isEmpty ? d.nama : '${d.nama} (${d.peranTampil})').join(', ');
     } else if (p.ringkasTerakhir != null) {
@@ -491,6 +503,8 @@ class _KartuProyek extends StatelessWidget {
         Wrap(spacing: 6, runSpacing: 6, children: [
           macPutus ? ChipPadev.status(context, StatusProyek.tidakDiketahui) : ChipPadev.status(context, p.status),
           if (!p.bolehKerjakan) ChipPadev(ikon: Simbol.daftarCek, label: 'Rencana saja', fg: w.muted, bg: w.chip),
+          if (reviewTerbuka != null)
+            ChipPadev(ikon: Simbol.berkas, label: '${reviewTerbuka!.jumlahBerkas} berkas belum di-commit', fg: w.warnt, bg: w.warnb),
         ]),
         if (sub != null) ...[
           const SizedBox(height: 8),
