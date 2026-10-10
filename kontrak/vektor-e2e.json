@@ -68,7 +68,8 @@
     "pasang": 600000,
     "kabar": 259200000,
     "keputusan_jawab": 180000,
-    "review_aksi": 180000
+    "review_aksi": 180000,
+    "pratinjau": 180000
   },
   "konteks": {
     "sekarang": 1791000000000,

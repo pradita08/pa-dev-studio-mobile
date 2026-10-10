@@ -47,16 +47,16 @@ object AmplopV1 {
     val JENIS_KOTAK = listOf("perintah", "kabar", "pasang", "darurat")
     val JENIS_PERINTAH = listOf(
         "jalankan", "hentikan", "hapus_sesi", "minta_status", "perbarui_fcm", "rotasi_kunci", "lepas_diri", "cabut_perangkat",
-    ) + Cermin.JENIS_PERINTAH + Keputusan.JENIS_PERINTAH + Review.JENIS_PERINTAH // KONTRAK-apk-v2 §2.1 (F1), keputusan_jawab (F1b), review_* (roadmap 2)
+    ) + Cermin.JENIS_PERINTAH + Keputusan.JENIS_PERINTAH + Review.JENIS_PERINTAH + Pratinjau.JENIS_PERINTAH // §2.1 (F1), keputusan_jawab (F1b), review_* (2), pratinjau (2b)
     val JENIS_KABAR = listOf("tanda_terima", "kabar", "status", "notif", "pasang_hasil", "kunci_mac") + Cermin.JENIS_KABAR +
-        Keputusan.JENIS_KABAR + Review.JENIS_KABAR // v2 §2.2, keputusan (F1b), review/review_berkas (roadmap 2)
+        Keputusan.JENIS_KABAR + Review.JENIS_KABAR + Pratinjau.JENIS_KABAR // v2 §2.2, keputusan (F1b), review* (2), pratinjau* (2b)
     val HASIL_TANDA_TERIMA = listOf("diterima", "ditolak", "mulai", "selesai", "gagal", "dihentikan", "batas_waktu")
 
     /** Masa berlaku maksimum (dipaksakan Mac; HP memakai nilai yang sama saat membuat perintah). */
     val MASA_MAKS = mapOf(
         "jalankan_kerjakan" to 3 * MENIT, "jalankan_rencana" to 10 * MENIT, "hapus_sesi" to 10 * MENIT,
         "rotasi_kunci" to 10 * MENIT, "hentikan" to 30 * MENIT, "lainnya" to 10 * MENIT, "pasang" to 10 * MENIT,
-        "kabar" to 72 * 60 * MENIT, "keputusan_jawab" to 3 * MENIT, "review_aksi" to 3 * MENIT,
+        "kabar" to 72 * 60 * MENIT, "keputusan_jawab" to 3 * MENIT, "review_aksi" to 3 * MENIT, "pratinjau" to 3 * MENIT,
     )
 
     private val AWALAN_TANDA = "PADEV-STUDIO-AMPLOP-v1\n".toByteArray(Charsets.UTF_8)
@@ -190,7 +190,7 @@ object AmplopV1 {
     fun cekIsiPerintah(isi: Any?): String? {
         if (isi !is Map<*, *> || isi["jenis"] !in JENIS_PERINTAH) return Alasan.ISI_BENTUK
         val skema = UMUM_PERINTAH + (isi["jenis"] as String).let {
-            SKEMA_PERINTAH[it] ?: Cermin.SKEMA_PERINTAH[it] ?: Keputusan.SKEMA_PERINTAH[it] ?: Review.SKEMA_PERINTAH.getValue(it)
+            SKEMA_PERINTAH[it] ?: Cermin.SKEMA_PERINTAH[it] ?: Keputusan.SKEMA_PERINTAH[it] ?: Review.SKEMA_PERINTAH[it] ?: Pratinjau.SKEMA_PERINTAH.getValue(it)
         }
         for (k in isi.keys) if (k !in skema) return Alasan.ISI_BENTUK
         for ((k, aturan) in skema) {
@@ -215,6 +215,7 @@ object AmplopV1 {
         if (isi["jenis"] in Cermin.JENIS_KABAR) return Cermin.cekIsiKabar(isi) // v2: ketat, field tak dikenal ditolak
         if (isi["jenis"] in Keputusan.JENIS_KABAR) return Keputusan.cekIsiKabar(isi) // F1b: ketat
         if (isi["jenis"] in Review.JENIS_KABAR) return Review.cekIsiKabar(isi) // roadmap 2: ketat
+        if (isi["jenis"] in Pratinjau.JENIS_KABAR) return Pratinjau.cekIsiKabar(isi) // roadmap 2b: ketat
         return null
     }
 

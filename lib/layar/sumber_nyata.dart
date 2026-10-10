@@ -18,12 +18,16 @@ class SumberNyata extends SumberData {
     terapkanStatus(halo.status);
     await muatKeputusanTersimpan();
     await muatReviewTersimpan();
+    await muatPratinjauTersimpan();
     for (final isi in await Kunci.ambilKabar()) {
       terapkanKabar(isi);
     }
     pesanTidakSah = await Kunci.jumlahPesanTidakSah();
     if (perangkat == null) await _muatPerangkat();
-    if (cerminTersedia == true && macTersambung == true) await langgananReview();   // roadmap 2: kartu review (sekali per sesi)
+    if (cerminTersedia == true && macTersambung == true) {
+      await langgananReview(); // roadmap 2: kartu review (sekali per sesi)
+      await langgananPratinjau(); // roadmap 2b: pratinjau langsung (sekali per sesi)
+    }
     // Status belum pernah diterima: minta sekali per sesi (hp/kirim dibatasi 6/mnt di relay).
     if (statusBelumAda && !_statusDiminta && macTersambung == true) {
       _statusDiminta = true;
@@ -88,6 +92,15 @@ class SumberNyata extends SumberData {
   @override
   Future<String?> transportReviewAksi(Review r, String aksi, {String? pesan}) async =>
       (await Kunci.kirimReviewAksi(review: r.id, aksi: aksi, pesan: pesan)).id;
+
+  @override
+  Future<Map<String, Object?>?> transportPratinjauTersimpan() => Kunci.pratinjauTersimpan();
+
+  @override
+  Future<String?> transportPratinjau(String proyek, String aksi) async => (await Kunci.kirimPratinjau(proyek: proyek, aksi: aksi)).id;
+
+  @override
+  Future<void> transportBukaPratinjau(String proyek) => Kunci.bukaPratinjau(proyek);
 
   @override
   Future<String?> transportMuatTampilan() => Kunci.muatTampilan();

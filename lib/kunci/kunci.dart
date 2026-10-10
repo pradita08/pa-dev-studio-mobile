@@ -49,6 +49,14 @@ class GalatKunci implements Exception {
     'pesan_tidak_sah': 'Pesan commit wajib diisi: satu baris, maksimal 200 karakter.',
     'berkas_berubah_sejak_review': 'Berkas sudah berubah sejak review dibuat (diedit di laptop?). Cek di laptop dulu.',
     'proyek_sedang_bekerja': 'Claude masih bekerja di proyek ini. Tunggu tugasnya selesai.',
+    // roadmap 2b/2c: pratinjau langsung (pelaksana-pratinjau.js)
+    'pratinjau_mati': 'Pratinjau belum menyala. Nyalakan dulu.',
+    'pratinjau_belum_diatur': 'Pratinjau proyek ini belum diatur di Mac (bash siapkan-hp.sh --pratinjau <proyek>).',
+    'tailscale_tidak_ada': 'Tailscale belum terpasang di Mac.',
+    'tailscale_tidak_tersambung': 'Tailscale di Mac belum tersambung (buka aplikasi Tailscale & login).',
+    'terlalu_banyak_pratinjau': 'Sudah ada 2 pratinjau menyala. Matikan salah satu dulu.',
+    'chrome_tidak_ada': 'Screenshot butuh Google Chrome di Mac.',
+    'potret_gagal': 'Screenshot gagal dibuat di Mac.',
   };
 
   @override
@@ -319,6 +327,19 @@ abstract final class Kunci {
   /// Commit / buang / push: Kotlin menampilkan BiometricPrompt sendiri (K_kerjakan) dengan teks dari snapshot terverifikasi.
   static Future<HasilKirim> kirimReviewAksi({required String review, required String aksi, String? pesan}) async =>
       HasilKirim._(await _peta('kirimReviewAksi', {'review': review, 'aksi': aksi, 'pesan': pesan}));
+
+  /// Pratinjau langsung (roadmap 2b): snapshot terakhir yang sudah diverifikasi Kotlin (isi kabar `pratinjau`), atau null.
+  static Future<Map<String, Object?>?> pratinjauTersimpan() async {
+    final m = await _p<Map>('pratinjauTersimpan');
+    return m == null ? null : Map<String, Object?>.from(m);
+  }
+
+  /// Aksi pratinjau: 'daftar' (langganan) | 'mulai' (Kotlin minta sidik jari, K_kerjakan) | 'henti' | 'potret'.
+  static Future<HasilKirim> kirimPratinjau({required String proyek, required String aksi}) async =>
+      HasilKirim._(await _peta('kirimPratinjau', {'proyek': proyek, 'aksi': aksi}));
+
+  /// Buka alamat pratinjau [proyek] di browser — Kotlin memakai alamat dari snapshot terverifikasi (https *.ts.net), bukan dari Dart.
+  static Future<void> bukaPratinjau(String proyek) => _p<void>('bukaPratinjau', {'proyek': proyek});
 
   /// Tampilan tab Proyek (urutan bagian grup & bagian terbuka) — disimpan di HP (Brankas), tidak dikirim ke Mac.
   static Future<void> simpanTampilan(String isi) => _p<void>('simpanTampilan', {'isi': isi});

@@ -14,6 +14,7 @@ import '../pratinjau/pita.dart';
 import '../tema/token.dart';
 import 'data.dart';
 import 'keputusan.dart';
+import 'pratinjau.dart';
 import 'review.dart';
 import 'sesi.dart';
 import 'sesi_detail.dart';
@@ -51,6 +52,7 @@ class _LayarChatState extends State<LayarChat> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(s.mintaDaftarSesi(otomatis: true));
       unawaited(s.langgananReview(olehOwner: true));
+      unawaited(s.langgananPratinjau(olehOwner: true));
     });
   }
 
@@ -83,6 +85,7 @@ class _LayarChatState extends State<LayarChat> {
               'atau di Mac jalankan: bash siapkan-hp.sh --keputusan izinkan 0 (semua pertanyaan ke HP).',
         )),
       for (final r in rv) jarak(KartuReview(key: ValueKey('rv-${r.id}'), sumber: s, review: r, pesanBawaan: usulan)),
+      if (s.pratinjauProyek(p.id) case final pv?) jarak(KartuPratinjau(key: ValueKey('pv-${p.id}'), sumber: s, pratinjau: pv)),
       if (sesi.isNotEmpty)
         jarak(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Padding(

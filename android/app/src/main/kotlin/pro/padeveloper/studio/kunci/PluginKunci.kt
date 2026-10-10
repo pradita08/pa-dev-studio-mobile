@@ -1,6 +1,8 @@
 package pro.padeveloper.studio.kunci
 
 import android.Manifest
+import android.content.Intent
+import android.net.Uri
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
@@ -130,6 +132,16 @@ class PluginKunci(messenger: BinaryMessenger, private val aktivitas: FragmentAct
             c.argument<String>("pesan")?.also { require(it.length <= Keputusan.MAKS_PESAN) { "pesan" } },
         )
         "keputusanTersimpan" -> inti.keputusanTersimpan()
+        // ---- pratinjau langsung (roadmap 2b): buka hanya alamat dari snapshot terverifikasi (Kotlin), di browser
+        "pratinjauTersimpan" -> inti.pratinjauTersimpan()
+        "kirimPratinjau" -> inti.kirimPratinjau(aktivitas, teks(c, "proyek", 40), teks(c, "aksi", 10))
+        "bukaPratinjau" -> {
+            val url = inti.alamatPratinjau(teks(c, "proyek", 40))
+            aktivitas.runOnUiThread {
+                runCatching { aktivitas.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE)) }
+            }
+            null
+        }
         // ---- review hasil Kerjakan (roadmap 2)
         "reviewTersimpan" -> inti.reviewTersimpan()
         "kirimReviewDaftar" -> inti.kirimReviewDaftar(aktivitas)

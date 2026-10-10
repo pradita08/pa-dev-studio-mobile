@@ -235,7 +235,8 @@ class Inti(context: Context) {
         }
         if (catat) brankas.simpan(K_REPLAY, penyimpan.keJson())
         // K-07/SEC-86: kabar cermin hanya diteruskan di build rilis (build lain = data contoh); dibuang diam (bukan serangan).
-        if ((h.isi!!["jenis"] in Cermin.JENIS_KABAR || h.isi["jenis"] in Keputusan.JENIS_KABAR || h.isi["jenis"] in Review.JENIS_KABAR) &&
+        if ((h.isi!!["jenis"] in Cermin.JENIS_KABAR || h.isi["jenis"] in Keputusan.JENIS_KABAR || h.isi["jenis"] in Review.JENIS_KABAR ||
+                h.isi["jenis"] in Pratinjau.JENIS_KABAR) &&
             !BuildConfig.CERMIN_NYATA
         ) return null
         if (catat) terapkanKabar(h.isi)
@@ -252,6 +253,7 @@ class Inti(context: Context) {
             "status" -> simpanStatus(isi)
             "keputusan" -> simpanKeputusan(isi)
             "review" -> simpanReview(isi)
+            "pratinjau" -> simpanPratinjau(isi)
             // Riwayat cermin → cache terenkripsi. Layar terkunci/kunci tak bisa dipakai → dilewati (kabar tetap diteruskan ke Dart).
             "cermin_riwayat" -> {
                 @Suppress("UNCHECKED_CAST")
@@ -367,6 +369,46 @@ class Inti(context: Context) {
         }
         val (judul, subjudul, keterangan) = Review.teksSidikJari(butir, aksi, tambahan["pesan"] as? String)
         return kirimBerKerjakan(aktivitas, "review_aksi", tambahan, Biometrik.Teks(judul, subjudul, keterangan))
+    }
+
+    // ---------------------------------------------------------------- pratinjau langsung (roadmap 2b, pelaksana-pratinjau.js)
+
+    /** Snapshot pratinjau terakhir — sumber alamat yang boleh dibuka & syarat "mulai"; tidak boleh mundur (urut_mac). */
+    private fun simpanPratinjau(isi: Map<String, Any>) {
+        val lama = brankas.baca(K_PRATINJAU)?.let { runCatching { JsonKetat.objek(it)["urut_mac"] as? Long }.getOrNull() } ?: -1L
+        if ((isi["urut_mac"] as Long) > lama) brankas.simpan(K_PRATINJAU, Jcs.teks(isi))
+    }
+
+    private fun snapshotPratinjau(): Map<String, Any>? = brankas.baca(K_PRATINJAU)?.let { runCatching { JsonKetat.objek(it) }.getOrNull() }
+
+    fun pratinjauTersimpan(): Map<String, Any?>? {
+        if (!BuildConfig.CERMIN_NYATA) return null
+        return snapshotPratinjau()?.let { petaKeDart(it) }
+    }
+
+    /**
+     * Perintah pratinjau: "mulai" menjalankan server dev proyek di Mac → WAJIB K_kerjakan + sidik jari (teks dari Kotlin, SEC-51)
+     * dan butir snapshot harus `bisaMulai`; "daftar" / "henti" / "potret" K_rencana.
+     */
+    fun kirimPratinjau(aktivitas: FragmentActivity, proyek: String, aksi: String): Map<String, Any?> {
+        if (!BuildConfig.CERMIN_NYATA) throw GalatKunci("tidak_tersedia")
+        if (aksi !in Pratinjau.AKSI || !Cermin.POLA_ID.matches(proyek)) throw GalatKunci("argumen_tidak_sah")
+        val tambahan = linkedMapOf<String, Any>("proyek" to proyek, "aksi" to aksi)
+        if (aksi != "mulai") return kirimPerintah(aktivitas, "pratinjau", tambahan)
+        val butir = Pratinjau.cariButir(snapshotPratinjau(), proyek) ?: throw GalatKunci("pratinjau_belum_diatur")
+        if (butir["bisaMulai"] != true) throw GalatKunci("aksi_tidak_diizinkan")
+        return kirimBerKerjakan(
+            aktivitas, "pratinjau", tambahan,
+            Biometrik.Teks("Nyalakan pratinjau · ${proyek.take(40)}", "Server dev proyek jalan di Mac (sandbox) & terbuka di tailnet Anda 30 menit"),
+        )
+    }
+
+    /** Alamat pratinjau [proyek] yang boleh dibuka: hanya alamat https *.ts.net dari snapshot terverifikasi (bukan dari Dart). */
+    fun alamatPratinjau(proyek: String): String {
+        val butir = Pratinjau.cariButir(snapshotPratinjau(), proyek) ?: throw GalatKunci("pratinjau_mati")
+        val a = butir["alamat"]
+        if (butir["status"] != "menyala" || !Pratinjau.alamatSah(a)) throw GalatKunci("pratinjau_mati")
+        return a as String
     }
 
     /** Perintah bertanda K_kerjakan setelah sidik jari dengan [teks] yang disusun Kotlin. */
@@ -658,6 +700,7 @@ class Inti(context: Context) {
         private const val K_PANTAU = "pantau_keputusan"
         private const val K_TAMPILAN = "tampilan_proyek"
         private const val K_REVIEW = "review"
+        private const val K_PRATINJAU = "pratinjau"
         private const val K_KABAR_SETELAH = "kabar_setelah"
         private const val K_TIDAK_SAH = "tidak_sah"
         private const val K_FCM = "fcm"

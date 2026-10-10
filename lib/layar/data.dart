@@ -489,6 +489,30 @@ class Review {
   bool bisa(String aksi) => boleh.contains(aksi);
 }
 
+/// Pratinjau langsung satu proyek (kabar `pratinjau`, pelaksana-pratinjau.js).
+class PratinjauProyek {
+  const PratinjauProyek({required this.proyek, required this.status, required this.bisaMulai, this.alamat, this.sampai, this.galat});
+  final String proyek;
+
+  /// 'mati' | 'mulai' | 'menyala' | 'gagal'.
+  final String status;
+
+  /// HP ini boleh menyalakan (HP & proyek mode Kerjakan).
+  final bool bisaMulai;
+  final String? alamat, galat;
+  final DateTime? sampai;
+  bool get menyala => status == 'menyala';
+}
+
+/// Screenshot pratinjau (kabar `pratinjau_gambar`): JPEG ukuran HP / desktop.
+class GambarPratinjau {
+  const GambarPratinjau({required this.ukuran, required this.jpeg, required this.lebar, required this.tinggi, required this.diterima});
+  final String ukuran;
+  final Uint8List jpeg;
+  final int lebar, tinggi;
+  final DateTime diterima;
+}
+
 /// Isi diff satu berkas (kabar `review_berkas`), sudah disamarkan Mac.
 class DiffBerkas {
   const DiffBerkas({required this.teks, required this.terpotong, required this.biner, required this.disamarkan, required this.rahasia});
@@ -554,6 +578,17 @@ abstract class SumberData extends ChangeNotifier {
   final Map<String, String> galatAksiReview = {};
 
   List<Review> reviewProyek(String proyekId) => review.where((r) => r.proyek == proyekId).toList();
+
+  /// Pratinjau langsung (roadmap 2b/2c): keadaan per proyek, screenshot terakhir, aksi yang menunggu tanda terima.
+  List<PratinjauProyek> pratinjauLangsung = const [];
+  int _urutPratinjau = -1;
+  bool _pratinjauTersimpanDimuat = false, _pratinjauBerlangganan = false, _pratinjauDicobaOtomatis = false;
+  final Map<String, Map<String, GambarPratinjau>> _gambar = {};
+  final Map<String, (String, String)> _aksiPratinjau = {};
+  final Map<String, String> galatPratinjau = {};
+  PratinjauProyek? pratinjauProyek(String proyekId) => pratinjauLangsung.where((x) => x.proyek == proyekId).firstOrNull;
+  Map<String, GambarPratinjau> gambarProyek(String proyekId) => _gambar[proyekId] ?? const {};
+  String? aksiPratinjauBerjalan(String proyekId) => _aksiPratinjau.values.where((x) => x.$1 == proyekId).firstOrNull?.$2;
   DiffBerkas? diffBerkas(Review r, String jalur) => _diff['${r.id}|$jalur'];
   bool memuatDiff(Review r, String jalur) => _diffDiminta.contains('${r.id}|$jalur') && diffBerkas(r, jalur) == null;
 
@@ -717,6 +752,53 @@ abstract class SumberData extends ChangeNotifier {
     }
   }
 
+  // ---- pratinjau langsung (roadmap 2b/2c)
+  @protected
+  Future<Map<String, Object?>?> transportPratinjauTersimpan() async => null;
+  @protected
+  Future<String?> transportPratinjau(String proyek, String aksi) async => throw const GalatKunci('tidak_tersedia');
+  @protected
+  Future<void> transportBukaPratinjau(String proyek) async => throw const GalatKunci('tidak_tersedia');
+
+  @protected
+  Future<void> muatPratinjauTersimpan() async {
+    if (_pratinjauTersimpanDimuat) return;
+    _pratinjauTersimpanDimuat = true;
+    try {
+      final isi = await transportPratinjauTersimpan();
+      if (isi != null) terapkanKabar(isi);
+    } catch (_) {}
+  }
+
+  /// Berlangganan kabar pratinjau (aksi 'daftar'): otomatis sekali per sesi; [olehOwner] = dari halaman proyek.
+  Future<void> langgananPratinjau({bool olehOwner = false}) async {
+    if (_pratinjauBerlangganan || (!olehOwner && _pratinjauDicobaOtomatis)) return;
+    _pratinjauDicobaOtomatis = true;
+    final id = proyek.firstOrNull?.id;
+    if (id == null) return;
+    try {
+      await transportPratinjau(id, 'daftar');
+      _pratinjauBerlangganan = true;
+    } catch (_) {}
+  }
+
+  /// 'mulai' (sidik jari, Kotlin) | 'henti' | 'potret'. Hasil: snapshot/gambar berikutnya, atau tanda terima ditolak → galatPratinjau.
+  Future<void> aksiPratinjau(String proyekId, String aksi) async {
+    try {
+      final id = await transportPratinjau(proyekId, aksi);
+      galatPratinjau.remove(proyekId);
+      if (id != null) _aksiPratinjau[id] = (proyekId, aksi);
+      _jadwalkan();
+    } on GalatKunci catch (e) {
+      tanganiGalat(e);
+      rethrow;
+    } finally {
+      beritahu();
+    }
+  }
+
+  Future<void> bukaPratinjau(String proyekId) => transportBukaPratinjau(proyekId);
+
   // ---- tampilan tab Proyek (urutan & bagian terbuka). Bawaan: tidak disimpan (pratinjau & uji).
   @protected
   Future<String?> transportMuatTampilan() async => null;
@@ -839,7 +921,7 @@ abstract class SumberData extends ChangeNotifier {
   /// 3 dtk saat ada tugas aktif, sesi sedang diikuti, atau jawaban cermin ditunggu.
   bool get _butuhCepat =>
       adaTugasAktif || _diikuti != null || _antreDaftar.isNotEmpty || _riwayat.values.any((r) => r.memuat) || keputusan.any((k) => k.terkirim) ||
-      _diffDiminta.isNotEmpty || _aksiReview.isNotEmpty;
+      _diffDiminta.isNotEmpty || _aksiReview.isNotEmpty || _aksiPratinjau.isNotEmpty;
 
   bool _kantorTerlihat = false;
 
@@ -1154,7 +1236,48 @@ abstract class SumberData extends ChangeNotifier {
         _review(_peta(isi['review']), _angka(isi['urut_mac'])?.toInt() ?? 0);
       case 'review_berkas':
         _reviewBerkas(_peta(isi['review_berkas']));
+      case 'pratinjau':
+        _pratinjau(_peta(isi['pratinjau']), _angka(isi['urut_mac'])?.toInt() ?? 0);
+      case 'pratinjau_gambar':
+        _pratinjauGambar(_peta(isi['pratinjau_gambar']));
     }
+  }
+
+  void _pratinjau(Map<String, Object?>? m, int urut) {
+    if (m == null || urut < _urutPratinjau) return;
+    _urutPratinjau = urut;
+    final lama = {for (final x in pratinjauLangsung) x.proyek: x};
+    pratinjauLangsung = [
+      for (final b in _daftar(m['daftar']).take(10))
+        if (_peta(b) case final x?)
+          PratinjauProyek(
+            proyek: _teks(x['proyek']) ?? '',
+            status: _teks(x['status']) ?? 'mati',
+            bisaMulai: x['bisaMulai'] == true,
+            alamat: _teks(x['alamat']),
+            sampai: _waktu(x['sampai']),
+            galat: _teks(x['galat']),
+          ),
+    ];
+    for (final x in pratinjauLangsung) {
+      final l = lama[x.proyek];
+      if (l == null || l.status != x.status || l.sampai != x.sampai) _aksiPratinjau.removeWhere((_, v) => v.$1 == x.proyek && v.$2 != 'potret');
+    }
+  }
+
+  void _pratinjauGambar(Map<String, Object?>? m) {
+    final proyekId = _teks(m?['proyek']), ukuran = _teks(m?['ukuran']), b64 = _teks(m?['jpeg']);
+    if (m == null || proyekId == null || ukuran == null || b64 == null) return;
+    try {
+      (_gambar[proyekId] ??= {})[ukuran] = GambarPratinjau(
+        ukuran: ukuran,
+        jpeg: base64Decode(b64),
+        lebar: _angka(m['lebar'])?.toInt() ?? 0,
+        tinggi: _angka(m['tinggi'])?.toInt() ?? 0,
+        diterima: DateTime.now(),
+      );
+      _aksiPratinjau.removeWhere((_, v) => v.$1 == proyekId && v.$2 == 'potret');
+    } catch (_) {}
   }
 
   /// Snapshot `review` menggantikan daftar; snapshot yang lebih lama (urut_mac) diabaikan. Aksi yang sudah tercermin di
@@ -1286,6 +1409,16 @@ abstract class SumberData extends ChangeNotifier {
   void _tandaTerima(Map<String, Object?>? m) {
     if (m == null) return;
     final idP = _teks(m['perintah_id']);
+    final ap = idP == null ? null : _aksiPratinjau[idP];
+    if (ap != null) {   // pratinjau: ditolak → alasan di kartu (mis. tailscale belum tersambung, server gagal)
+      if (m['hasil'] == 'ditolak') {
+        _aksiPratinjau.remove(idP);
+        galatPratinjau[ap.$1] = _teks(m['alasan']) ?? 'ditolak';
+      } else if (m['hasil'] == 'selesai' && ap.$2 != 'potret') {
+        _aksiPratinjau.remove(idP);
+      }
+      return;
+    }
     final aksi = idP == null ? null : _aksiReview[idP];
     if (aksi != null) {   // review_aksi: selesai → snapshot review berikutnya membawa status baru; ditolak → alasan di kartu
       if (m['hasil'] == 'selesai' || m['hasil'] == 'ditolak') _aksiReview.remove(idP);
