@@ -1,4 +1,5 @@
-// L03 Beranda — tab Proyek: kartu Mac (+ Blok 5 jam bila `limit` ada), cari proyek (nama/id, lokal di HP), kartu proyek,
+// L03 Beranda — tab Proyek: kartu Mac (+ Blok 5 jam bila `limit` ada), cari proyek (nama/id, lokal di HP), kartu proyek
+// per bagian grup folder (KOMINFO/ARDANA/PRIVATE/Umum… dari Mac; bisa dilipat & diurutkan, disimpan di HP),
 // tarik-segarkan, kosong, memuat, dan state L08: Mac tidak tersambung, tanpa internet (data terakhir), status belum diterima.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -111,7 +112,22 @@ class _LayarBerandaState extends State<LayarBeranda> {
           teks: 'Izinkan proyek di laptop: setel hp: "rencana" pada proyek di konfigurasi pelaksana, lalu tarik untuk menyegarkan.',
         ));
       }
-      if (s.proyek.isNotEmpty) butir.add(Padding(padding: const EdgeInsets.only(bottom: 10), child: _kolomCari(w)));
+      final semuaGrup = kelompokkanProyek(s.proyek, s.urutGrup);
+      final pakaiGrup = semuaGrup.length > 1; // satu grup saja (pelaksana lama / satu folder) → daftar biasa
+      if (s.proyek.isNotEmpty) {
+        butir.add(Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Row(children: [
+            Expanded(child: _kolomCari(w)),
+            if (pakaiGrup)
+              IconButton(
+                tooltip: 'Atur grup',
+                icon: Icon(Simbol.urutkan, color: w.ink),
+                onPressed: () => _aturGrup(context),
+              ),
+          ]),
+        ));
+      }
       final tampil = saringProyek(s.proyek, _kata);
       if (s.proyek.isNotEmpty && tampil.isEmpty) {
         butir.add(IsiKosong(
@@ -120,11 +136,26 @@ class _LayarBerandaState extends State<LayarBeranda> {
           teks: '"${_kata.trim()}" tidak ada di nama proyek.',
         ));
       }
-      for (final p in tampil) {
-        butir.add(Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: _KartuProyek(proyek: p, macPutus: s.macTersambung == false, onTap: () => widget.onBukaChat(p.id)),
-        ));
+      Widget kartu(Proyek p) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _KartuProyek(proyek: p, macPutus: s.macTersambung == false, onTap: () => widget.onBukaChat(p.id)),
+          );
+      if (!pakaiGrup) {
+        butir.addAll(tampil.map(kartu));
+      } else {
+        // sedang mencari → semua bagian yang cocok terbuka (status lipat tersimpan tidak diubah)
+        final cari = _kata.trim().isNotEmpty;
+        for (final (g, daftar) in kelompokkanProyek(tampil, s.urutGrup)) {
+          final buka = cari || s.grupTerbuka.contains(g);
+          butir.add(_KepalaGrup(
+            nama: g,
+            proyek: daftar,
+            buka: buka,
+            macPutus: s.macTersambung == false,
+            onTap: cari ? null : () => s.bukaGrup(g, !buka),
+          ));
+          if (buka) butir.addAll(daftar.map(kartu));
+        }
       }
     }
 
@@ -145,6 +176,13 @@ class _LayarBerandaState extends State<LayarBeranda> {
       ),
     ]);
   }
+
+  Future<void> _aturGrup(BuildContext context) => showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        isScrollControlled: true,
+        builder: (_) => LembarAturGrup(sumber: sumber),
+      );
 
   Widget _kolomCari(WarnaPadev w) => TextField(
         controller: _ketik,
@@ -175,6 +213,136 @@ class _LayarBerandaState extends State<LayarBeranda> {
           focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: w.accent, width: 1.5)),
         ),
       );
+}
+
+/// Kepala bagian grup: nama folder, jumlah proyek, ringkasan yang butuh izin / bekerja (tetap terlihat saat dilipat).
+class _KepalaGrup extends StatelessWidget {
+  const _KepalaGrup({required this.nama, required this.proyek, required this.buka, required this.macPutus, this.onTap});
+  final String nama;
+  final List<Proyek> proyek;
+  final bool buka, macPutus;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final w = WarnaPadev.dari(context);
+    final bekerja = macPutus ? 0 : proyek.where((p) => p.status == StatusProyek.bekerja).length;
+    final izin = macPutus ? 0 : proyek.where((p) => p.status == StatusProyek.menungguIzin).length;
+    final ket = [if (izin > 0) '$izin butuh izin', if (bekerja > 0) '$bekerja bekerja'];
+    return Semantics(
+      button: onTap != null,
+      expanded: buka,
+      label: '$nama, ${proyek.length} proyek${ket.isEmpty ? '' : ', ${ket.join(', ')}'}',
+      excludeSemantics: true,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(4, 4, 4, 6),
+            child: Row(children: [
+              Icon(buka ? Simbol.folderBuka : Simbol.folder, size: 20, color: w.muted),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(nama,
+                    style: TextStyle(color: w.ink, fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: .3),
+                    overflow: TextOverflow.ellipsis),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                decoration: BoxDecoration(color: w.chip, borderRadius: BorderRadius.circular(99)),
+                child: Text('${proyek.length}', style: TextStyle(color: w.muted, fontSize: 12, fontWeight: FontWeight.w700)),
+              ),
+              if (izin > 0) ...[
+                const SizedBox(width: 6),
+                ChipPadev(ikon: Simbol.tangan, label: '$izin', fg: w.warnt, bg: w.warnb),
+              ],
+              if (bekerja > 0) ...[
+                const SizedBox(width: 6),
+                ChipPadev(ikon: Simbol.putar, label: '$bekerja', fg: w.accent, bg: w.accb),
+              ],
+              const Spacer(),
+              if (onTap != null)
+                AnimatedRotation(
+                  turns: buka ? .5 : 0,
+                  duration: const Duration(milliseconds: 150),
+                  child: Icon(Simbol.bawah, color: w.muted),
+                ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Lembar "Atur grup": urutan bagian (naik/turun), buka/lipat semua, kembali ke urutan bawaan. Langsung disimpan di HP.
+class LembarAturGrup extends StatelessWidget {
+  const LembarAturGrup({super.key, required this.sumber});
+  final SumberData sumber;
+
+  @override
+  Widget build(BuildContext context) {
+    final w = WarnaPadev.dari(context);
+    return ListenableBuilder(
+      listenable: sumber,
+      builder: (context, _) {
+        final s = sumber;
+        final grup = kelompokkanProyek(s.proyek, s.urutGrup);
+        final nama = [for (final (g, _) in grup) g];
+        // pindahkan bagian ke-i ke sebelum posisi [ke] (urutan lama)
+        void pindah(int i, int ke) {
+          final baru = [...nama]..insert(ke, nama[i]);
+          baru.removeAt(i < ke ? i : i + 1);
+          s.aturUrutGrup(baru);
+        }
+
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .8),
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.fromLTRB(16, 0, 8, 16),
+              children: [
+                Text('Atur grup', style: TeksPadev.judulKartu(w)),
+                const SizedBox(height: 4),
+                Text('Urutan & bagian terbuka disimpan di HP ini. Grup = folder proyek di Mac (bisa diganti lewat "grup" di konfigurasi).',
+                    style: TeksPadev.redup(w, ukuran: 12.5)),
+                const SizedBox(height: 8),
+                for (final (i, (g, daftar)) in grup.indexed)
+                  Row(children: [
+                    Icon(Simbol.folder, size: 20, color: w.muted),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text('$g · ${daftar.length}',
+                          style: TextStyle(color: w.ink, fontSize: 14.5, fontWeight: FontWeight.w700), overflow: TextOverflow.ellipsis),
+                    ),
+                    IconButton(
+                      tooltip: 'Naikkan $g',
+                      icon: const Icon(Simbol.panahAtas),
+                      onPressed: i == 0 ? null : () => pindah(i, i - 1),
+                    ),
+                    IconButton(
+                      tooltip: 'Turunkan $g',
+                      icon: const Icon(Simbol.panahBawah),
+                      onPressed: i == grup.length - 1 ? null : () => pindah(i, i + 2),
+                    ),
+                  ]),
+                const SizedBox(height: 8),
+                Wrap(spacing: 8, runSpacing: 8, children: [
+                  OutlinedButton(onPressed: () => s.aturGrupTerbuka(nama), child: const Text('Buka semua')),
+                  OutlinedButton(onPressed: () => s.aturGrupTerbuka(const []), child: const Text('Lipat semua')),
+                  TextButton(onPressed: s.urutGrup.isEmpty ? null : () => s.aturUrutGrup(const []), child: const Text('Urutan bawaan')),
+                ]),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _PitaTanpaInternet extends StatelessWidget {

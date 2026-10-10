@@ -121,7 +121,7 @@ const folderP = (prof, cwd) => path.join(prof, 'projects', cwd.replace(/[^A-Za-z
 const cfg = {
   akun: new Map([['a1', { id: 'a1', label: 'A1', folder: profil1, bawaan: true }], ['a2', { id: 'a2', label: 'A2', folder: profil2, bawaan: false }]]),
   proyek: new Map([
-    ['proj', { id: 'proj', nama: 'Proj', path: proj, real: proj, akun: ['a1', 'a2'], hp: 'rencana', kerjakan: false, cermin: 'isi', dataPribadi: false }],
+    ['proj', { id: 'proj', nama: 'Proj', path: proj, real: proj, akun: ['a1', 'a2'], hp: 'rencana', kerjakan: false, cermin: 'isi', dataPribadi: false, grup: 'KOMINFO' }],
     ['projb', { id: 'projb', nama: 'ProjB', path: projB, real: projB, akun: ['a1'], hp: false, kerjakan: false, cermin: 'ringkas', dataPribadi: false }],
     ['projdp', { id: 'projdp', nama: 'DP', path: projDp, real: projDp, akun: ['a1'], hp: 'rencana', kerjakan: false, cermin: 'ringkas', dataPribadi: true }],
     ['projmati', { id: 'projmati', nama: 'Mati', path: projMati, real: projMati, akun: ['a1'], hp: 'rencana', kerjakan: false, cermin: false, dataPribadi: false }],
@@ -489,6 +489,8 @@ const cm = C.buatCermin({ cfg, log: () => {}, folder: folderPel, rumah: tmp });
     && st.isi.status.proyek.find(p => p.id === 'projmati').hp === 'rencana' && st.isi.status.proyek.find(p => p.id === 'projmati').cermin === false);
   cek('status: setiap entri lolos bentuk Kotlin (id+nama teks; hp ∈ {rencana,kerjakan,false}; yang bisa diperintah punya akun)', st && st.isi.status.proyek.every(p =>
     typeof p.id === 'string' && typeof p.nama === 'string' && ['rencana', 'kerjakan', false].includes(p.hp) && (p.hp === false || Array.isArray(p.akun))));
+  cek('status: grup = label bagian tab Proyek (tanpa path); proyek tanpa grup → field tidak ada', st && st.isi.status.proyek.find(p => p.id === 'proj').grup === 'KOMINFO'
+    && !('grup' in st.isi.status.proyek.find(p => p.id === 'projdp')) && !JSON.stringify(st.isi.status).includes(tmp));
   // F2b status.kantor: kejadian kantor 3D HP (office.html) — bentuk normalize() server.js TANPA isi, sesi di-hash, ≤40
   const nHalo = sk.halo.length;
   cmJ.terimaHook(evB({ kind: 'tool', tool: 'Edit', detail: '/Users/uji/rahasia-kantor.php', agentId: 'agK1', who: 'divisi-programmer' }));

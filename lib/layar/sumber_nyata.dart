@@ -14,6 +14,7 @@ class SumberNyata extends SumberData {
     final t = halo.macTerakhir;
     if (t != null) macTerakhir = DateTime.fromMillisecondsSinceEpoch(t < 100000000000 ? t * 1000 : t);
     if (halo.perangkat == 'dicabut') dicabut = true;
+    await muatTampilanProyek();
     terapkanStatus(halo.status);
     await muatKeputusanTersimpan();
     for (final isi in await Kunci.ambilKabar()) {
@@ -72,6 +73,12 @@ class SumberNyata extends SumberData {
 
   @override
   Future<Map<String, Object?>?> transportKeputusanTersimpan() => Kunci.keputusanTersimpan();
+
+  @override
+  Future<String?> transportMuatTampilan() => Kunci.muatTampilan();
+
+  @override
+  Future<void> transportSimpanTampilan(String isi) => Kunci.simpanTampilan(isi);
 
   @override
   Future<void> transportHapusSesi(String proyek, String akun) => Kunci.hapusSesi(proyek: proyek, akun: akun);

@@ -86,6 +86,10 @@ abstract final class Simbol {
 
   // Layar L01–L10 (titik kode diambil dari tabel cmap MaterialSymbolsRounded.ttf yang dibundel)
   static const folder = IconData(0xe2c7, fontFamily: _f);
+  static const folderBuka = IconData(0xe2c8, fontFamily: _f); // folder_open (bagian grup terbuka)
+  static const urutkan = IconData(0xe8d5, fontFamily: _f); // swap_vert (atur grup)
+  static const panahAtas = IconData(0xe5d8, fontFamily: _f); // arrow_upward
+  static const panahBawah = IconData(0xe5db, fontFamily: _f); // arrow_downward
   static const kantor = IconData(0xf720, fontFamily: _f); // deployed_code
   static const lonceng = IconData(0xe7f4, fontFamily: _f);
   static const pengaturan = IconData(0xe8b8, fontFamily: _f);

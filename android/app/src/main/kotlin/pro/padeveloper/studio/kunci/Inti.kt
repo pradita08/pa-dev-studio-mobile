@@ -420,6 +420,11 @@ class Inti(context: Context) {
         get() = brankas.baca(K_PANTAU) == "1"
         set(v) = brankas.simpan(K_PANTAU, if (v) "1" else null)
 
+    /** Tampilan tab Proyek pilihan owner (urutan bagian grup & bagian terbuka): teks JSON ≤ 4000, bentuknya dicek di Dart. */
+    var tampilanProyek: String?
+        get() = runCatching { brankas.baca(K_TAMPILAN) }.getOrNull()
+        set(v) = brankas.simpan(K_TAMPILAN, v)
+
     // ------------------------------------------------------------------ cermin sesi (KONTRAK-apk-v2 §2.1, §6.3; F1)
 
     /**
@@ -584,6 +589,7 @@ class Inti(context: Context) {
         private const val K_KEPUTUSAN = "keputusan"
         private const val K_DIBERITAHU = "keputusan_diberitahu"
         private const val K_PANTAU = "pantau_keputusan"
+        private const val K_TAMPILAN = "tampilan_proyek"
         private const val K_KABAR_SETELAH = "kabar_setelah"
         private const val K_TIDAK_SAH = "tidak_sah"
         private const val K_FCM = "fcm"

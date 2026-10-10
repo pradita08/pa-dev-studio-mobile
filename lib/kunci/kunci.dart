@@ -294,6 +294,10 @@ abstract final class Kunci {
   static Future<bool> pantauKeputusan(bool nyala) async => (await _p<bool>('pantauKeputusan', {'nyala': nyala})) ?? false;
   static Future<bool> statusPantau() async => (await _p<bool>('statusPantau')) ?? false;
 
+  /// Tampilan tab Proyek (urutan bagian grup & bagian terbuka) — disimpan di HP (Brankas), tidak dikirim ke Mac.
+  static Future<void> simpanTampilan(String isi) => _p<void>('simpanTampilan', {'isi': isi});
+  static Future<String?> muatTampilan() => _p<String>('muatTampilan');
+
   /// Riwayat sesi dari cache lokal (tanpa jaringan). null = belum ada / layar terkunci / cache rusak (dibuang).
   static Future<RiwayatLokal?> riwayatLokal(String sesi) async {
     final m = await _p<Map>('riwayatLokal', {'sesi': sesi});

@@ -142,6 +142,8 @@ class PluginKunci(messenger: BinaryMessenger, private val aktivitas: FragmentAct
             nyala
         }
         "statusPantau" -> inti.pantauNyala
+        "simpanTampilan" -> { inti.tampilanProyek = teks(c, "isi", 4000); null }
+        "muatTampilan" -> inti.tampilanProyek
         "riwayatLokal" -> inti.riwayatLokal(teks(c, "sesi", 36))
         "hapusRiwayatLokal" -> { inti.hapusRiwayatLokal(); null }
         "simpanChat" -> { inti.simpanChat(teks(c, "proyek", 40), RiwayatChat.cekDaftar(c.argument<Any>("entri"))); null }

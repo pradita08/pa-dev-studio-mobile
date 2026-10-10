@@ -67,7 +67,7 @@ class SumberContoh extends SumberData {
             ? <Object>[]
             : [
                 {
-                  'id': 'simpeg', 'nama': 'SIMPEG', 'akun': ['akun2', 'akun1'], 'hp': 'kerjakan', 'sibuk': true, 'mode': 'rencana', 'utama': 'bekerja',
+                  'id': 'simpeg', 'nama': 'SIMPEG', 'grup': 'KOMINFO', 'akun': ['akun2', 'akun1'], 'hp': 'kerjakan', 'sibuk': true, 'mode': 'rencana', 'utama': 'bekerja',
                   'mulai': _lalu(const Duration(minutes: 4)), 'batasMenit': 10,
                   'divisi': [
                     {'nama': 'Bima', 'peran': 'programmer', 'status': 'bekerja', 'ringkas': 'Mengubah PegawaiModel.php'},
@@ -76,19 +76,19 @@ class SumberContoh extends SumberData {
                   ],
                 },
                 {
-                  'id': 'simpati', 'nama': 'SIMPATI', 'akun': ['akun1'], 'hp': 'rencana', 'sibuk': false, 'batasMenit': 10,
+                  'id': 'simpati', 'nama': 'SIMPATI', 'grup': 'ARDANA', 'akun': ['akun1'], 'hp': 'rencana', 'sibuk': false, 'batasMenit': 10,
                   'terakhir': _lalu(const Duration(minutes: 1)),
                   'divisi': [
                     {'nama': 'Rizky', 'peran': 'programmer', 'status': 'menunggu_izin', 'ringkas': 'Bash · php spark migrate'},
                   ],
                 },
                 {
-                  'id': 'simgaji', 'nama': 'SIM GAJI PPPK', 'akun': ['akun2'], 'hp': 'rencana', 'sibuk': false, 'batasMenit': 10,
+                  'id': 'simgaji', 'nama': 'SIM GAJI PPPK', 'grup': 'KOMINFO', 'akun': ['akun2'], 'hp': 'rencana', 'sibuk': false, 'batasMenit': 10,
                   'terakhir': {'hasil': 'selesai', 'waktu': _lalu(const Duration(minutes: 12)), 'ringkas': 'QA: LULUS'},
                   'divisi': <Object>[],
                 },
                 {
-                  'id': 'sinergi', 'nama': 'SINERGI', 'akun': ['akun1', 'akun2'], 'hp': 'kerjakan', 'sibuk': false, 'batasMenit': 20,
+                  'id': 'sinergi', 'nama': 'SINERGI', 'grup': 'Umum', 'akun': ['akun1', 'akun2'], 'hp': 'kerjakan', 'sibuk': false, 'batasMenit': 20,
                   'terakhir': _lalu(const Duration(days: 1, hours: 2)),
                   'divisi': <Object>[],
                 },
@@ -102,6 +102,7 @@ class SumberContoh extends SumberData {
 
   void _isiAwal() {
     macTersambung = true;
+    grupTerbuka = const {'Umum', 'KOMINFO', 'ARDANA'}; // demo: semua bagian grup terbuka
     macTerakhir = DateTime.now().subtract(const Duration(seconds: 5));
     perangkat = const InfoPerangkat(
       namaMac: 'MacBook Pradita',

@@ -59,9 +59,13 @@ class Proyek {
     this.ringkasTerakhir,
     this.divisi,
     this.utama = 'diam',
+    this.grup,
   });
 
   final String id, nama;
+
+  /// Label bagian tab Proyek dari Mac (folder induk: KOMINFO/ARDANA/PRIVATE/Umum…); null = pelaksana lama → [grupUmum].
+  final String? grup;
 
   /// Claude sesi utama proyek ini (Kepala di kantor 3D): 'bekerja' | 'menunggu_izin' | 'diam'.
   final String utama;
@@ -454,6 +458,12 @@ abstract class SumberData extends ChangeNotifier {
   List<Map<String, Object?>>? kantor;
   String? versiMac;
 
+  /// Tampilan tab Proyek pilihan owner (disimpan di HP, tidak dikirim ke Mac): urutan bagian grup & bagian yang dibuka.
+  /// Bagian yang belum pernah dibuka = terlipat (daftar puluhan proyek tetap ringkas).
+  List<String> urutGrup = const [];
+  Set<String> grupTerbuka = const {};
+  bool _tampilanDimuat = false;
+
   /// Keputusan menunggu jawaban HP (snapshot terakhir dari Mac, F1b) + alasan selesai terbaru per id.
   List<Keputusan> keputusan = const [];
   final Map<String, String> keputusanSelesai = {};
@@ -543,6 +553,52 @@ abstract class SumberData extends ChangeNotifier {
   /// (diperbarui, entri) dari cache lokal, atau null.
   @protected
   Future<(DateTime, List<Map<String, Object?>>)?> transportRiwayatLokal(String sesi) async => null;
+
+  // ---- tampilan tab Proyek (urutan & bagian terbuka). Bawaan: tidak disimpan (pratinjau & uji).
+  @protected
+  Future<String?> transportMuatTampilan() async => null;
+  @protected
+  Future<void> transportSimpanTampilan(String isi) async {}
+
+  /// Muat tampilan tab Proyek tersimpan (sekali). Isi rusak / tidak ada → bawaan.
+  Future<void> muatTampilanProyek() async {
+    if (_tampilanDimuat) return;
+    _tampilanDimuat = true;
+    try {
+      final m = _peta(jsonDecode(await transportMuatTampilan() ?? 'null'));
+      if (m == null) return;
+      List<String> teks(Object? v) => [
+            for (final x in _daftar(v).take(50))
+              if (x is String && x.isNotEmpty && x.length <= 30) x,
+          ];
+      urutGrup = List.unmodifiable(teks(m['urut']).toSet());
+      grupTerbuka = Set.unmodifiable(teks(m['buka']));
+      beritahu();
+    } catch (_) {
+      // tidak ada / rusak → bawaan
+    }
+  }
+
+  /// Simpan urutan bagian grup (dari lembar "Atur grup").
+  void aturUrutGrup(List<String> urut) {
+    urutGrup = List.unmodifiable(urut.where((g) => g.isNotEmpty).take(50).toSet());
+    _simpanTampilan();
+  }
+
+  /// Buka / lipat bagian [grup].
+  void bukaGrup(String grup, bool buka) => aturGrupTerbuka({...grupTerbuka.where((g) => g != grup), if (buka) grup});
+
+  /// Ganti seluruh daftar bagian terbuka (Buka semua / Lipat semua).
+  void aturGrupTerbuka(Iterable<String> buka) {
+    grupTerbuka = Set.unmodifiable(buka.where((g) => g.isNotEmpty).take(50));
+    _simpanTampilan();
+  }
+
+  void _simpanTampilan() {
+    final isi = jsonEncode({'v': 1, 'urut': urutGrup, 'buka': grupTerbuka.toList()});
+    unawaited(transportSimpanTampilan(isi).catchError((_) {}));
+    beritahu();
+  }
 
   // riwayat chat HP tersimpan (per proyek). Bawaan: tidak disimpan (pratinjau & uji).
   @protected
@@ -838,6 +894,7 @@ abstract class SumberData extends ChangeNotifier {
         ringkasTerakhir: terPeta != null ? _teks(terPeta['ringkas']) : null,
         divisi: m.containsKey('divisi') ? _divisi(m['divisi']) : null,
         utama: switch (_teks(m['utama'])) { final u? when u == 'bekerja' || u == 'menunggu_izin' => u, _ => 'diam' },
+        grup: switch (_teks(m['grup'])?.trim()) { final g? when g.isNotEmpty => g.length > 30 ? g.substring(0, 30) : g, _ => null },
       ));
     }
     proyek = daftar;
@@ -1569,6 +1626,23 @@ abstract class SumberData extends ChangeNotifier {
     if (w != null) return jamMenit(w);
     return v?.toString();
   }
+}
+
+// ---------------------------------------------------------------------------------------------------- grup tab Proyek
+
+/// Grup proyek tanpa label dari Mac (pelaksana lama); juga grup bawaan Mac untuk folder di akar (sandbox, 01_PROJECTS).
+const grupUmum = 'Umum';
+
+/// Bagian tab Proyek: (grup, proyek) per label `grup`, urutan proyek dalam grup = urutan Mac. Urutan bagian: pilihan owner
+/// ([urut]) dulu, sisanya "Umum" lalu urutan kemunculan.
+List<(String, List<Proyek>)> kelompokkanProyek(List<Proyek> proyek, List<String> urut) {
+  final peta = <String, List<Proyek>>{};
+  for (final p in proyek) {
+    (peta[p.grup ?? grupUmum] ??= []).add(p);
+  }
+  final bawaan = [if (peta.containsKey(grupUmum)) grupUmum, ...peta.keys.where((g) => g != grupUmum)];
+  final susun = [...urut.where(peta.containsKey), ...bawaan.where((g) => !urut.contains(g))];
+  return [for (final g in susun) (g, peta[g]!)];
 }
 
 // ---------------------------------------------------------------------------------------------------- format waktu (tanpa intl)
