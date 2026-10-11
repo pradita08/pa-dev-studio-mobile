@@ -242,13 +242,23 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 #labels .tagwrap.sel .tag{display:flex!important}
 #labels.no-bub .bubble{display:none}
 #labels.no-ruang .room-tag{display:none}
+/* label tidak bertumpuk (roadmap 4): rapikanLabel() menyembunyikan label berprioritas lebih rendah yang menimpa label lain;
+   yang dipilih, butuh izin, atau terkendala tidak pernah disembunyikan */
+.tagwrap,.room-tag{transition:opacity .18s}
+.tagwrap.tumpuk,.room-tag.tumpuk{opacity:0!important;pointer-events:none}
+.tagwrap.tumpuk *{pointer-events:none}
+html.rm .tagwrap,html.rm .room-tag{transition:none}
 #stage canvas:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
 
 /* tab panel */
-.tabs{display:flex;gap:3px;margin:4px 12px 8px;padding:3px;background:var(--chip);border-radius:11px;overflow-x:auto;scrollbar-width:none}
+.tabs{display:flex;gap:2px;margin:4px 12px 8px;padding:3px;background:var(--chip);border-radius:11px;overflow-x:auto;scrollbar-width:none;scroll-padding:0 24px}
+/* tab lebih banyak dari lebar panel: tepi yang masih bisa digeser memudar (kelas diisi tandaiGeser()); tab terpilih selalu digeser ke tengah */
+.tabs.lebih-kanan{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 30px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 30px),transparent)}
+.tabs.lebih-kiri{-webkit-mask-image:linear-gradient(270deg,#000 calc(100% - 30px),transparent);mask-image:linear-gradient(270deg,#000 calc(100% - 30px),transparent)}
+.tabs.lebih-kiri.lebih-kanan{-webkit-mask-image:linear-gradient(90deg,transparent,#000 30px,#000 calc(100% - 30px),transparent);mask-image:linear-gradient(90deg,transparent,#000 30px,#000 calc(100% - 30px),transparent)}
 .tabs::-webkit-scrollbar{display:none}
 /* 6 tab: padding mendatar 4px supaya muat di panel 400px & layar 390px; panel lebih sempit → tab bar bisa digeser (fokus/klik tetap terlihat) */
-.tab{flex:1 1 auto;font:inherit;font-size:12px;font-weight:800;color:var(--muted);background:none;border:0;border-radius:8px;padding:6px 4px;min-height:32px;cursor:pointer;white-space:nowrap}
+.tab{flex:1 0 auto;font:inherit;font-size:11.5px;font-weight:800;color:var(--muted);background:none;border:0;border-radius:8px;padding:6px 5px;min-height:32px;cursor:pointer;white-space:nowrap}
 .tab:hover{color:var(--ink)}
 .tab[aria-selected="true"]{background:var(--on-bg);color:var(--on-fg)}
 .tab:focus-visible{outline-offset:-2px}   /* tab bar bisa digeser (overflow) → cincin fokus di dalam tombol supaya tidak terpotong */
@@ -856,11 +866,17 @@ html.rm .lp-xp .car{transition:none}
   #app.nopanel #stage.pad-on #log{max-height:max(80px,calc(100vh - 460px))}
   .p-head{padding:10px 16px 4px}
   .tabs{margin:2px 12px 6px}
-  #hud-top{top:10px;right:10px;gap:6px;max-width:calc(100% - 190px)}
-  #kartu{padding:8px 12px}
-  #kartu b{font-size:13px;gap:5px;letter-spacing:0}
-  #kartu b img.logo{width:16px;height:16px}
-  #kartu span{font-size:11px;margin-top:2px}
+  #hud-top{top:10px;right:10px;gap:5px;max-width:calc(100% - 178px)}
+  /* HP lebih lega (roadmap 4): kartu judul 2 baris ringkas (nama + jam; jumlah ruang/orang sudah ada di kepala panel), status 1 baris */
+  #kartu{padding:6px 10px;max-width:100%}
+  #kartu b{font-size:12px;gap:5px;letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #kartu b img.logo{width:15px;height:15px;flex:none}
+  #kartu span{font-size:10.5px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #kartu span:not(.jam){display:none}
+  #pill{max-width:100%;font-size:11px;padding:4px 9px}
+  #pill span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  #pill i{flex:none}
+  #hpBuka{font-size:11.5px;padding:6px 12px}
   #lantai{top:10px;left:10px;padding:3px;gap:2px}
   #lantai .bb{min-height:40px;padding:0 9px;font-size:12px}
   #lantai .bb .pj{display:none}
@@ -869,6 +885,12 @@ html.rm .lp-xp .car{transition:none}
   #hud-bottom .bb{min-height:40px;min-width:40px}
   #pad{right:10px;bottom:62px;grid-template-columns:repeat(3,38px);gap:4px;padding:5px}
   #pad button{width:38px;height:38px}
+  /* area 3D pendek (panel terbuka di HP kecil / HP mendatar): tombol arah mengecil supaya tidak menimpa kartu status di atasnya */
+  #stage.pendek #pad{grid-template-columns:repeat(3,31px);gap:3px;padding:4px}
+  #stage.pendek #pad button{width:31px;height:31px;font-size:13px;border-radius:8px}
+  #stage.pendek #hud-top{gap:4px}
+  #stage.sangat-pendek #aktivitas,#stage.sangat-pendek #hpBuka{display:none}
+  #stage.amat-pendek #pad{display:none}   /* < 260 px (HP mendatar / tab Perintah di HP kecil): tidak ada tempat; ciutkan panel (˅) untuk memakainya */
   #note{bottom:62px}
   .menu{min-width:240px}
   #detail{position:fixed;left:0;right:0;bottom:0;top:auto;width:auto;max-height:42%;border-radius:16px 16px 0 0;z-index:20;

@@ -334,6 +334,10 @@ RMQ.addEventListener && RMQ.addEventListener('change', () => { hitungRM(); typeo
 let NOW = performance.now() / 1000;
 const FPS_DIAM = 10;
 let ramaiSampai = 0, fpsSasaran = 30;   // hemat suhu: lihat hitungSasaranFPS() di bagian loop
+// hemat per frame (roadmap 4; lihat tickHemat() di bagian loop). Dideklarasikan di sini karena resize() berjalan saat skrip dimuat.
+const GERAK = {jalan:false, jalanBesar:false, lantai:false};   // ada orang berjalan / berjalan & besar di layar / lantai 2 sedang bergeser
+let bayangAt = -1e9, labelAt = 0, labelKotor = true;            // waktu hitung bayangan terakhir & jadwal label; labelKotor = ada label yang berubah
+const HEMAT = {frame:0, bayang:0, label:0, lewati:0, kain:0};       // penghitung & lama membangun (dibaca uji lewat window.KANTOR.hemat)
 
 /* ================= info alat ================= */
 function toolInfo(t){
@@ -365,6 +369,7 @@ renderer.shadowMap.enabled = true;
 // preview.html meminta PCFSoftShadowMap; three r184 otomatis menggantinya dengan PCFShadowMap (plus peringatan di konsol).
 // Di sini langsung PCFShadowMap: gambar sama persis, konsol bersih.
 renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.shadowMap.autoUpdate = false;   // dihitung ulang seperlunya: aturBayangan() di bagian loop
 renderer.domElement.tabIndex = 0;
 renderer.domElement.setAttribute('role', 'application');
 renderer.domElement.setAttribute('aria-label', 'Kantor 3D. Fokus di sini lalu pakai W A S D untuk geser, Q E untuk putar, + dan − untuk zoom, angka 1 sampai 8 untuk sudut kamera, L untuk ganti lantai.');
@@ -428,6 +433,7 @@ function terapkanBayangan(){
   const n = ukuranBayangan();
   if (key.shadow.mapSize.x !== n){ key.shadow.mapSize.set(n, n); if (key.shadow.map){ key.shadow.map.dispose(); key.shadow.map = null; } }
   key.castShadow = !!SET.bayangan;             // ubah jumlah bayangan → shader otomatis dikompilasi ulang
+  renderer.shadowMap.needsUpdate = true; bayangAt = -1e9;
   isiInfoKualitas();
 }
 function terapkanKualitas(){ turunPR = 0; terapkanBayangan(); terapkanPR(); }
@@ -445,6 +451,8 @@ const LOOK_DESAIN = {};                     // penampilan asli karakter desain (
 function targetY(m){ return m === 'l2' ? R.Y2 : m === 'l1' ? R.Y2 + 14 : R.Y2 + R.GAP; }
 function bangunAdegan(){
   ORANG = window.PadevOrang(THREE);
+  // setiap karakter (17 karakter desain di build(), anggota baru, ganti penampilan, pratinjau) diringkas begitu selesai dibuat
+  BUAT_DESAIN = ORANG.buat; ORANG.buat = (induk, spec) => ringkasKarakter(BUAT_DESAIN(induk, spec));
   R = window.PadevKantor.build(THREE, ORANG);
   R.lantai2.position.y = targetY(mode);
   scene.add(R.model);
@@ -545,6 +553,166 @@ function gabungGeo(isi){
   return g;
 }
 const gabungDaftar = geos => gabungGeo(geos.map(g => ({g})));
+
+/* ---- karakter ringkas (roadmap 4) ----
+   Karakter desain = rig ±85 mesh kecil per orang (34 orang ≈ 3.000 draw call, digambar dua kali bila bayangan nyala). Setelah
+   ORANG.buat, semua bagian yang KAKU terhadap sebuah sendi digabung menjadi satu mesh "berkulit" per orang (per sisi material):
+   tiap titik terikat penuh pada satu sendi, dan sendi desain (grup yang digerakkan pose()) dipakai apa adanya sebagai tulang.
+   Bentuk, posisi, warna, kasar/kilap, bayangan, dan animasi tetap sama; file desain/ tidak diubah.
+   Warna, kasar/kilap, dan nyala tiap bagian dipindah ke atribut titik (warna linear 16-bit, sisanya 8-bit) dan digambar dengan satu
+   material bersama per sisi — MeshStandardMaterial yang sama, jadi cahaya & bayangan dihitung seperti semula.
+   TIDAK digabung: kain (titiknya diubah orang3d.js tiap ±45 ms), barang yang dipasang/dilepas di tangan (kopi, rokok, asap), bagian
+   transparan, cincin status, dan label. Klik pada mesh gabungan diuji terhadap kotak pembungkus orangnya (ringan).
+   ?tanpagabung = matikan (pembanding; dipakai uji/kantor/uji-karakter.js). */
+const MAT_KARAKTER = new Map();     // sisi → material bersama
+let BUAT_DESAIN = null;             // ORANG.buat asli (tanpa peringkasan); dipakai uji lewat window.KANTOR
+// tiap titik terikat penuh pada SATU tulang → cukup satu matriks tulang yang dibaca per titik (bawaan three: empat)
+const SATU_TULANG = '#ifdef USE_SKINNING\n\tmat4 boneMatX = getBoneMatrix( skinIndex.x );\n\tmat4 boneMatY = mat4( 0.0 ), boneMatZ = mat4( 0.0 ), boneMatW = mat4( 0.0 );\n#endif';
+const MAT_BAYANG_KARAKTER = new Map();   // sisi → material kedalaman untuk lintasan bayangan (three mengisi .side-nya per objek)
+function matBayangKarakter(sisi){
+  let m = MAT_BAYANG_KARAKTER.get(sisi); if (m) return m;
+  m = new THREE.MeshDepthMaterial(); m.name = 'bayang_karakter';
+  m.onBeforeCompile = sh => { sh.vertexShader = sh.vertexShader.replace('#include <skinbase_vertex>', SATU_TULANG); };
+  m.customProgramCacheKey = () => 'bayang_karakter';
+  MAT_BAYANG_KARAKTER.set(sisi, m); return m;
+}
+function matKarakter(sisi){
+  let m = MAT_KARAKTER.get(sisi); if (m) return m;
+  m = new THREE.MeshStandardMaterial({color:0xffffff, vertexColors:true, roughness:1, metalness:1, side:sisi});
+  m.name = 'karakter_gabungan' + (sisi === THREE.DoubleSide ? '_2sisi' : '');
+  m.onBeforeCompile = sh => {
+    sh.vertexShader = 'attribute vec3 aKK;\nvarying vec3 vKK;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n\tvKK = aKK;')
+      .replace('#include <skinbase_vertex>', SATU_TULANG);
+    sh.fragmentShader = 'varying vec3 vKK;\n' + sh.fragmentShader
+      .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = roughness * vKK.x;')
+      .replace('#include <metalnessmap_fragment>', 'float metalnessFactor = metalness * vKK.y;')
+      .replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance = vColor.rgb * vKK.z;');
+  };
+  m.customProgramCacheKey = () => 'karakter_gabungan';
+  MAT_KARAKTER.set(sisi, m); return m;
+}
+// material polos (tanpa tekstur/transparansi; nyala hanya bila sewarna dengan warna dasarnya) → boleh pindah ke material bersama
+function matPolos(m){
+  if (!m || !m.isMeshStandardMaterial || m.isMeshPhysicalMaterial || m.transparent || m.opacity !== 1 || m.map || m.normalMap || m.roughnessMap || m.metalnessMap ||
+      m.emissiveMap || m.alphaMap || m.aoMap || m.envMap || m.lightMap || m.bumpMap || m.displacementMap || m.flatShading || m.wireframe || m.vertexColors ||
+      m.alphaTest || !m.depthWrite || !m.depthTest || m.envMapIntensity !== 1 || (m.side !== THREE.FrontSide && m.side !== THREE.DoubleSide)) return false;
+  const nyala = m.emissive.getHex() !== 0 && m.emissiveIntensity > 0;
+  return !nyala || (m.emissive.equals(m.color) && m.emissiveIntensity <= 1);
+}
+function gabungGeoKarakter(isi){
+  let nv = 0, ni = 0;
+  for (const {g} of isi){ nv += g.attributes.position.count; ni += g.index ? g.index.count : g.attributes.position.count; }
+  const pos = new Float32Array(nv * 3), nor = new Int16Array(nv * 3), col = new Uint16Array(nv * 3), kk = new Uint8Array(nv * 3);
+  const si = new Uint8Array(nv * 4), sw = new Uint8Array(nv * 4), idx = new (nv > 65535 ? Uint32Array : Uint16Array)(ni);
+  let v0 = 0, i0 = 0;
+  for (const {g, mx, m, tulang} of isi){
+    const P = g.attributes.position, N = g.attributes.normal, I = g.index, balik = mx.determinant() < 0;
+    _gn.getNormalMatrix(mx);
+    const cr = Math.round(m.color.r * 65535), cg = Math.round(m.color.g * 65535), cb = Math.round(m.color.b * 65535);
+    const kr = Math.round(m.roughness * 255), km = Math.round(m.metalness * 255), ke = m.emissive.getHex() !== 0 ? Math.round(m.emissiveIntensity * 255) : 0;
+    for (let i = 0; i < P.count; i++){
+      const v = v0 + i, a = v * 3;
+      _gv.fromBufferAttribute(P, i).applyMatrix4(mx); pos[a] = _gv.x; pos[a + 1] = _gv.y; pos[a + 2] = _gv.z;
+      _gv.fromBufferAttribute(N, i).applyMatrix3(_gn).normalize(); nor[a] = Math.round(_gv.x * 32767); nor[a + 1] = Math.round(_gv.y * 32767); nor[a + 2] = Math.round(_gv.z * 32767);
+      col[a] = cr; col[a + 1] = cg; col[a + 2] = cb; kk[a] = kr; kk[a + 1] = km; kk[a + 2] = ke;
+      si[v * 4] = tulang; sw[v * 4] = 255;
+    }
+    // skala bercermin (determinan negatif) membalik arah muka → urutan titik segitiga ditukar supaya sisi depan tetap di luar
+    const n = I ? I.count : P.count;
+    for (let j = 0; j < n; j += 3){
+      const a = (I ? I.getX(j) : j) + v0, b = (I ? I.getX(j + 1) : j + 1) + v0, c = (I ? I.getX(j + 2) : j + 2) + v0;
+      idx[i0 + j] = a; idx[i0 + j + 1] = balik ? c : b; idx[i0 + j + 2] = balik ? b : c;
+    }
+    v0 += P.count; i0 += n;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(nor, 3, true));
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3, true)); g.setAttribute('aKK', new THREE.BufferAttribute(kk, 3, true));
+  g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4, true));
+  g.setIndex(new THREE.BufferAttribute(idx, 1)); g.computeBoundingBox(); g.computeBoundingSphere();
+  return g;
+}
+// klik pada mesh gabungan: kotak pembungkus orang (ruang lokal akar karakter) — tanpa menghitung ulang kulit per segitiga
+const _rk = new THREE.Ray(), _rkM = new THREE.Matrix4(), _rkP = new THREE.Vector3();
+function raycastKarakter(raycaster, intersects){
+  const P = this.userData.P; if (!P) return;
+  KOTAK_KLIK.max.y = P.sit ? 1.5 : 1.95;        // duduk: sampai atas kepala; berdiri/berjalan: lebih tinggi
+  _rkM.copy(this.matrixWorld).invert(); _rk.copy(raycaster.ray).applyMatrix4(_rkM);
+  if (!_rk.intersectBox(KOTAK_KLIK, _rkP)) return;
+  _rkP.applyMatrix4(this.matrixWorld);
+  const d = raycaster.ray.origin.distanceTo(_rkP);
+  if (d < raycaster.near || d > raycaster.far) return;
+  intersects.push({distance:d, point:_rkP.clone(), object:this});
+}
+// kotak klik di ruang lokal akar karakter (+z = arah hadap): badan + lengan, dan paha/lutut ke depan saat duduk
+const KOTAK_KLIK = new THREE.Box3(new THREE.Vector3(-.38, 0, -.38), new THREE.Vector3(.38, 1.95, .55));
+const BOLA_KARAKTER = new THREE.Sphere(new THREE.Vector3(0, .9, 0), 1.7), KOTAK_KARAKTER = new THREE.Box3(new THREE.Vector3(-1.2, -.3, -1.2), new THREE.Vector3(1.2, 2.4, 1.2));
+function ringkasKarakter(P){
+  if (!P || P.ringkas || params.has('tanpagabung')) return P;
+  P.ringkas = true;
+  const root = P.root;
+  // simpul hidup: digerakkan / ditampil-sembunyikan orang3d.js → tetap simpul sendiri dan menjadi tulang bagi bagian di bawahnya
+  const hidup = new Set([root, P.pel, P.sp, P.tor, P.hg, P.pony, P.lipLow, P.mouthLine, ...(P.S || []), ...(P.E || []), ...(P.W || []), ...(P.H || []),
+    ...(P.K || []), ...(P.eyes || [])].filter(Boolean));
+  const lepas = new Set([P.propKopi, P.propRokok, P.asapG].filter(Boolean));   // barang di tangan & asap: dibiarkan apa adanya
+  const kain = new Set((P.cloth || []).map(c => c.g));
+  // bentuk netral saat diikat (normal dipanggang pada bentuk ini); pose() mengisinya lagi di frame berikutnya
+  const skalaLama = [];
+  for (const o of [...(P.eyes || []), P.tor, P.mouthLine]) if (o) skalaLama.push([o, o.scale.clone()]);
+  for (const e of P.eyes || []) e.scale.y = 1;
+  if (P.tor) P.tor.scale.set(1, 1, 1);
+  if (P.mouthLine) P.mouthLine.scale.y = .3;
+  root.updateWorldMatrix(true, true);
+  const inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
+  const kelas = new Map(), tulang = [], noTulang = new Map(), kosong = [], buang = [];
+  const idTulang = o => { let i = noTulang.get(o); if (i === undefined){ i = tulang.length; tulang.push(o); noTulang.set(o, i); } return i; };
+  const layak = c => c.isMesh && !c.isSkinnedMesh && !c.isInstancedMesh && !c.children.length && !Array.isArray(c.material) && matPolos(c.material) && !kain.has(c.geometry) &&
+    c.geometry.attributes.normal && !c.userData.dyn && !c.renderOrder && c.name !== 'cincin_status' && Math.abs(c.matrixWorld.determinant()) > 1e-12;
+  const catat = (c, rangka) => {
+    const k = c.material.side + '|' + (+c.castShadow) + (+c.receiveShadow);
+    let e = kelas.get(k); if (!e){ e = {sisi:c.material.side, cs:c.castShadow, rs:c.receiveShadow, isi:[]}; kelas.set(k, e); }
+    e.isi.push({g:c.geometry, mx:new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld), m:c.material, tulang:rangka, o:c});
+  };
+  (function jelajah(o, rangka){
+    for (const c of o.children.slice()){
+      if (c.isCSS2DObject || c.isLight || lepas.has(c)) continue;
+      if (hidup.has(c)){
+        if (c.isMesh){ if (layak(c) && c.visible){ catat(c, c); c.userData.tulang = true; } }   // bibir bawah & garis mulut: tulang bagi dirinya sendiri
+        else jelajah(c, c);
+        continue;
+      }
+      if (!c.visible) continue;
+      if (c.isMesh){ if (layak(c)){ catat(c, rangka); buang.push(c); } continue; }
+      jelajah(c, rangka);
+      if (c.isGroup || c.type === 'Object3D') kosong.push(c);
+    }
+  })(root, root);
+  let jumlah = 0; for (const e of kelas.values()) jumlah += e.isi.length;
+  if (jumlah < 2){ for (const [o, sk] of skalaLama) o.scale.copy(sk); P.ringkas = false; return P; }
+  for (const e of kelas.values()) for (const x of e.isi) x.tulang = idTulang(x.tulang);
+  const rangkaKulit = new THREE.Skeleton(tulang);   // invers tulang dihitung dari matriks dunia saat ini (= pose saat diikat)
+  for (const e of kelas.values()){
+    const g = gabungGeoKarakter(e.isi);
+    const mesh = new THREE.SkinnedMesh(g, matKarakter(e.sisi));
+    mesh.name = 'gabungan_karakter'; mesh.castShadow = e.cs; mesh.receiveShadow = e.rs;
+    mesh.customDepthMaterial = matBayangKarakter(e.sisi);
+    mesh.matrixAutoUpdate = false; mesh.updateMatrix(); root.add(mesh); mesh.updateMatrixWorld(true);
+    mesh.bind(rangkaKulit, mesh.matrixWorld);
+    mesh.boundingSphere = BOLA_KARAKTER; mesh.boundingBox = KOTAK_KARAKTER;   // tetap (pose apa pun muat) → tidak dihitung ulang dari kulit
+    mesh.raycast = raycastKarakter; mesh.userData.P = P;
+    (P.kulit || (P.kulit = [])).push(mesh);
+  }
+  for (const o of buang) o.parent.remove(o);
+  for (const o of tulang) if (o.isMesh && o.userData.tulang) o.visible = false;   // tetap dihitung matriksnya (tulang), tidak digambar sendiri
+  // grup diam yang jadi kosong (mis. grup sepatu) dibuang; grup & mesh diam yang tersisa dibekukan (matriks tidak dihitung ulang tiap frame)
+  for (const g of kosong.reverse()){
+    if (!g.children.length){ if (g.parent) g.parent.remove(g); }
+    else { g.updateMatrix(); g.matrixAutoUpdate = false; }
+  }
+  root.traverse(o => { if (o.isMesh && !o.isSkinnedMesh && !hidup.has(o) && o.matrixAutoUpdate && o.name !== 'cincin_status'){ let l = false; for (let a = o; a && a !== root; a = a.parent) if (lepas.has(a)) l = true; if (!l){ o.updateMatrix(); o.matrixAutoUpdate = false; } } });
+  for (const [o, sk] of skalaLama) o.scale.copy(sk);
+  return P;
+}
 /* ---- lantai & ruang ---- */
 const grupLantai = n => n === 2 ? R.lantai2 : R.lantai1;
 const lantaiDari = P => P.root.parent === R.lantai2 ? 2 : 1;
@@ -600,6 +768,7 @@ function buangKarakter(P){
   const dipakai = new Set();
   for (const Q of ORANG.list) Q.root.traverse(o => { if (o.geometry) dipakai.add(o.geometry); });
   P.root.traverse(o => { if (o.geometry && !dipakai.has(o.geometry)) o.geometry.dispose(); });
+  for (const m of P.kulit || []) if (m.skeleton){ m.skeleton.dispose(); break; }   // tekstur tulang karakter ringkas (satu rangka per orang)
 }
 // orang3d.js hanya mengisi fase langkah P.wph untuk karakter ber-"path" (figuran taman). Karakter lain yang dijalankan
 // dengan jalanKe mendapat NaN (kaki, lengan, dan kain hilang saat berjalan). Diisi 0 di sini; file desain tidak diubah.
@@ -712,7 +881,7 @@ class Actor {
     if (!this.boss){ const i = document.createElement('i'); i.style.background = this.npc ? '#94a3b8' : this.color; tag.append(i); }
     tag.append(this.tagTxt); this.tagTxt.textContent = this.tagTeks();
     this.wrap.append(this.bubEl, tag);
-    this.label = new THREE.CSS2DObject(this.wrap); this.label.position.y = this.P.sit ? 1.65 : 2.1; this.P.root.add(this.label);
+    this.label = new THREE.CSS2DObject(this.wrap); this.label.position.y = this.P.sit ? 1.65 : 2.1; this.P.root.add(this.label); labelKotor = true;
     // keadaan
     this.walking = false; this.target = null; this.antre = null; this.cb = null; this.lookTunda = null; this.arrivedAt = 0;
     this.mode = this.boss ? 'boss' : this.npc ? 'npc' : 'idle'; this.job = null; this.nextAt = Infinity; this.obrol = null;
@@ -991,9 +1160,9 @@ class Actor {
   update(dt, t){
     const P = this.P;
     // label: ±2,1 m berdiri / ±1,65 m duduk; disembunyikan bila lantainya tidak terlihat (CSS2D tidak mengecek induk)
-    const ly = P.sit ? 1.65 : 2.1; if (this.label.position.y !== ly) this.label.position.y = ly;
+    const ly = P.sit ? 1.65 : 2.1; if (this.label.position.y !== ly){ this.label.position.y = ly; labelKotor = true; }
     const tampak = terlihat(P.root.parent) && lantaiTampak(lantaiDari(P)) && !this.tertutup;
-    if (this.label.visible !== tampak) this.label.visible = tampak;
+    if (this.label.visible !== tampak){ this.label.visible = tampak; labelKotor = true; }
     // aksi sesuai keadaan (pose & arah hadap diatur saat tiba)
     if (!this.walking){ const a = this.aksiInginan(); if (a && a !== P.o.aksi) ORANG.atur(P, {aksi:a, r:P.r0}); }
     // cincin & kelas label
@@ -2018,9 +2187,26 @@ function catatOrang(ev, d, live = true){
 
 /* ================= tab panel: Tim | Keterangan | Pengaturan ================= */
 const TABS = [...document.querySelectorAll('#panel .tabs [role=tab]')];   // hanya tab panel (sub-tab dialog Laporan punya logika sendiri)
+// Baris tab bisa lebih lebar dari panel: tab terpilih digeser ke tengah, dan tepi yang masih bisa digeser dibuat memudar.
+function tandaiGeser(el){
+  if (!el) return;
+  el.classList.toggle('lebih-kiri', el.scrollLeft > 2);
+  el.classList.toggle('lebih-kanan', el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+}
+function tengahkanTab(tb){
+  const p = tb && tb.parentElement; if (!p || p.scrollWidth <= p.clientWidth + 1){ tandaiGeser(p); return; }
+  const a = tb.getBoundingClientRect(), b = p.getBoundingClientRect();
+  p.scrollLeft += a.left - b.left - (p.clientWidth - a.width) / 2;
+  tandaiGeser(p);
+}
+for (const el of document.querySelectorAll('.tabs')){
+  el.addEventListener('scroll', () => tandaiGeser(el), {passive:true});
+  if (window.ResizeObserver) new ResizeObserver(() => { const t = el.querySelector('.tab[aria-selected="true"]'); if (t) tengahkanTab(t); else tandaiGeser(el); }).observe(el);
+}
 function pilihTab(tb, fokus){
   for (const x of TABS){ const on = x === tb; x.setAttribute('aria-selected', on ? 'true' : 'false'); x.tabIndex = on ? 0 : -1; $('#' + x.getAttribute('aria-controls')).hidden = !on; }
   if (fokus) tb.focus();
+  tengahkanTab(tb);
   if (tb.id === 'tabSet') isiInfoKualitas();
   if (tb.id === 'tabTok') tokenMuat();
   if (tb.id === 'tabLap') lapPanelBuka();
@@ -4460,7 +4646,8 @@ renderer.domElement.addEventListener('webglcontextlost', e => {
 function resize(){
   const w = stage.clientWidth, h = stage.clientHeight;
   if (!w || !h) return;
-  renderer.setSize(w, h); labelRenderer.setSize(w, h);
+  renderer.setSize(w, h); labelRenderer.setSize(w, h); labelKotor = true;
+  stage.classList.toggle('pendek', h < 430); stage.classList.toggle('sangat-pendek', h < 300); stage.classList.toggle('amat-pendek', h < 260);   // HP: lihat aturan #stage.pendek
   camera.aspect = w / h; camera.updateProjectionMatrix();
   terapkanPR();     // kamera tidak disentuh (sama dengan preview: sudut awal tidak bergantung ukuran layar)
 }
@@ -4481,7 +4668,7 @@ function hitungSasaranFPS(ms){
 }
 controls.addEventListener('start', () => ramaikan(3));
 controls.addEventListener('change', () => ramaikan(3));
-// Pengaman performa: bila rata-rata FPS < 30 (atau ±2/3 batas FPS) dua kali berturut-turut (±6 detik) di HD/Ultra,
+// Pengaman performa: bila rata-rata FPS < 30 (atau ±2/3 batas FPS) dua kali berturut-turut (±6 detik) di Standar/HD/Ultra,
 // resolusi turun setingkat (0,5×). Tidak dinilai saat mode diam (FPS rendah memang disengaja).
 function jagaFPS(){
   const ms = performance.now();
@@ -4490,7 +4677,7 @@ function jagaFPS(){
   if (ms - fpsT0 < 3000) return;
   FPS = fpsN * 1000 / (ms - fpsT0); fpsT0 = ms; fpsN = 0;
   const ambang = fpsSasaran ? Math.min(30, fpsSasaran * .66) : 30;
-  if ((SET.kualitas === 'hd' || SET.kualitas === 'ultra') && NOW - bootAt > 8 && fpsSasaran !== FPS_DIAM && FPS < ambang){
+  if ((SET.kualitas === 'standar' || SET.kualitas === 'hd' || SET.kualitas === 'ultra') && NOW - bootAt > 8 && fpsSasaran !== FPS_DIAM && FPS < ambang){
     if (++lambat >= 2){
       lambat = 0; const pr0 = prAktif;
       if (pr0 > 1.01){
@@ -4505,6 +4692,7 @@ function jagaFPS(){
    dipindah/ikut orang dan sudutnya "sejajar lantai" (awal, Reset, Tampak atas, sudut sisi, atau setelah ganti lantai). */
 function langkahLantai(dt){
   const L2 = R.lantai2, k = 1 - Math.exp(-dt * 5);
+  GERAK.lantai = Math.abs(targetY(mode) - L2.position.y) > .002;
   L2.position.y += (targetY(mode) - L2.position.y) * k;
   L2.visible = !(mode === 'l1' && L2.position.y > R.Y2 + 11);
   R.kolom.visible = mode === 'l2' && Math.abs(L2.position.y - R.Y2) < .08;
@@ -4521,6 +4709,7 @@ function aturLantai(m, beriTahu){
   for (const b of document.querySelectorAll('#lantai .bb')) b.setAttribute('aria-pressed', b.dataset.m === m ? 'true' : 'false');
   if (beriTahu) catatan({l1:'🏢 Lantai 1', l2:'🏢 Lantai 2', terpisah:'🏢 Kedua lantai terpisah'}[m]);
   for (const r of RUANG) if (r.tagObj) r.tagObj.visible = r.lantai === 2 || m !== 'l2';
+  labelKotor = true;
 }
 // pilihan lantai dari pengguna menang: bila orang yang diikuti ada di lantai yang disembunyikan, kamera dilepas
 function pilihLantai(m, beriTahu){
@@ -4544,6 +4733,109 @@ function cekTertutup(){
   for (const a of [boss, reception, ...state.list]) a.tertutup = aktif && a.lantai === 1 && tertutupPelat(a.label);
   for (const r of RUANG) if (r.tagObj) r.tertutup = aktif && r.lantai === 1 && tertutupPelat(r.tagObj);
 }
+/* ---- hemat per frame (roadmap 4): yang tidak berubah di layar tidak dihitung ulang ----
+   tickHemat   = R.tick, tetapi (a) karakter yang tidak terlihat (lantainya disembunyikan / di luar bidang pandang) dan tidak sedang
+                 berjalan dilewati; (b) kain orang yang kecil di layar diperbarui 5–10×/dtk (bukan ±22×/dtk). Yang dekat, dipilih,
+                 diikuti, atau berjalan tetap penuh. orang3d.js tidak diubah: daftar ORANG.list disaring sebelum R.tick lalu dipulihkan,
+                 dan pembaruan kain ditunda lewat penghitung P.clAcc miliknya.
+   aturBayangan = peta bayangan (seluruh adegan digambar sekali lagi dari arah cahaya) dihitung ulang tiap frame hanya saat lantai
+                 bergeser atau orang berjalan terlihat besar; saat ada yang berjalan ±15×/dtk; selain itu ±10×/dtk.
+   labelPerlu  = label CSS2D (elemen DOM) hanya diposisikan ulang bila kamera/orang bergerak atau ada label yang berubah. */
+const _hf = new THREE.Frustum(), _hm = new THREE.Matrix4(), _hs = new THREE.Sphere(), _hp = new THREE.Vector3();
+const _lk = new THREE.Matrix4(), _lp = new THREE.Matrix4();
+function tickHemat(t, dt){
+  const L = ORANG.list;
+  camera.updateMatrixWorld(); _hm.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); _hf.setFromProjectionMatrix(_hm);
+  const fok = (stage.clientHeight || 1) / (2 * Math.tan(camera.fov * Math.PI / 360));
+  let lewati = null; GERAK.jalan = false; GERAK.jalanBesar = false; HEMAT.frame++;
+  for (let i = 0; i < L.length; i++){
+    const P = L[i];
+    if (P === PRATINJAU.P) continue;                       // pratinjau penampilan: adegan lain, selalu penuh
+    const jalan = !!(P.route && P.route.length) || (!!P.path && !(P.ws && P.ws.wait > 0));
+    let tampak = terlihat(P.root), px = 0;
+    if (tampak){
+      P.root.getWorldPosition(_hp); _hs.center.copy(_hp); _hs.center.y += .9; _hs.radius = 1.7;
+      tampak = _hf.intersectsSphere(_hs);
+      px = fok * 1.7 / Math.max(_hp.distanceTo(camera.position), .1);   // tinggi orang di layar (piksel CSS)
+    }
+    if (jalan && tampak){ GERAK.jalan = true; if (px > 110) GERAK.jalanBesar = true; }
+    if (!tampak && !jalan && !P.path){ (lewati || (lewati = new Set())).add(P); HEMAT.lewati++; continue; }
+    if (P.cloth && P.cloth.length && P.clInit){
+      const penuh = jalan || px > 150 || (follow && follow.P === P) || (state.selected && state.selected.P === P);
+      if (penuh){ if (P.clAcc < 0) P.clAcc = 1; P.kainAt = 0; }
+      else if (t >= (P.kainAt || 0)){ P.clAcc = 1; HEMAT.kain++; P.kainAt = t + (px > 60 ? .1 : .2) + (P.kainAt ? 0 : (i % 5) * .04); }   // giliran: tidak semua orang di frame yang sama
+      else P.clAcc = -1;
+    }
+  }
+  if (!lewati){ R.tick(t, dt); return; }
+  // pose() bisa menambah/membuang karakter (panggilan balik saat tiba) → daftar dipulihkan dengan memperhitungkan perubahan itu
+  const semua = L.slice(), aktif = semua.filter(P => !lewati.has(P));
+  L.length = 0; for (const P of aktif) L.push(P);
+  try { R.tick(t, dt); }
+  finally {
+    const kini = new Set(L), lama = new Set(semua), baru = L.filter(P => !lama.has(P));
+    L.length = 0;
+    for (const P of semua) if (lewati.has(P) || kini.has(P)) L.push(P);
+    for (const P of baru) L.push(P);
+  }
+}
+function aturBayangan(ms){
+  if (!SET.bayangan) return;
+  const selang = GERAK.lantai || GERAK.jalanBesar ? 0 : GERAK.jalan ? 60 : 95;
+  if (ms - bayangAt >= selang){ renderer.shadowMap.needsUpdate = true; bayangAt = ms; HEMAT.bayang++; }   // bayangAt = waktu hitung terakhir
+}
+function labelPerlu(ms){
+  let adaJalan = false; for (let i = 0; i < state.list.length; i++) if (state.list[i].walking){ adaJalan = true; break; }   // hanya aktor yang berlabel
+  const diam = !labelKotor && !adaJalan && !GERAK.lantai && ms < labelAt && _lk.equals(camera.matrixWorld) && _lp.equals(camera.projectionMatrix);
+  if (diam) return false;
+  labelKotor = false; labelAt = ms + 250; _lk.copy(camera.matrixWorld); _lp.copy(camera.projectionMatrix); HEMAT.label++;
+  return true;
+}
+/* ---- label tidak bertumpuk (roadmap 4) ----
+   3–8×/dtk: kotak layar tiap label yang tampil (label ruang; nama + balon orang) dibandingkan, urut prioritas. Label yang menimpa label
+   berprioritas lebih tinggi diberi kelas .tumpuk (memudar, tidak bisa diklik) sampai tidak menimpa lagi. Prioritas (tinggi → rendah):
+   orang dipilih/diikuti · butuh izin / kendala · sedang berbicara (balon tampil) · sedang bekerja · Kepala · ruang berisi yang bekerja ·
+   ruang divisi · orang berjalan · ruang umum · orang santai · resepsionis. Seri: yang lebih dekat ke kamera menang.
+   Label yang sedang disembunyikan baru muncul lagi setelah tidak bertumpang sama sekali (supaya tidak berkedip di batas). */
+let rapiAt = 0;
+const _rv = new THREE.Vector3();
+function rapikanLabel(ms, bergerak){
+  if (ms < rapiAt && !(bergerak && ms >= rapiAt - 180)) return;   // label baru saja digeser: ±8×/dtk; diam: ±3×/dtk (balon baru, status berubah)
+  rapiAt = ms + 300;
+  const daftar = [], gabung = (a, b) => a ? {l:Math.min(a.l, b.left), t:Math.min(a.t, b.top), r:Math.max(a.r, b.right), b:Math.max(a.b, b.bottom)} : {l:b.left, t:b.top, r:b.right, b:b.bottom};
+  for (const a of [boss, reception, ...state.list]){
+    if (!a || !a.wrap) continue;
+    let k = null;
+    if (a.label.visible){
+      const tag = a.wrap.lastElementChild.getBoundingClientRect(); if (tag.width) k = gabung(k, tag);
+      if (a.bubEl.classList.contains('show')){ const bb = a.bubEl.getBoundingClientRect(); if (bb.width) k = gabung(k, bb); }
+    }
+    if (!k){ if (a.tumpuk){ a.tumpuk = false; a.wrap.classList.remove('tumpuk'); } continue; }
+    const st = a.status, pilih = state.selected === a || follow === a;
+    const pr = pilih ? 100 : st === 'menunggu' || st === 'kendala' ? 90 : a.bubEl.classList.contains('show') && !a.bubEl.classList.contains('idle') ? 80 : a.isWorking ? 70 : a.boss ? 60 :
+      a.walking ? 45 : a.bubEl.classList.contains('show') ? 40 : a.npc ? 10 : 20;
+    daftar.push({o:a, el:a.wrap, k, pr, d:a.P.root.getWorldPosition(_rv).distanceToSquared(camera.position)});
+  }
+  for (const r of RUANG){
+    if (!r.tagEl) continue;
+    const kt = r.tagObj.visible ? r.tagEl.getBoundingClientRect() : null;
+    if (!kt || !kt.width){ if (r.tumpuk){ r.tumpuk = false; r.tagEl.classList.remove('tumpuk'); } continue; }
+    const pr = r.countEl.classList.contains('on') ? 55 : r.tagEl.classList.contains('umum') ? 30 : 50;
+    daftar.push({o:r, el:r.tagEl, k:gabung(null, kt), pr, d:r.tagObj.getWorldPosition(_rv).distanceToSquared(camera.position)});
+  }
+  daftar.sort((a, b) => b.pr - a.pr || a.d - b.d);
+  const tampil = [];
+  for (const x of daftar){
+    // menimpa = bertumpang lebih dari 5 px mendatar DAN 4 px tegak (sudut yang hanya bersentuhan dibiarkan); label yang sedang
+    // disembunyikan baru muncul lagi setelah benar-benar tidak bertumpang
+    const gx = x.o.tumpuk ? 0 : 5, gy = x.o.tumpuk ? 0 : 4, k = x.k;
+    let timpa = false;
+    for (let i = 0; i < tampil.length && !timpa; i++){ const t = tampil[i]; timpa = Math.min(k.r, t.r) - Math.max(k.l, t.l) > gx && Math.min(k.b, t.b) - Math.max(k.t, t.t) > gy; }
+    if (x.pr >= 90) timpa = false;                // dipilih / butuh izin / kendala: selalu tampil
+    if (!timpa) tampil.push(k);
+    if (timpa !== !!x.o.tumpuk){ x.o.tumpuk = timpa; x.el.classList.toggle('tumpuk', timpa); }
+  }
+}
 const JAM_FMT = new Intl.DateTimeFormat('id-ID', {weekday:'long', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit', second:'2-digit'});
 function isiJam(){ $('#jam').textContent = JAM_FMT.format(new Date()); }
 isiJam(); setInterval(isiJam, 1000);
@@ -4556,14 +4848,14 @@ function loop(tsRaf){
   const dt = Math.min((ms - (lastMs || ms)) / 1000, .12); lastMs = ms; waktuT += dt;
   const t = waktuT;
   NOW = ms / 1000;
-  R.tick(t, dt);                     // animasi layar, LED, dan SEMUA karakter (desain)
+  tickHemat(t, dt);                  // animasi layar, LED, dan karakter (desain) — R.tick dengan penghematan, lihat tickHemat()
   langkahLantai(dt);
   boss.update(dt, t); reception.update(dt, t);
   for (let i = 0; i < state.list.length; i++) state.list[i].update(dt, t);
   for (const g of OBROL) g.tick();
   // ruang: label disembunyikan bila lantainya tidak tampak / tertutup pelat lantai 2
   if (ms >= cekTutupAt){ cekTutupAt = ms + 100; cekTertutup(); }
-  for (const r of RUANG) if (r.tagObj){ const v = lantaiTampak(r.lantai) && !r.tertutup; if (r.tagObj.visible !== v) r.tagObj.visible = v; }
+  for (const r of RUANG) if (r.tagObj){ const v = lantaiTampak(r.lantai) && !r.tertutup; if (r.tagObj.visible !== v){ r.tagObj.visible = v; labelKotor = true; } }
   gerakKamera(dt);
   if (camAnim){
     camAnim.s = Math.min(1, camAnim.s + dt * (camAnim.laju || 1.2) * SET.kecepatan); const e = 1 - Math.pow(1 - camAnim.s, 3);
@@ -4602,7 +4894,11 @@ function loop(tsRaf){
   if (jb !== jauhPR){ jauhPR = jb; terapkanPR(); }
   updateLingkungan(dt, t);
   jagaFPS();
-  renderer.render(scene, camera); labelRenderer.render(scene, camera);
+  aturBayangan(ms);
+  renderer.render(scene, camera);
+  const labelGerak = labelPerlu(ms);
+  if (labelGerak) labelRenderer.render(scene, camera);
+  if (SET.label !== 'sembunyi' || SET.labelRuang) rapikanLabel(ms, labelGerak);
   renderPratinjau();
   requestAnimationFrame(loop);
 }
@@ -4637,8 +4933,11 @@ async function build(list){
   await LOGO_READY;
   // font dimuat dulu supaya tulisan di lantai & layar desain memakai Plus Jakarta Sans (maks 2,5 dtk; tanpa internet tetap lanjut)
   try { await Promise.race([Promise.all(['800 72px "Plus Jakarta Sans"', '700 22px "Plus Jakarta Sans"', '600 18px "Plus Jakarta Sans"'].map(f => document.fonts.load(f))), sleep(2500)]); } catch (e){}
+  const tb0 = performance.now();
   bangunAdegan(); materialDesain();
+  const tb1 = performance.now();
   bangunLingkungan(); buildFlow(); bangunLabelRuang(); terapkanLingkungan();
+  HEMAT.bangunMs = {adegan:Math.round(tb1 - tb0), luar:Math.round(performance.now() - tb1)};   // lama membangun (dibaca uji/ukur lewat ?debug)
   for (const a of list || []){
     if (!a || typeof a.name !== 'string' || !a.name || a.name.length > 80) continue;
     state.agentDesc.set(a.name, typeof a.description === 'string' ? a.description : ''); state.agentInfo.set(a.name, bersihInfoAgen(a));
@@ -5832,5 +6131,5 @@ connect();
 // alat bantu uji: buka dengan ?debug untuk memeriksa keadaan dari konsol (window.KANTOR)
 if (params.has('debug')) window.KANTOR = {renderer, scene, state, ACTORS, RUANG, KURSI, KURSI_BY, OBROL, handle, get R(){ return R; }, get ORANG(){ return ORANG; },
   get boss(){ return boss; }, get reception(){ return reception; }, camera, controls, get mode(){ return mode; }, aturLantai, keDunia,
-  SET, key, pilihSudut, select, PEG, ENV, lookAcak, bukaPenampilan, bukaInfoDivisi, setNama, setLook, terapkanKualitas, terapkanLingkungan, ubahSet,
+  SET, key, pilihSudut, select, PEG, ENV, get buatDesain(){ return BUAT_DESAIN; }, ringkasKarakter, buangKarakter, get waktu(){ return waktuT; }, set waktu(v){ waktuT = +v || 0; }, hemat:HEMAT, GERAK, lookAcak, bukaPenampilan, bukaInfoDivisi, setNama, setLook, terapkanKualitas, terapkanLingkungan, ubahSet,
   get kualitas(){ return {pr:prAktif, turunPR, jauhPR, fps:FPS, bayang:key.shadow.mapSize.x, tipe:renderer.shadowMap.type, buffer:[renderer.domElement.width, renderer.domElement.height]}; }};
