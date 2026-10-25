@@ -276,10 +276,14 @@ class InfoPerangkat {
     this.idKKerjakan,
     this.idEHp,
     this.strongBox = false,
+    this.perluPasangUlang = false,
   });
   final String namaMac, relay, versiApk;
   final int android;
   final bool fcmAktif, biometrikKuat, strongBox;
+
+  /// G2: setelan Kerjakan-pakai-PIN di Mac beda dengan kunci HP ini (dari [StatusPasang.perluPasangUlang]).
+  final bool perluPasangUlang;
   final String? idKRencana, idKKerjakan, idEHp;
 }
 

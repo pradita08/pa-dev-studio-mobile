@@ -18,7 +18,10 @@ import java.security.spec.ECGenParameterSpec
  * EC P-256 / SHA256withECDSA, non-ekspor, StrongBox bila ada (jatuh ke TEE), setUnlockedDeviceRequired,
  * setInvalidatedByBiometricEnrollment, atestasi dengan challenge dari QR.
  *  - K_rencana : otentikasi ≤ 300 dtk, BIOMETRIC_STRONG | DEVICE_CREDENTIAL.
- *  - K_kerjakan: otentikasi per pemakaian (timeout 0), BIOMETRIC_STRONG saja → BiometricPrompt + CryptoObject.
+ *  - K_kerjakan: otentikasi per pemakaian (timeout 0), BIOMETRIC_STRONG saja → BiometricPrompt + CryptoObject;
+ *    G3 mode sesi: bila QR membawa petunjuk `kerjakan_pin`, ≤ 300 dtk BIOMETRIC_STRONG | DEVICE_CREDENTIAL (sama dengan K_rencana;
+ *    terbuka oleh sidik jari/PIN terakhir, termasuk membuka kunci layar). Petunjuk saja — Mac memutuskan dari atestasi
+ *    (userAuthType 2 + timeout 0 vs 3 + 1..300). Tanpa setUserAuthenticationValidWhileOnBody (SEC-122).
  */
 object KunciKeystore {
     const val RENCANA = "padev_k_rencana"
@@ -36,7 +39,7 @@ object KunciKeystore {
     fun adaStrongBox(context: Context): Boolean =
         context.packageManager.hasSystemFeature(PackageManager.FEATURE_STRONGBOX_KEYSTORE)
 
-    fun buat(context: Context, alias: String, kerjakan: Boolean, tantangan: ByteArray): Info {
+    fun buat(context: Context, alias: String, kerjakan: Boolean, tantangan: ByteArray, pin: Boolean = false): Info {
         hapus(alias)
         fun spec(strongBox: Boolean): KeyGenParameterSpec {
             val b = KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_SIGN)
@@ -48,7 +51,8 @@ object KunciKeystore {
                 .setAttestationChallenge(tantangan)
                 .setIsStrongBoxBacked(strongBox)
             if (kerjakan) {
-                b.setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG)
+                val (masa, auth) = parameterKerjakan(pin)
+                b.setUserAuthenticationParameters(masa, auth)
             } else {
                 b.setUserAuthenticationParameters(MASA_RENCANA_DTK, KeyProperties.AUTH_BIOMETRIC_STRONG or KeyProperties.AUTH_DEVICE_CREDENTIAL)
             }
@@ -67,12 +71,17 @@ object KunciKeystore {
             }
         } catch (e: IllegalStateException) {
             // "Secure lock screen must be enabled" / "At least one biometric must be enrolled"
-            throw GalatKunci(if (kerjakan) "biometrik_belum_ada" else "tanpa_kunci_layar")
+            throw GalatKunci(if (kerjakan && !pin) "biometrik_belum_ada" else "tanpa_kunci_layar")
         } catch (e: java.security.InvalidAlgorithmParameterException) {
-            throw GalatKunci(if (kerjakan) "biometrik_belum_ada" else "tanpa_kunci_layar")
+            throw GalatKunci(if (kerjakan && !pin) "biometrik_belum_ada" else "tanpa_kunci_layar")
         }
         return info(alias, strongBox) ?: throw GalatKunci("kunci_gagal")
     }
+
+    /** S-G3-5: (masa dtk, authenticator KeyProperties) K_kerjakan — `pin` (mode sesi) → 300 + BIO|DEVCRED (userAuthType 3), lainnya 0 + BIO (2). */
+    fun parameterKerjakan(pin: Boolean): Pair<Int, Int> =
+        if (pin) MASA_RENCANA_DTK to (KeyProperties.AUTH_BIOMETRIC_STRONG or KeyProperties.AUTH_DEVICE_CREDENTIAL)
+        else 0 to KeyProperties.AUTH_BIOMETRIC_STRONG
 
     fun info(alias: String, strongBox: Boolean = false): Info? {
         val k = ks()
@@ -92,8 +101,8 @@ object KunciKeystore {
         ks().getKey(alias, null) as? PrivateKey ?: throw GalatKunci("kunci_tidak_ada")
 
     /**
-     * Signature siap pakai. K_rencana: melempar [PerluOtentikasi] bila masa otentikasi habis (pemanggil menampilkan
-     * BiometricPrompt lalu mengulang). K_kerjakan: Signature ini dibungkus CryptoObject untuk BiometricPrompt.
+     * Signature siap pakai. K_rencana & K_kerjakan mode sesi: melempar [PerluOtentikasi] bila masa otentikasi habis (pemanggil
+     * menampilkan BiometricPrompt lalu mengulang). K_kerjakan sidik jari: Signature ini dibungkus CryptoObject untuk BiometricPrompt.
      */
     fun signature(alias: String): Signature {
         val s = Signature.getInstance("SHA256withECDSA")

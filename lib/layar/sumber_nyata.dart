@@ -52,6 +52,7 @@ class SumberNyata extends SumberData {
       idKRencana: p?.idKRencana,
       idKKerjakan: p?.idKKerjakan,
       idEHp: p?.idEHp,
+      perluPasangUlang: p?.perluPasangUlang ?? false,
     );
   }
 

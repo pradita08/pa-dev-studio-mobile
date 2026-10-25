@@ -113,6 +113,22 @@ class _KartuKeputusanState extends State<KartuKeputusan> {
   late final List<Set<String>> _pilihan = [for (final _ in widget.k.pertanyaan) <String>{}];
   late final List<TextEditingController> _lain = [for (final _ in widget.k.pertanyaan) TextEditingController()];
   bool _kirim = false;
+  bool _sesi = false; // G3: mode sesi → tanpa "Izinkan selalu" & tanpa ikon sidik jari per perintah
+
+  @override
+  void initState() {
+    super.initState();
+    _bacaMode();
+  }
+
+  Future<void> _bacaMode() async {
+    try {
+      final p = await Kunci.statusPasang();
+      if (mounted && p?.kerjakanPin == true) setState(() => _sesi = true);
+    } on GalatKunci {
+      // tanpa data mode: tampilan lama (aman, Mac tetap menolak)
+    }
+  }
 
   @override
   void dispose() {
@@ -253,9 +269,9 @@ class _KartuKeputusanState extends State<KartuKeputusan> {
               FilledButton(
                 style: gayaKerjakan(w),
                 onPressed: sibuk ? null : () => _jawab('izinkan'),
-                child: IsiTombol(Simbol.sidikJari, k.jenis == 'rencana' ? 'Setujui rencana' : 'Izinkan sekali'),
+                child: IsiTombol(_sesi && k.jenis != 'rencana' ? Simbol.centangLingkar : Simbol.sidikJari, k.jenis == 'rencana' ? 'Setujui rencana' : 'Izinkan sekali'),
               ),
-            if (k.bisa('izinkan_selalu'))
+            if (k.bisa('izinkan_selalu') && !_sesi)
               TextButton(onPressed: sibuk ? null : _izinkanSelalu, child: const Text('Izinkan selalu')),
           ]),
       ]),

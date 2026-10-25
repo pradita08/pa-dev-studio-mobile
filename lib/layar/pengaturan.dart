@@ -171,8 +171,9 @@ class LayarPengaturan extends StatelessWidget {
           BarisPengaturan(ikon: Simbol.jam, judul: 'Kunci otomatis', sub: 'Setelah 2 menit di latar'),
           BarisPengaturan(
             ikon: Simbol.sidikJari,
-            judul: 'Wajib sidik jari untuk Kerjakan',
-            sub: 'Selalu aktif, tidak bisa dimatikan',
+            judul: 'Kerjakan dijaga sidik jari/PIN',
+            sub: 'Bawaan: sidik jari tiap perintah. Mode sesi (diatur di Mac): tanpa sidik jari/PIN 5 menit sejak sidik jari/PIN '
+                'terakhir, termasuk buka kunci layar HP; layar terkunci = berhenti; push & izinkan selalu hanya dari Mac.',
             ekor: Semantics(
               label: 'Selalu aktif',
               // Tampil aktif (biru + gembok) seperti rancangan; tidak bisa diubah (IgnorePointer).
@@ -189,6 +190,13 @@ class LayarPengaturan extends StatelessWidget {
               ),
             ),
           ),
+          if (pr?.perluPasangUlang ?? false)
+            BarisPengaturan(
+              ikon: Simbol.peringatan,
+              warnaJudul: w.warnt,
+              judul: 'Pasang ulang agar mode sesi berlaku',
+              sub: 'Setelan Kerjakan di Mac berubah. Lepas perangkat ini lalu pasang lagi.',
+            ),
           if (sumber.pesanTidakSah > 0)
             BarisPengaturan(
               ikon: Simbol.peringatan,

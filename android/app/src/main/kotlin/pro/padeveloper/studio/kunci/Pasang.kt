@@ -13,6 +13,8 @@ class DataQr(
     val sMacSpki: ByteArray,
     val eMacRaw: ByteArray,
     val kedaluwarsa: Long,
+    /** G2: petunjuk Mac `kerjakanPin` → K_kerjakan sidik jari ATAU PIN layar (Mac tetap memutuskan dari atestasi). */
+    val kerjakanPin: Boolean = false,
 ) {
     val sMacId: String get() = Kripto.idKunciEcdsa(sMacSpki)
     val eMacId: String get() = Kripto.idKunciX25519(eMacRaw)
@@ -29,7 +31,9 @@ object Pasang {
     fun uraiQr(teks: String, sekarang: Long, relayDiizinkan: String?): DataQr {
         if (teks.length > 4096) throw GalatKunci("qr_tidak_sah")
         val o = try { JsonKetat.objek(teks) } catch (e: JsonSalah) { throw GalatKunci("qr_tidak_sah") }
-        if (o.keys != FIELD_QR || o["v"] != 1L) throw GalatKunci("qr_tidak_sah")
+        // G2: `kerjakan_pin` opsional (Mac hanya mengirimnya bila true); field lain tetap ditolak
+        if ((o.keys != FIELD_QR && o.keys != FIELD_QR + "kerjakan_pin") || o["v"] != 1L) throw GalatKunci("qr_tidak_sah")
+        val pin = o["kerjakan_pin"]?.let { it as? Boolean ?: throw GalatKunci("qr_tidak_sah") } ?: false
         val relay = o["relay"] as? String ?: throw GalatKunci("qr_tidak_sah")
         if (!relay.startsWith("https://") || relay.contains('@') || !relay.endsWith("/") || relay.length > 200) throw GalatKunci("qr_tidak_sah")
         if (relayDiizinkan != null && relay != relayDiizinkan) throw GalatKunci("qr_tidak_sah")
@@ -43,8 +47,14 @@ object Pasang {
         val kd = o["kedaluwarsa"] as? Long ?: throw GalatKunci("qr_tidak_sah")
         if (sekarang > kd) throw GalatKunci("qr_kedaluwarsa")
         if (kd > sekarang + QR_MAKS_DEPAN) throw GalatKunci("qr_tidak_sah")
-        return DataQr(relay, macId, nama, kode, rahasia, sMac, eMac, kd)
+        return DataQr(relay, macId, nama, kode, rahasia, sMac, eMac, kd, pin)
     }
+
+    /**
+     * G2 KF-07: kunci Kerjakan HP tidak sesuai setelan Mac saat ini → "Pasang ulang agar PIN berlaku".
+     * [macPin] = petunjuk `kerjakanPin` di status terverifikasi terakhir (null = status belum ada → tidak diketahui).
+     */
+    fun perluPasangUlang(macPin: Boolean?, kunciPin: Boolean): Boolean = macPin != null && macPin != kunciPin
 
     /** Badan `POST hp/daftar` (kontrak v1.1 §4/§7): kode_daftar + mac_id dari QR. */
     fun badanDaftar(qr: DataQr): Map<String, Any> = linkedMapOf("kode_daftar" to qr.kodeDaftar, "mac_id" to qr.macId)

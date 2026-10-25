@@ -34,6 +34,8 @@ class Inti(context: Context) {
         val eMac get() = B64u.dek(o["e_mac"] as String)!!
         val perangkatId get() = o["perangkat_id"] as String
         val status get() = o["status"] as String
+        /** G3: K_kerjakan dibuat mode sesi (petunjuk QR saat pasang, S-G3-5); pasangan lama tanpa field = sidik jari tiap perintah. */
+        val kerjakanPin get() = o["kerjakan_pin"] == true
     }
 
     fun pasangan(): Pasangan? = brankas.baca(K_PASANG)?.let { Pasangan(JsonKetat.objek(it)) }
@@ -58,12 +60,23 @@ class Inti(context: Context) {
             "idKRencana" to kr?.id?.substring(0, 8), "idKKerjakan" to kk?.id?.substring(0, 8),
             "idEHp" to if (ehp.ada()) ehp.pasangan().id.substring(0, 8) else null,
             "kunciUtuh" to (kr != null && kk != null && ehp.ada()),
+            // G2 KF-07: jenis kunci Kerjakan + petunjuk untuk Pengaturan ("Pasang ulang agar PIN berlaku")
+            "kerjakanPin" to p.kerjakanPin, "perluPasangUlang" to Pasang.perluPasangUlang(macKerjakanPin(), p.kerjakanPin),
         )
+    }
+
+    /** Petunjuk `kerjakanPin` dari status Mac terverifikasi terakhir; null bila status belum ada. Hanya petunjuk UI. */
+    private fun macKerjakanPin(): Boolean? {
+        val st = brankas.baca(K_STATUS)?.let { runCatching { JsonKetat.objek(it) }.getOrNull() } ?: return null
+        return (st["status"] as? Map<*, *>)?.get("kerjakanPin") == true
     }
 
     // ------------------------------------------------------------------ penandatanganan
 
-    private fun tandaRencana(aktivitas: FragmentActivity?, data: ByteArray, alias: String = KunciKeystore.RENCANA): ByteArray {
+    private fun tandaRencana(
+        aktivitas: FragmentActivity?, data: ByteArray, alias: String = KunciKeystore.RENCANA,
+        teks: Biometrik.Teks = Biometrik.Teks("Konfirmasi PADEV Studio", "Sidik jari atau kunci layar"),
+    ): ByteArray {
         for (percobaan in 0..1) {
             try {
                 val s = KunciKeystore.signature(alias)
@@ -76,11 +89,23 @@ class Inti(context: Context) {
             }
             if (percobaan == 1) break
             val a = aktivitas ?: throw GalatKunci("perlu_otentikasi")
-            if (!Biometrik.bukaKunci(a, Biometrik.Teks("Konfirmasi PADEV Studio", "Sidik jari atau kunci layar"))) {
+            if (!Biometrik.bukaKunci(a, teks)) {
                 throw GalatKunci("dibatalkan")
             }
         }
         throw GalatKunci("perlu_otentikasi")
+    }
+
+    /**
+     * Tanda tangan K_kerjakan. Kunci sidik jari: BiometricPrompt + CryptoObject tiap perintah. Kunci mode sesi (G3, S-G3-6): pola
+     * [tandaRencana] — prompt hanya bila masa 300 dtk habis, dengan [teks] Kerjakan yang sama (SEC-51); maks satu ulang.
+     * Hanya dari aksi pengguna (aktivitas non-null), tidak pernah dari notifikasi/latar.
+     */
+    private fun tandaKerjakan(aktivitas: FragmentActivity, p: Pasangan, teks: Biometrik.Teks, data: ByteArray): ByteArray {
+        if (p.kerjakanPin) return tandaRencana(aktivitas, data, KunciKeystore.KERJAKAN, teks)
+        val sig = Biometrik.konfirmasiKerjakan(aktivitas, teks, KunciKeystore.signature(KunciKeystore.KERJAKAN)) ?: throw GalatKunci("dibatalkan")
+        sig.update(data)
+        return sig.sign()
     }
 
     // ------------------------------------------------------------------ pemasangan (kontrak §3)
@@ -101,7 +126,7 @@ class Inti(context: Context) {
         // memakan batas perangkat; gagal → abaikan), lalu bersihkanLokal(): pemasangan setengah jalan tidak meninggalkan kunci/token.
         return Pasang.batalkanBilaGagal({ terdaftar }, { m, j -> klien.panggil(m, j) }, ::bersihkanLokal) {
             val kr = KunciKeystore.buat(ctx, KunciKeystore.RENCANA, kerjakan = false, tantangan = tantangan)
-            val kk = KunciKeystore.buat(ctx, KunciKeystore.KERJAKAN, kerjakan = true, tantangan = tantangan)
+            val kk = KunciKeystore.buat(ctx, KunciKeystore.KERJAKAN, kerjakan = true, tantangan = tantangan, pin = qr.kerjakanPin)
             val e = ehp.buatBaru()
             val daftar = klien.panggil("POST", "hp/daftar", Pasang.badanDaftar(qr), pakaiToken = false).data
                 ?: throw GalatKunci("relay_jawaban_rusak")
@@ -122,7 +147,7 @@ class Inti(context: Context) {
                 linkedMapOf(
                     "relay" to qr.relay, "mac_id" to qr.macId, "nama_mac" to qr.namaMac, "s_mac" to B64u.enk(qr.sMacSpki),
                     "e_mac" to B64u.enk(qr.eMacRaw), "perangkat_id" to perangkatId, "status" to "menunggu", "sas" to sas,
-                    "dipasang" to sekarang,
+                    "dipasang" to sekarang, "kerjakan_pin" to qr.kerjakanPin,
                 ),
             )
             mapOf<String, Any?>("kodeSas" to sas, "namaMac" to qr.namaMac, "perangkatId" to perangkatId)
@@ -156,7 +181,8 @@ class Inti(context: Context) {
 
     /**
      * Kerjakan (SEC-51): Kotlin menampilkan sendiri proyek/akun/model/200 karakter pesan + panjang di BiometricPrompt
-     * (BIOMETRIC_STRONG + CryptoObject K_kerjakan), lalu menandatangani plaintext yang disusun dari nilai yang sama.
+     * (BIOMETRIC_STRONG + CryptoObject K_kerjakan; mode sesi G3: hanya bila masa habis), lalu menandatangani plaintext
+     * yang disusun dari nilai yang sama.
      */
     fun kirimKerjakan(
         aktivitas: FragmentActivity, tugas: String, proyek: String, akun: String, pesan: String, baru: Boolean, model: String?,
@@ -179,10 +205,7 @@ class Inti(context: Context) {
             subjudul = (if (otomatis) "Akun: otomatis (mulai dari ${akun.take(30)})" else "Akun: ${akun.take(40)}") + " · Model: ${(model ?: "bawaan").take(30)}",
             keterangan = "$potongan\n(${pesan.length} karakter)",
         )
-        val sig = Biometrik.konfirmasiKerjakan(aktivitas, teks, KunciKeystore.signature(KunciKeystore.KERJAKAN))
-            ?: throw GalatKunci("dibatalkan")
-        sig.update(draf.inputTanda)
-        val amplop = draf.selesaikan(sig.sign())
+        val amplop = draf.selesaikan(tandaKerjakan(aktivitas, p, teks, draf.inputTanda))
         return kirimAmplop(p, id, amplop)
     }
 
@@ -286,8 +309,8 @@ class Inti(context: Context) {
     }
 
     /**
-     * Jawaban keputusan (F1b): tolak/jawab ditandatangani K_rencana; izinkan/izinkan_selalu WAJIB K_kerjakan (BIOMETRIC_STRONG +
-     * CryptoObject) dengan teks prompt yang disusun Kotlin dari butir snapshot terverifikasi (alat, proyek, ringkas) — SEC-51.
+     * Jawaban keputusan (F1b): tolak/jawab ditandatangani K_rencana; izinkan/izinkan_selalu WAJIB K_kerjakan ([tandaKerjakan])
+     * dengan teks prompt yang disusun Kotlin dari butir snapshot terverifikasi (alat, proyek, ringkas) — SEC-51.
      * Pilihan harus ada di `boleh` butir itu (Mac memeriksa ulang). Hanya build rilis (K-07).
      */
     fun kirimKeputusan(aktivitas: FragmentActivity, keputusan: String, pilih: String, jawaban: List<List<String>>?, pesan: String?): Map<String, Any?> {
@@ -295,6 +318,8 @@ class Inti(context: Context) {
         val butir = Keputusan.cariButir(snapshotKeputusan(), keputusan) ?: throw GalatKunci("keputusan_tidak_ada")
         if ((butir["sampai"] as? Long ?: 0L) < System.currentTimeMillis()) throw GalatKunci("keputusan_kedaluwarsa")
         if ((butir["boleh"] as? List<*>)?.contains(pilih) != true) throw GalatKunci("pilihan_tidak_diizinkan")
+        // G3 SEC-120: Mac menolak "izinkan selalu" dari HP selama kerjakanPin (dari Mac/VS Code) — tolak dini tanpa meminta sidik jari/PIN
+        if (pilih == "izinkan_selalu" && macKerjakanPin() == true) throw GalatKunci("izinkan_selalu_hanya_dari_mac")
         val tambahan = linkedMapOf<String, Any>("keputusan" to keputusan, "pilih" to pilih)
         jawaban?.let { tambahan["jawaban"] = it }
         pesan?.trim()?.takeIf { it.isNotEmpty() }?.let { tambahan["pesan"] = it }
@@ -319,10 +344,7 @@ class Inti(context: Context) {
             subjudul = if (pilih == "izinkan_selalu") "Izinkan SELALU untuk input yang sama persis" else "Sekali ini saja",
             keterangan = ringkas.ifEmpty { null },
         )
-        val sig = Biometrik.konfirmasiKerjakan(aktivitas, teks, KunciKeystore.signature(KunciKeystore.KERJAKAN))
-            ?: throw GalatKunci("dibatalkan")
-        sig.update(draf.inputTanda)
-        val amplop = draf.selesaikan(sig.sign())
+        val amplop = draf.selesaikan(tandaKerjakan(aktivitas, p, teks, draf.inputTanda))
         return kirimAmplop(p, id, amplop)
     }
 
@@ -357,7 +379,7 @@ class Inti(context: Context) {
     }
 
     /**
-     * Aksi review (commit/buang/push): WAJIB K_kerjakan (BIOMETRIC_STRONG + CryptoObject) dengan teks prompt yang disusun Kotlin
+     * Aksi review (commit/buang/push): WAJIB K_kerjakan ([tandaKerjakan]) dengan teks prompt yang disusun Kotlin
      * dari butir snapshot terverifikasi (jumlah berkas, proyek, cabang, pesan commit) — SEC-51. Aksi harus ada di `boleh` butir.
      */
     fun kirimReviewAksi(aktivitas: FragmentActivity, review: String, aksi: String, pesan: String?): Map<String, Any?> {
@@ -365,6 +387,8 @@ class Inti(context: Context) {
         val butir = Review.cariButir(snapshotReview(), review) ?: throw GalatKunci("review_tidak_ada")
         if ((butir["boleh"] as? List<*>)?.contains(aksi) != true) throw GalatKunci("aksi_tidak_diizinkan")
         val tambahan = linkedMapOf<String, Any>("review" to review, "aksi" to aksi)
+        // G2 S-2: Mac menolak push dari HP selama kerjakanPin (push dari Mac/VS Code) — tolak dini tanpa meminta PIN/sidik jari
+        if (aksi == "push" && macKerjakanPin() == true) throw GalatKunci("push_hanya_dari_mac")
         if (aksi == "commit") tambahan["pesan"] = pesan?.trim()?.takeIf { Review.pesanSah(it) } ?: throw GalatKunci("pesan_tidak_sah")
         try {
             Perintah.isi("review_aksi", NOL16, NOL16, NOL32, 0, 1, 2, tambahan)
@@ -391,7 +415,7 @@ class Inti(context: Context) {
     }
 
     /**
-     * Perintah pratinjau: "mulai" menjalankan server dev proyek di Mac → WAJIB K_kerjakan + sidik jari (teks dari Kotlin, SEC-51)
+     * Perintah pratinjau: "mulai" menjalankan server dev proyek di Mac → WAJIB K_kerjakan ([tandaKerjakan], teks dari Kotlin, SEC-51)
      * dan butir snapshot harus `bisaMulai`; "daftar" / "henti" / "potret" K_rencana.
      */
     fun kirimPratinjau(aktivitas: FragmentActivity, proyek: String, aksi: String): Map<String, Any?> {
@@ -415,7 +439,7 @@ class Inti(context: Context) {
         return a as String
     }
 
-    /** Perintah bertanda K_kerjakan setelah sidik jari dengan [teks] yang disusun Kotlin. */
+    /** Perintah bertanda K_kerjakan ([tandaKerjakan]) dengan [teks] yang disusun Kotlin. */
     private fun kirimBerKerjakan(aktivitas: FragmentActivity, jenis: String, tambahan: Map<String, Any>, teks: Biometrik.Teks): Map<String, Any?> {
         val p = pasanganAktif()
         val kk = KunciKeystore.info(KunciKeystore.KERJAKAN) ?: throw GalatKunci("kunci_tidak_ada")
@@ -424,10 +448,7 @@ class Inti(context: Context) {
         val kd = Perintah.kedaluwarsa(jenis, null, sekarang)
         val isi = Perintah.isi(jenis, p.macId, p.perangkatId, id, urutBerikut(), sekarang, kd, tambahan)
         val draf = AmplopV1.siapkan("perintah", kk.id, p.eMac, isi, kd, id)
-        val sig = Biometrik.konfirmasiKerjakan(aktivitas, teks, KunciKeystore.signature(KunciKeystore.KERJAKAN))
-            ?: throw GalatKunci("dibatalkan")
-        sig.update(draf.inputTanda)
-        return kirimAmplop(p, id, draf.selesaikan(sig.sign()))
+        return kirimAmplop(p, id, draf.selesaikan(tandaKerjakan(aktivitas, p, teks, draf.inputTanda)))
     }
 
     private fun simpanStatus(isi: Map<String, Any>) {

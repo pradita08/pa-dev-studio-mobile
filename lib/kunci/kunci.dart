@@ -48,6 +48,10 @@ class GalatKunci implements Exception {
     'berkas_tidak_ada': 'Berkas ini tidak ada di review.',
     'pesan_tidak_sah': 'Pesan commit wajib diisi: satu baris, maksimal 200 karakter.',
     'berkas_berubah_sejak_review': 'Berkas sudah berubah sejak review dibuat (diedit di laptop?). Cek di laptop dulu.',
+    // G2: Kerjakan pakai PIN
+    'push_hanya_dari_mac': 'Push dari HP ditutup selama Kerjakan pakai PIN. Push dari Mac/VS Code.',
+    'izinkan_selalu_hanya_dari_mac': 'Izinkan selalu dari HP ditutup selama mode sesi. Pakai Izinkan sekali, atau atur dari Mac/VS Code.',
+    'kerjakan_perlu_pasang_ulang': 'Setelan Kerjakan di Mac berubah. Pasang ulang HP ini.',
     'proyek_sedang_bekerja': 'Claude masih bekerja di proyek ini. Tunggu tugasnya selesai.',
     // roadmap 2b/2c: pratinjau langsung (pelaksana-pratinjau.js)
     'pratinjau_mati': 'Pratinjau belum menyala. Nyalakan dulu.',
@@ -96,7 +100,9 @@ class StatusPasang {
         idKRencana = m['idKRencana'] as String?,
         idKKerjakan = m['idKKerjakan'] as String?,
         idEHp = m['idEHp'] as String?,
-        kunciUtuh = m['kunciUtuh'] == true;
+        kunciUtuh = m['kunciUtuh'] == true,
+        perluPasangUlang = m['perluPasangUlang'] == true,
+        kerjakanPin = m['kerjakanPin'] == true;
 
   /// 'menunggu' (kode 6 digit tampil, tunggu `ya` di Mac) | 'aktif' | 'ditolak' | 'dicabut'
   final String status;
@@ -108,6 +114,12 @@ class StatusPasang {
   /// Sidik jari kunci (8 heksa) untuk layar Pengaturan.
   final String? idKRencana, idKKerjakan, idEHp;
   final bool kunciUtuh;
+
+  /// G2: setelan Kerjakan-pakai-PIN di Mac beda dengan kunci HP ini → pasang ulang agar PIN berlaku.
+  final bool perluPasangUlang;
+
+  /// G3: kunci Kerjakan HP ini memakai mode sesi (buka aplikasi sekali, ±5 menit tanpa prompt per perintah).
+  final bool kerjakanPin;
 }
 
 class HasilPasang {
