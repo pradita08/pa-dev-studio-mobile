@@ -114,8 +114,9 @@ jobs:
 
       - name: Build APK debug & profile (arm64)
         run: |
-          flutter build apk --debug --target-platform android-arm64
-          flutter build apk --profile --target-platform android-arm64
+          # nomor build = nomor run CI, agar Android/HP bisa membedakan build lama dan baru
+          flutter build apk --debug --target-platform android-arm64 --build-number ${{ github.run_number }}
+          flutter build apk --profile --target-platform android-arm64 --build-number ${{ github.run_number }}
 
       - name: Build APK rilis (bila rahasia rilis ada)
         id: rilis
@@ -132,7 +133,7 @@ jobs:
           printf '%s' "$KS" | base64 -d > "$RUNNER_TEMP/rilis.keystore"
           printf 'PADEV_KEYSTORE_SANDI=%s\nPADEV_KUNCI_ALIAS=%s\nPADEV_KUNCI_SANDI=%s\n' "$SANDI" "$ALIAS" "$SANDI_KUNCI" > "$RUNNER_TEMP/rilis.env"
           PADEV_RILIS_ENV="$RUNNER_TEMP/rilis.env" PADEV_RILIS_KEYSTORE="$RUNNER_TEMP/rilis.keystore" \
-            flutter build apk --release --target-platform android-arm64 --obfuscate --split-debug-info=build/simbol-rilis
+            flutter build apk --release --target-platform android-arm64 --obfuscate --split-debug-info=build/simbol-rilis --build-number ${{ github.run_number }}
           rm -f "$RUNNER_TEMP/rilis.keystore" "$RUNNER_TEMP/rilis.env"
           echo "ada=1" >> "$GITHUB_OUTPUT"
 
@@ -150,7 +151,7 @@ jobs:
           for j in debug profile release; do
             f="build/app/outputs/flutter-apk/app-${j}.apk"
             [ -f "$f" ] || continue
-            nama="padev-studio-${versi}-${j/release/rilis}-${sha}.apk"
+            nama="padev-studio-${versi}-b${{ github.run_number }}-${j/release/rilis}-${sha}.apk"
             cp "$f" "keluaran/$nama"
             sertifikat=$("$apksigner" verify --print-certs "$f" | sed -n 's/.*SHA-256 digest: //p' | head -1)
             echo "| \`$nama\` | $(du -h "$f" | cut -f1) | \`$sertifikat\` |" >> "$GITHUB_STEP_SUMMARY"
