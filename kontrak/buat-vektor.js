@@ -188,6 +188,13 @@ function susun(lama, lamaRusak = null, keluar = {}, lamaCermin = null) {
   const pProtoJalankan = perintah('rusak_isi_proto_jalankan', { urut: 4, masa: 10 * MENIT, jenis: 'jalankan',
     tambahan: jalankan('rencana', 'x'), ubahIsi: i => { delete i.model; milikSendiri(i, 'constructor', 'opus'); } });
   tambahRusakB('isi_jalankan_constructor', R.ALASAN.ISI_BENTUK, 'jalankan: field opsional `model` diganti `constructor`', pProtoJalankan.amplop);
+  // G4 S-G4-1: jalankan.sesi = UUID v4 huruf kecil persis (36 karakter); bentuk lain → isi_bentuk (Mac & Kotlin)
+  const SESI_G4 = 'a1b2c3d4-0000-4000-8000-000000000004';
+  for (const [lbl, v, ket] of [['huruf_besar', SESI_G4.toUpperCase(), 'huruf besar (tanpa /i)'], ['35', SESI_G4.slice(0, 35), '35 karakter'],
+    ['37', SESI_G4 + '0', '37 karakter'], ['path', '../x', '"../x"'], ['null', null, 'null'], ['jsonl', SESI_G4 + '.jsonl', 'berakhiran .jsonl']]) {
+    const p = perintah('rusak_jalankan_sesi_' + lbl, { urut: 4, masa: 10 * MENIT, jenis: 'jalankan', tambahan: { ...jalankan('rencana', 'x'), baru: false, sesi: v } });
+    tambahRusakB('isi_jalankan_sesi_' + lbl, R.ALASAN.ISI_BENTUK, `jalankan: sesi ${ket} — bukan UUID huruf kecil`, p.amplop);
+  }
   const hdr = (k, ganti) => { const x = salin(ar); if (ganti) delete x[ganti]; return milikSendiri(x, k, 'x'); };
   tambahRusakB('header_tanda_diganti_constructor', 'bentuk', 'header tetap 9 field, `tanda` diganti `constructor`', hdr('constructor', 'tanda'));
   tambahRusakB('header_enc_diganti_toString', 'bentuk', 'header tetap 9 field, `enc` diganti `toString`', hdr('toString', 'enc'));
@@ -207,6 +214,11 @@ function susun(lama, lamaRusak = null, keluar = {}, lamaCermin = null) {
     pc('riwayat_awal', 'cermin_riwayat', { sesi: SESI, proyek: 'proyek-uji', akun: 'akun-uji', batas: 50 }),
     pc('riwayat_kursor', 'cermin_riwayat', { sesi: SESI, proyek: 'proyek-uji', akun: 'akun-uji', sebelum: '120.0', batas: 20 }),
   ].map(v => ({ ...v, periksa: PERIKSA_MAC, hasil: { ok: true, peran: 'k_rencana', jenis: JSON.parse(v.antara.plaintext).jenis } }));
+  // G4 "Lanjutkan di Chat": jalankan + sesi (baru:false) sah; sesi + baru:true sah di amplop, Mac menolak `sesi_dengan_baru` (jalankanDariHp)
+  const jalSesi = baru => pc('jalankan_sesi' + (baru ? '_baru' : ''), 'jalankan',
+    { tugas: 'tgs-sesi', proyek: 'proyek-uji', akun: 'akun-uji', mode: 'rencana', pesan: 'Lanjutkan dari sini', baru, sesi: SESI });
+  sahPC.push({ ...jalSesi(false), periksa: PERIKSA_MAC, hasil: { ok: true, peran: 'k_rencana', jenis: 'jalankan' } },
+    { ...jalSesi(true), periksa: PERIKSA_MAC, hasil: { ok: true, peran: 'k_rencana', jenis: 'jalankan', tolak_mac: 'sesi_dengan_baru' } });
   const butirSesi = {
     sesi: SESI, akun: 'akun-uji', proyek: 'proyek-uji', judul: 'Perbaiki validasi form login', asal: 'vscode', status: 'bekerja', terbuka: true,
     mulai: T0 - 3600e3, terakhir: T0 - 5000, divisi: [{ peran: 'divisi-programmer', status: 'bekerja' }], alat: { alat: 'Edit', ringkas: 'app/Controllers/Login.php (+4 −1 baris)' },

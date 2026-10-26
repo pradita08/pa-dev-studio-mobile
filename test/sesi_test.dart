@@ -351,5 +351,52 @@ void main() {
       await t.pumpWidget(const SizedBox());
       s.dispose();
     });
+
+    testWidgets('G4 "Lanjutkan di Chat" → pita cabang + CLAUDE.md, akun terkunci, Tutup; sesi dipakai → tombol mati + alasan', (t) async {
+      Map<String, Object?> status(List<String> fitur) => {
+            'jenis': 'status',
+            'status': {
+              'fitur': fitur,
+              'proyek': [
+                {'id': 'simpeg', 'nama': 'SIMPEG', 'akun': ['akun1', 'akun2'], 'hp': 'kerjakan', 'sibuk': false},
+              ],
+            },
+          };
+      final s = _SumberUji()
+        ..kabarMasuk(status(['lanjut_sesi']))
+        ..kabarMasuk(_kabarSesi([_butir(_s1, status: 'selesai')..['bisaLanjut'] = 'cabang']));
+      await t.pumpWidget(_app(LayarSesiDetail(sumber: s, sesi: s.daftarSesi.single)));
+      await t.pump();
+      await t.tap(find.text('Lanjutkan di Chat'));
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 500));
+      expect(find.text('Melanjutkan: Perbaiki validasi NIP · cabang'), findsOneWidget);
+      expect(find.text('Aturan proyek (CLAUDE.md) tidak ikut saat dilanjutkan dari HP'), findsOneWidget);
+      PopupMenuButton<String> akun() => t.widget<PopupMenuButton<String>>(find.byType(PopupMenuButton<String>));
+      expect(akun().enabled, isFalse, reason: 'akun sesi terkunci selama pita');
+      await t.tap(find.text('Tutup'));
+      await t.pump();
+      expect(find.textContaining('Melanjutkan:'), findsNothing);
+      expect(akun().enabled, isTrue);
+      await t.pumpWidget(const SizedBox());
+      s.dispose();
+
+      final lama = _SumberUji()
+        ..kabarMasuk(status(const []))
+        ..kabarMasuk(_kabarSesi([_butir(_s1, status: 'selesai')..['bisaLanjut'] = 'cabang']));
+      await t.pumpWidget(_app(LayarSesiDetail(sumber: lama, sesi: lama.daftarSesi.single)));
+      expect(find.text('Lanjutkan di Chat'), findsNothing, reason: 'Mac lama tanpa lanjut_sesi');
+      await t.pumpWidget(const SizedBox());
+      lama.dispose();
+
+      final dipakai = _SumberUji()
+        ..kabarMasuk(status(['lanjut_sesi']))
+        ..kabarMasuk(_kabarSesi([_butir(_s1)]));
+      await t.pumpWidget(_app(LayarSesiDetail(sumber: dipakai, sesi: dipakai.daftarSesi.single)));
+      expect(t.widget<FilledButton>(find.widgetWithText(FilledButton, 'Lanjutkan di Chat')).onPressed, isNull);
+      expect(find.text('Sedang dipakai di Mac — pakai aplikasi Claude (Remote Control)'), findsOneWidget);
+      await t.pumpWidget(const SizedBox());
+      dipakai.dispose();
+    });
   });
 }

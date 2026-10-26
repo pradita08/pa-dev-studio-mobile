@@ -274,6 +274,83 @@
           "peran": "k_rencana",
           "jenis": "cermin_riwayat"
         }
+      },
+      {
+        "label": "cermin_jalankan_sesi",
+        "amplop": {
+          "v": 1,
+          "jenis_kotak": "perintah",
+          "dari": "c4fa60a864eacae2",
+          "ke": "11d4d3b0db14e3d2",
+          "id": "eaddb3e02f27593f73b8e179804d96f3",
+          "kedaluwarsa": 1791000595000,
+          "enc": "2nKWCdT4jQ8qjuVoBbGpxKR8CpIdxu5dPpKxT-qxDnA",
+          "ct": "wU9tbXLvPoksu5CNK_U_tALqV2bu8_oZrHPd5qEOHeGuXKVHQCgDt2lRSKmkpyDd93dLKgXUDOCpYUoB6K_1B4yBXEM8d3TJB9epoI6Kz_kMnB09_lYvMze00tvJoKNCAIL5d6_R4nmMrt4zKLqKF1UNjpOWa_EcYA75V9q0rcYd95fc_RaSaKV6cQH6m1_RXF_S3l20hkFIyAEbPvhDIj0q6k3FlOha16PPwqA1cQCx3ue3A-57fxq_QFuBRvRtgMvPx8-Yfwmexu1OF_1w1uQdsf_0fZWRrkUqTaKVtAgra5qcmYAvSLqkQFc4IO-jm7Y1O53TM7aiC2lg17VxQ-JbHXJv0kRR3ULhQr4PV40dvZSgoQJy51zCh6nXhXpvhEOEOMYKSQH218rpDWGL1ltsd0mg0KeQhFffrqLNCoXN_3C1Nhghk07caWuuG1_dn17F_d1RKEy7V0seLDgvPTvf3avtDsZQM0cCzA",
+          "tanda": "MEYCIQD1xgvQviVrtyCcYHNJuAtMxcbBsepCJTAxV-epcahqPAIhAPID8NFoixb7zqi8jfvyZzfPRNxLCRyTNWYzvBOSPQxe"
+        },
+        "antara": {
+          "H": "{\"dari\":\"c4fa60a864eacae2\",\"id\":\"eaddb3e02f27593f73b8e179804d96f3\",\"jenis_kotak\":\"perintah\",\"ke\":\"11d4d3b0db14e3d2\",\"kedaluwarsa\":1791000595000,\"v\":1}",
+          "info": "PADEV-STUDIO-v1|c4fa60a864eacae2|11d4d3b0db14e3d2",
+          "input_tanda": "UEFERVYtU1RVRElPLUFNUExPUC12MQp7ImRhcmkiOiJjNGZhNjBhODY0ZWFjYWUyIiwiaWQiOiJlYWRkYjNlMDJmMjc1OTNmNzNiOGUxNzk4MDRkOTZmMyIsImplbmlzX2tvdGFrIjoicGVyaW50YWgiLCJrZSI6IjExZDRkM2IwZGIxNGUzZDIiLCJrZWRhbHV3YXJzYSI6MTc5MTAwMDU5NTAwMCwidiI6MX3acpYJ1PiNDyqO5WgFsanEpHwKkh3G7l0-krFP6rEOcMFPbW1y7z6JLLuQjSv1P7QC6ldm7vP6Gaxz3eahDh3hrlylR0AoA7dpUUippKcg3fd3SyoF1AzgqWFKAeiv9QeMgVxDPHd0yQfXqaCOis_5DJwdPf5WLzM3tNLbyaCjQgCC-Xev0eJ5jK7eMyi6ihdVDY6TlmvxHGAO-VfatK3GHfeX3P0WkmilenEB-ptf0Vxf0t5dtIZBSMgBGz74QyI9KupNxZToWtejz8KgNXEAsd7ntwPue38av0BbgUb0bYDLz8fPmH8JnsbtThf9cNbkHbH_9H2Vka5FKk2ilbQIK2uanJmAL0i6pEBXOCDvo5u2NTud0zO2ogtpYNe1cUPiWx1yb9JEUd1C4UK-D1eNHb2UoKECcudcwoep14V6b4RDhDjGCkkB9tfK6Q1hi9ZbbHdJoNCnkIRX366izQqFzf9wtTYYIZNO3Glrrhtf3Z9exf3dUShMu1dLHiw4Lz07392r7Q7GUDNHAsw",
+          "plaintext": "{\"akun\":\"akun-uji\",\"baru\":false,\"dibuat\":1790999995000,\"id\":\"eaddb3e02f27593f73b8e179804d96f3\",\"jenis\":\"jalankan\",\"kedaluwarsa\":1791000595000,\"mac_id\":\"dac41f4ed3e1ec5d\",\"mode\":\"rencana\",\"perangkat_id\":\"1f600ae09b7479f9\",\"pesan\":\"Lanjutkan dari sini\",\"proyek\":\"proyek-uji\",\"sesi\":\"a1b2c3d4-0000-4000-8000-000000000001\",\"tugas\":\"tgs-sesi\",\"urut\":10}",
+          "hpke": {
+            "ikm_e": "K8kFSJzP76L35fGKQnEv8DUD8gmQOUBCW_tSMW5Vws8",
+            "sk_e": "i_fdRYoKZz0qY8VxvrrmI6Y9qNsNSbyFETKDKvgp97k",
+            "enc": "2nKWCdT4jQ8qjuVoBbGpxKR8CpIdxu5dPpKxT-qxDnA",
+            "shared_secret": "QTfKbFavPdblpwiiB-l1M3nnhCYYJqkILJZDyBZzxxQ",
+            "key": "t8nMsPAhLPQ8pFJvKDjCWh9Ff2QkrZ4mUFwy2rLMmwc",
+            "base_nonce": "VZfbe-LjHVhObVjP"
+          }
+        },
+        "periksa": {
+          "jenisKotak": "perintah",
+          "penerima": "mac",
+          "sekarang": 1791000000000
+        },
+        "hasil": {
+          "ok": true,
+          "peran": "k_rencana",
+          "jenis": "jalankan"
+        }
+      },
+      {
+        "label": "cermin_jalankan_sesi_baru",
+        "amplop": {
+          "v": 1,
+          "jenis_kotak": "perintah",
+          "dari": "c4fa60a864eacae2",
+          "ke": "11d4d3b0db14e3d2",
+          "id": "989ac60e8abb16f2e300d9c6c8885ec2",
+          "kedaluwarsa": 1791000595000,
+          "enc": "AtvxRD4KPj0mqzyf48qzM-sCIckjw7WoF6OUin29gy8",
+          "ct": "Ge3c6xynp_CN9jkqd0Jx-AJY_gDVO0852CXHOR2dtcV2YLYHhm-AvaQSsjasqf4S3X1MdX0-gCOwpY_46Jj4Ll8z4EPCZHOawrrL2SsmpMsheDxzjBOaP3XvaqOJxFg2oqnoEwsOUSkm9tahtnDclLwSBlYWT7UQtNx7NdVTlnIwpy2kCi5uN8EnsQy4LPwJHwVO8cQj9C9q3MU-32QH1W5V2s8-OQ8de4E_SOlkgdk5fzITimva0TE1BKnoCNWr5Zwp1sgrbgC7CSYfJhthlFd5yU3VVArVmuA3RLbAzJ7RfKXg9mPdY-N_RjyJ0untyvuM7dDUS_b32b5dZGYvShBj39e7Q2iNanmTe5f6lfgpv9FvbBDUkIu9cnenB7FnxujAefGJuKxSuwWr8CmLym-uldrlbQ0UBd4qIGxHDCCLLBdpYzZn9rtEZgLQ6G1rUefGpbFDLvmBUXPD4JqfJrnZRjMG9vQ3J5Em",
+          "tanda": "MEUCIEXUknUOHNh3YyKKOcwGgFKtuFyPGCEQMz-J9WbIC4F7AiEAi1vO_qhIky-PaNu7-1MeJVfH7RHDvhE12_mLqtxOk78"
+        },
+        "antara": {
+          "H": "{\"dari\":\"c4fa60a864eacae2\",\"id\":\"989ac60e8abb16f2e300d9c6c8885ec2\",\"jenis_kotak\":\"perintah\",\"ke\":\"11d4d3b0db14e3d2\",\"kedaluwarsa\":1791000595000,\"v\":1}",
+          "info": "PADEV-STUDIO-v1|c4fa60a864eacae2|11d4d3b0db14e3d2",
+          "input_tanda": "UEFERVYtU1RVRElPLUFNUExPUC12MQp7ImRhcmkiOiJjNGZhNjBhODY0ZWFjYWUyIiwiaWQiOiI5ODlhYzYwZThhYmIxNmYyZTMwMGQ5YzZjODg4NWVjMiIsImplbmlzX2tvdGFrIjoicGVyaW50YWgiLCJrZSI6IjExZDRkM2IwZGIxNGUzZDIiLCJrZWRhbHV3YXJzYSI6MTc5MTAwMDU5NTAwMCwidiI6MX0C2_FEPgo-PSarPJ_jyrMz6wIhySPDtagXo5SKfb2DLxnt3Oscp6fwjfY5KndCcfgCWP4A1TtPOdglxzkdnbXFdmC2B4ZvgL2kErI2rKn-Et19THV9PoAjsKWP-OiY-C5fM-BDwmRzmsK6y9krJqTLIXg8c4wTmj9172qjicRYNqKp6BMLDlEpJvbWobZw3JS8EgZWFk-1ELTcezXVU5ZyMKctpAoubjfBJ7EMuCz8CR8FTvHEI_QvatzFPt9kB9VuVdrPPjkPHXuBP0jpZIHZOX8yE4pr2tExNQSp6AjVq-WcKdbIK24AuwkmHyYbYZRXeclN1VQK1ZrgN0S2wMye0Xyl4PZj3WPjf0Y8idLp7cr7jO3Q1Ev299m-XWRmL0oQY9_Xu0NojWp5k3uX-pX4Kb_Rb2wQ1JCLvXJ3pwexZ8bowHnxibisUrsFq_Api8pvrpXa5W0NFAXeKiBsRwwgiywXaWM2Z_a7RGYC0Ohta1HnxqWxQy75gVFzw-Canya52UYzBvb0NyeRJg",
+          "plaintext": "{\"akun\":\"akun-uji\",\"baru\":true,\"dibuat\":1790999995000,\"id\":\"989ac60e8abb16f2e300d9c6c8885ec2\",\"jenis\":\"jalankan\",\"kedaluwarsa\":1791000595000,\"mac_id\":\"dac41f4ed3e1ec5d\",\"mode\":\"rencana\",\"perangkat_id\":\"1f600ae09b7479f9\",\"pesan\":\"Lanjutkan dari sini\",\"proyek\":\"proyek-uji\",\"sesi\":\"a1b2c3d4-0000-4000-8000-000000000001\",\"tugas\":\"tgs-sesi\",\"urut\":10}",
+          "hpke": {
+            "ikm_e": "jRPGF-dqouy4ZX-3Md-nRhEVSLpWX3IN-S36ga9B-m4",
+            "sk_e": "LOi9YQoQT8yXXjxnQDULQsaHWL2mGJwc2T6-3uj-c9M",
+            "enc": "AtvxRD4KPj0mqzyf48qzM-sCIckjw7WoF6OUin29gy8",
+            "shared_secret": "WL5_FoBugiHNO3Jwd86uwGSaFjE6QDIt05L_VCrqBmU",
+            "key": "A1lKPAnsqnt1IIvqaEVFFceEtsS54svxySd2n7YTe-4",
+            "base_nonce": "HNBP83AZ1r0qbAsz"
+          }
+        },
+        "periksa": {
+          "jenisKotak": "perintah",
+          "penerima": "mac",
+          "sekarang": 1791000000000
+        },
+        "hasil": {
+          "ok": true,
+          "peran": "k_rencana",
+          "jenis": "jalankan",
+          "tolak_mac": "sesi_dengan_baru"
+        }
       }
     ],
     "kabar": [

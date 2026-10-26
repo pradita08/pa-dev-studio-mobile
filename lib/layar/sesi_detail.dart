@@ -1,7 +1,7 @@
 // L11b Detail sesi (KONTRAK-apk-v2 §6.2, F1): riwayat per 50 (`cermin_riwayat`) + langsung (`cermin`) selama layar terbuka.
 // Hemat (K-04): `cermin_buka` hanya saat layar ini terbuka & aplikasi aktif, kirim ulang 7,5 mnt; `cermin_tutup` saat keluar/latar.
 // Celah `urut_cermin` → "Ada bagian yang hilang". Proyek tingkat ringkas → pesan/jawaban tanpa isi + keterangan.
-// Kartu keputusan (F1b) sesi ini tampil paling bawah & bisa dijawab di sini. Tombol Lanjutkan (F3) belum ada.
+// Kartu keputusan (F1b) sesi ini tampil paling bawah & bisa dijawab di sini. G4: tombol "Lanjutkan di Chat" (cabang, S-G4-15).
 // Semua teks luar via Text (A-E1).
 import 'dart:async';
 
@@ -11,6 +11,7 @@ import '../komponen/komponen.dart';
 import '../kunci/kunci.dart';
 import '../pratinjau/pita.dart';
 import '../tema/token.dart';
+import 'chat.dart';
 import 'data.dart';
 import 'keputusan.dart';
 
@@ -156,9 +157,45 @@ class _LayarSesiDetailState extends State<LayarSesiDetail> with WidgetsBindingOb
           _BarisKeadaan(langsung: langsung, sesi: sesi, riwayat: r),
           for (final a in atas) Padding(padding: const EdgeInsets.fromLTRB(12, 8, 12, 0), child: a),
           Expanded(child: _isi(context, w, sesi, r, kp)),
+          ?_tombolLanjut(w, sesi),
         ]),
       ),
     );
+  }
+
+  /// KF-G4-01/05: tombol di bawah riwayat; mati + alasan bila sesi dipakai di Mac atau akunnya tidak aktif.
+  Widget? _tombolLanjut(WarnaPadev w, SesiCermin sesi) {
+    final k = s.tombolLanjut(sesi);
+    if (k == TombolLanjut.sembunyi) return null;
+    final alasan = switch (k) {
+      TombolLanjut.dipakai => alasanTolak('sesi_sedang_dipakai'),
+      TombolLanjut.akunMati => alasanTolak('akun_tidak_aktif'),
+      _ => null,
+    };
+    return Container(
+      decoration: BoxDecoration(color: w.panel, border: Border(top: BorderSide(color: w.line))),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        FilledButton(
+          onPressed: k == TombolLanjut.aktif ? () => _lanjutkan(sesi) : null,
+          child: const IsiTombol(Simbol.obrolan, 'Lanjutkan di Chat'),
+        ),
+        if (alasan != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Row(children: [
+              Icon(Simbol.info, size: 15, color: w.muted),
+              const SizedBox(width: 6),
+              Expanded(child: Text(alasan, style: TeksPadev.redup(w, ukuran: 12.5))),
+            ]),
+          ),
+      ]),
+    );
+  }
+
+  void _lanjutkan(SesiCermin sesi) {
+    if (!s.mulaiLanjut(sesi)) return;
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => LayarChat(sumber: s, proyekId: sesi.proyek)));
   }
 
   Widget _isi(BuildContext context, WarnaPadev w, SesiCermin sesi, RiwayatSesi r, List<Keputusan> kp) {

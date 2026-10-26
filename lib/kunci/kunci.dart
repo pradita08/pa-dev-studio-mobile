@@ -259,10 +259,12 @@ abstract final class Kunci {
     bool baru = false,
     String? model,
     bool otomatis = false,
+    String? sesi,
   }) async =>
       HasilKirim._(await _peta('kirimRencana', {
         'tugas': tugas, 'proyek': proyek, 'akun': akun, 'pesan': pesan, 'baru': baru, 'model': model,
         if (otomatis) 'otomatis': true, // roadmap 3: hanya bila status.fitur berisi akun_otomatis (Mac lama menolak field ini)
+        'sesi': ?sesi, // G4: pesan pertama "Lanjutkan di Chat" (status.fitur lanjut_sesi); baru wajib false, tanpa otomatis
       }));
 
   /// Kerjakan: Kotlin menampilkan BiometricPrompt sendiri (proyek/akun/model/200 karakter pesan) dan menandatangani nilai itu.
@@ -274,10 +276,12 @@ abstract final class Kunci {
     bool baru = false,
     String? model,
     bool otomatis = false,
+    String? sesi,
   }) async =>
       HasilKirim._(await _peta('kirimKerjakan', {
         'tugas': tugas, 'proyek': proyek, 'akun': akun, 'pesan': pesan, 'baru': baru, 'model': model,
         if (otomatis) 'otomatis': true, // roadmap 3: hanya bila status.fitur berisi akun_otomatis (Mac lama menolak field ini)
+        'sesi': ?sesi, // G4: pesan pertama "Lanjutkan di Chat" (status.fitur lanjut_sesi); baru wajib false, tanpa otomatis
       }));
 
   static Future<HasilKirim> hentikan(String tugas) async => HasilKirim._(await _peta('hentikan', {'tugas': tugas}));

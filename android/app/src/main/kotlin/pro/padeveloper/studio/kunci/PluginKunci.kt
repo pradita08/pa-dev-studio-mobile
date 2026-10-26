@@ -68,6 +68,14 @@ class PluginKunci(messenger: BinaryMessenger, private val aktivitas: FragmentAct
         return v
     }
 
+    /** G4 S-G4-14: `sesi` opsional (null = tidak dikirim); UUID huruf kecil, hanya bersama baru:false dan tanpa otomatis. */
+    private fun sesi(c: MethodCall): String? {
+        val v = c.argument<String>("sesi") ?: return null
+        require(v.length == 36 && AmplopV1.POLA_SESI_KECIL.matches(v)) { "sesi" }
+        require(c.argument<Boolean>("baru") != true && c.argument<Boolean>("otomatis") != true) { "sesi" }
+        return v
+    }
+
     /** Bilangan bulat opsional dari Dart (Int/Long) → Long; tipe lain → argumen_tidak_sah. */
     private fun bulat(c: MethodCall, nama: String): Long? = when (val v = c.argument<Any>(nama)) {
         null -> null
@@ -101,13 +109,14 @@ class PluginKunci(messenger: BinaryMessenger, private val aktivitas: FragmentAct
             ).apply {
                 c.argument<String>("model")?.let { put("model", it) }
                 if (c.argument<Boolean>("otomatis") == true) put("otomatis", true)
+                sesi(c)?.let { put("sesi", it) }
             },
         )
         "kirimKerjakan" -> inti.kirimKerjakan(
             aktivitas, teks(c, "tugas", 200), teks(c, "proyek", 200), teks(c, "akun", 200),
             teks(c, "pesan", AmplopV1.MAKS_PESAN, boleh_kosong = true), c.argument<Boolean>("baru") ?: false,
             c.argument<String>("model")?.also { require(it.isNotEmpty() && it.length <= 100) { "model" } },
-            otomatis = c.argument<Boolean>("otomatis") == true,
+            otomatis = c.argument<Boolean>("otomatis") == true, sesi = sesi(c),
         )
         "hentikan" -> inti.kirimPerintah(aktivitas, "hentikan", mapOf("tugas" to teks(c, "tugas", 200)))
         "hapusSesi" -> inti.kirimPerintah(aktivitas, "hapus_sesi", mapOf("proyek" to teks(c, "proyek", 200), "akun" to teks(c, "akun", 200)))

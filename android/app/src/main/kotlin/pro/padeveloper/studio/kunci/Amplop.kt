@@ -41,6 +41,9 @@ class HasilPeriksa(
 object AmplopV1 {
     const val MAKS_BYTE = 96 * 1024
     const val MAKS_PESAN = 8000
+
+    /** G4 S-G4-1/S-G4-14: `jalankan.sesi` = UUID v4 huruf kecil persis (Mac POLA_SESI_KECIL, tanpa /i). */
+    val POLA_SESI_KECIL = Regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
     const val TOLERANSI_DIBUAT = 120_000L
     private const val MENIT = 60_000L
     val FIELD = listOf("v", "jenis_kotak", "dari", "ke", "id", "kedaluwarsa", "enc", "ct", "tanda")
@@ -169,6 +172,8 @@ object AmplopV1 {
             "baru" to (true to { v: Any? -> v is Boolean }), "model" to (false to { v: Any? -> str(v, 100) }),
             // roadmap 3: Mac boleh memilih akun proyek lain dengan sisa limit terbanyak (hanya bila status.fitur berisi akun_otomatis)
             "otomatis" to (false to { v: Any? -> v is Boolean }),
+            // G4 "Lanjutkan di Chat": hanya pesan pertama; Mac menolak sesi + baru:true (`sesi_dengan_baru`)
+            "sesi" to (false to { v: Any? -> v is String && POLA_SESI_KECIL.matches(v) }),
         ),
         "hentikan" to mapOf("tugas" to (true to { v: Any? -> str(v, 200) })),
         "hapus_sesi" to mapOf("proyek" to (true to { v: Any? -> str(v, 200) }), "akun" to (true to { v: Any? -> str(v, 200) })),

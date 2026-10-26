@@ -65,9 +65,12 @@ class SumberNyata extends SumberData {
   Future<String> transportKirim(Tugas t) async {
     if (t.mode == 'kerjakan') {
       // Kotlin menampilkan BiometricPrompt sendiri (proyek/akun/model/200 karakter pesan) — bukan layar Flutter (SEC-51).
-      return (await Kunci.kirimKerjakan(tugas: t.tugas, proyek: t.proyek, akun: t.akun, pesan: t.pesan, baru: t.baru, otomatis: t.otomatis)).id;
+      // G4: `sesi` hanya ada di pesan pertama setelah "Lanjutkan di Chat" (null = tidak dikirim).
+      return (await Kunci.kirimKerjakan(
+          tugas: t.tugas, proyek: t.proyek, akun: t.akun, pesan: t.pesan, baru: t.baru, otomatis: t.otomatis, sesi: t.sesi)).id;
     }
-    return (await Kunci.kirimRencana(tugas: t.tugas, proyek: t.proyek, akun: t.akun, pesan: t.pesan, baru: t.baru, otomatis: t.otomatis)).id;
+    return (await Kunci.kirimRencana(
+          tugas: t.tugas, proyek: t.proyek, akun: t.akun, pesan: t.pesan, baru: t.baru, otomatis: t.otomatis, sesi: t.sesi)).id;
   }
 
   @override

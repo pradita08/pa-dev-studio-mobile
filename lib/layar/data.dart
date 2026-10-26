@@ -87,9 +87,13 @@ class Proyek {
     this.divisi,
     this.utama = 'diam',
     this.grup,
+    this.dataPribadi = false,
   });
 
   final String id, nama;
+
+  /// `status.proyek[].dataPribadi` (G4, K-G4-1a): proyek data pribadi tidak bisa dilanjutkan dari HP.
+  final bool dataPribadi;
 
   /// Label bagian tab Proyek dari Mac (folder induk: KOMINFO/ARDANA/PRIVATE/Umum…); null = pelaksana lama → [grupUmum].
   final String? grup;
@@ -148,11 +152,16 @@ class Tugas {
     required this.baru,
     required this.dibuat,
     this.otomatis = false,
+    this.sesi,
   });
 
   final String tugas, proyek, akun, mode, pesan;
   final bool baru;
   final DateTime dibuat;
+
+  /// G4 (S-G4-15): UUID sesi yang dilanjutkan sebagai cabang — hanya di pesan PERTAMA setelah "Lanjutkan di Chat".
+  /// Sengaja tidak disimpan di [keEntri] (cache Kotlin memeriksa kunci): setelah aplikasi dibuka ulang pita juga hilang.
+  final String? sesi;
 
   /// Roadmap 3: Mac boleh memilih akun lain dengan sisa limit terbanyak ([akun] = akun awal yang diminta).
   final bool otomatis;
@@ -616,6 +625,9 @@ abstract class SumberData extends ChangeNotifier {
   /// Mac bisa memilih akun otomatis (perintah `jalankan` dengan `otomatis`). Mac lama menolak field yang tidak dikenal.
   bool get akunOtomatisDidukung => fiturMac.contains('akun_otomatis');
 
+  /// G4: Mac bisa melanjutkan sesi tab Sesi sebagai cabang (`jalankan` + `sesi`). Mac lama → tombol tidak tampil.
+  bool get lanjutSesi => fiturMac.contains('lanjut_sesi');
+
   /// HP yang terhubung ke Mac (null = Mac belum mengirim field ini / pelaksana lama).
   List<PerangkatTerhubung>? perangkatTerhubung;
   int maksPerangkat = 2;
@@ -669,6 +681,7 @@ abstract class SumberData extends ChangeNotifier {
   final List<ButirKabar> kabar = [];
   final Map<String, List<Tugas>> _chat = {};
   final Map<String, bool> _baruBerikutnya = {};
+  final Map<String, LanjutSesi> _lanjut = {};
 
   List<Tugas> chat(String proyekId) => _chat[proyekId] ?? const [];
   int get belumDibaca => kabar.where((k) => !k.dibaca).length;
@@ -678,6 +691,53 @@ abstract class SumberData extends ChangeNotifier {
 
   /// Percakapan baru: perintah berikutnya ke proyek ini dikirim dengan `baru:true`.
   bool baruBerikutnya(String proyekId) => _baruBerikutnya[proyekId] ?? false;
+
+  /// G4: pita "Melanjutkan" di Chat proyek ini (null = tidak ada). Selama ada, akun terkunci ke akun sesi.
+  LanjutSesi? lanjutan(String proyekId) => _lanjut[proyekId];
+
+  /// KF-G4-01 / S-G4-15: keadaan tombol "Lanjutkan di Chat" di detail sesi.
+  TombolLanjut tombolLanjut(SesiCermin x) {
+    final p = cariProyek(x.proyek);
+    if (!lanjutSesi || p == null || p.dataPribadi || (p.hp != 'rencana' && p.hp != 'kerjakan') || !_polaSesi.hasMatch(x.sesi)) {
+      return TombolLanjut.sembunyi;
+    }
+    if ((x.bisaLanjut != 'sama' && x.bisaLanjut != 'cabang') || x.status == StatusSesi.bekerja || x.status == StatusSesi.menungguIzin) {
+      return TombolLanjut.dipakai;
+    }
+    if (p.akun.isNotEmpty && !p.akun.contains(x.akun)) return TombolLanjut.akunMati;
+    return TombolLanjut.aktif;
+  }
+
+  /// Ketuk "Lanjutkan di Chat": pesan berikutnya ke proyek ini membawa `sesi` (baru:false, akun sesi, tanpa otomatis).
+  bool mulaiLanjut(SesiCermin x) {
+    if (tombolLanjut(x) != TombolLanjut.aktif) return false;
+    final j = x.judul.trim().isEmpty ? 'Sesi tanpa judul' : x.judul.trim();
+    _lanjut[x.proyek] = LanjutSesi(sesi: x.sesi, judul: j.length > 80 ? '${j.substring(0, 80)}…' : j, akun: x.akun);
+    _baruBerikutnya.remove(x.proyek);
+    beritahu();
+    return true;
+  }
+
+  void tutupLanjut(String proyekId) {
+    if (_lanjut.remove(proyekId) != null) beritahu();
+  }
+
+  /// S-G4-15: `sesi` dibuang setelah Mac menerima tugas pertama; ditolak `sesi_*` / gagal / dihentikan → pita ditutup
+  /// (cabang mungkin tidak terbentuk, pita tidak boleh menjanjikan lanjutan). Ditolak alasan lain (limit, sibuk) → coba lagi dengan `sesi`.
+  void _ikutLanjut(Tugas t) {
+    final l = _lanjut[t.proyek];
+    if (t.sesi == null || l == null || l.sesi != t.sesi) return;
+    switch (t.tahap) {
+      case TahapTugas.mengirim || TahapTugas.gagalKirim || TahapTugas.menungguDiambil || TahapTugas.kedaluwarsa:
+        break; // belum sampai Mac: "Coba lagi"/"Kirim ulang" tetap membawa `sesi`
+      case TahapTugas.ditolak:
+        if (t.alasan?.startsWith('sesi_') ?? false) _lanjut.remove(t.proyek);
+      case TahapTugas.gagal || TahapTugas.dihentikan || TahapTugas.batasWaktu:
+        _lanjut.remove(t.proyek);
+      default:
+        l.dipakai = true;
+    }
+  }
 
   // ---- transport (diisi turunan)
   @protected
@@ -1062,15 +1122,18 @@ abstract class SumberData extends ChangeNotifier {
   /// Rencana: langsung. Kerjakan: Kotlin menampilkan BiometricPrompt sendiri (SEC-51) di dalam transportKirim.
   /// Melempar GalatKunci (mis. 'dibatalkan') agar layar bisa memberi tahu pengguna.
   Future<Tugas> kirim({required String proyekId, required String akun, required String mode, required String pesan, bool otomatis = false}) async {
+    final l = _lanjut[proyekId];
+    final sesi = l == null || l.dipakai ? null : l.sesi;
     final t = Tugas(
       tugas: idTugas(),
       proyek: proyekId,
-      akun: akun,
+      akun: l?.akun ?? akun,
       mode: mode,
       pesan: pesan,
-      baru: baruBerikutnya(proyekId),
+      baru: sesi == null && baruBerikutnya(proyekId), // kontrak G4: sesi ⇒ baru:false
       dibuat: DateTime.now(),
-      otomatis: otomatis && akunOtomatisDidukung,
+      otomatis: otomatis && akunOtomatisDidukung && l == null, // S-G4-8/14: akun sesi terkunci, tanpa otomatis
+      sesi: sesi,
     );
     (_chat[proyekId] ??= []).add(t);
     _tandaiChat(proyekId);
@@ -1128,6 +1191,7 @@ abstract class SumberData extends ChangeNotifier {
 
   void percakapanBaru(String proyekId) {
     _baruBerikutnya[proyekId] = true;
+    _lanjut.remove(proyekId);
     beritahu();
   }
 
@@ -1135,6 +1199,7 @@ abstract class SumberData extends ChangeNotifier {
     await transportHapusSesi(proyekId, akun);
     _chat[proyekId]?.removeWhere((t) => !t.aktif);
     _baruBerikutnya[proyekId] = true;
+    _lanjut.remove(proyekId);
     _tandaiChat(proyekId);
     beritahu();
   }
@@ -1211,6 +1276,7 @@ abstract class SumberData extends ChangeNotifier {
         divisi: m.containsKey('divisi') ? _divisi(m['divisi']) : null,
         utama: switch (_teks(m['utama'])) { final u? when u == 'bekerja' || u == 'menunggu_izin' => u, _ => 'diam' },
         grup: switch (_teks(m['grup'])?.trim()) { final g? when g.isNotEmpty => g.length > 30 ? g.substring(0, 30) : g, _ => null },
+        dataPribadi: m['dataPribadi'] == true,
       ));
     }
     proyek = daftar;
@@ -1554,6 +1620,7 @@ abstract class SumberData extends ChangeNotifier {
       case 'batas_waktu':
         t.tahap = TahapTugas.batasWaktu;
     }
+    _ikutLanjut(t);
   }
 
   /// KONTRAK §9 K1 (SEC-87): `tugas` ini sudah pernah diterima Mac (mis. "Coba lagi" setelah galat jaringan padahal
@@ -1637,6 +1704,7 @@ abstract class SumberData extends ChangeNotifier {
         t.tahap = TahapTugas.batasWaktu;
         t.batasMenit = _angka(m['menit'])?.toInt() ?? t.batasMenit;
     }
+    _ikutLanjut(t);
   }
 
   void _notif(Map<String, Object?>? m, DateTime waktu) {
@@ -2155,6 +2223,30 @@ String namaAkun(String id) {
 }
 
 /// Pesan untuk kode galat cermin (kode Mac di `cermin_riwayat.galat` + kode lokal) — selebihnya pesan GalatKunci.
+/// G4: teks alasan tolak `jalankan` + `sesi` dari Mac (kontrak G4, tanpa path). Alasan lain tampil apa adanya.
+String alasanTolak(String kode) => switch (kode) {
+      'sesi_dengan_baru' => 'Lanjutan sesi tidak bisa digabung dengan percakapan baru',
+      'sesi_tidak_ada' => 'Sesi ini tidak ada lagi di Mac (lebih dari 30 hari atau sudah dihapus)',
+      'sesi_bukan_milik_proyek' => 'Sesi ini bukan milik proyek atau akun ini',
+      'sesi_sedang_dipakai' => 'Sedang dipakai di Mac — pakai aplikasi Claude (Remote Control)',
+      'cermin_mati' => 'Pembaca sesi di Mac mati',
+      'sesi_data_pribadi' => 'Proyek data pribadi tidak bisa dilanjutkan dari HP',
+      'akun_tidak_aktif' => 'Akun sesi ini tidak aktif di Mac',
+      _ => kode,
+    };
+
+final _polaSesi = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$');
+
+enum TombolLanjut { sembunyi, aktif, dipakai, akunMati }
+
+/// G4: pita "Melanjutkan" di Chat. [dipakai] = Mac sudah menerima pesan pertama → pesan berikutnya tanpa `sesi`
+/// (Mac melanjutkan cabang dari slot sesi.json proyek|akun).
+class LanjutSesi {
+  LanjutSesi({required this.sesi, required this.judul, required this.akun});
+  final String sesi, judul, akun;
+  bool dipakai = false;
+}
+
 String pesanCermin(String kode, {bool riwayat = false}) => switch (kode) {
       'tidak_tersedia' when riwayat => 'Riwayat sesi ini sudah tidak ada di Mac (dihapus Claude Code setelah 30 hari).',
       'tidak_tersedia' => 'Tab Sesi aktif di APK rilis.',

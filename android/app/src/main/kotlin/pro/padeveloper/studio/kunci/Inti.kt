@@ -186,14 +186,16 @@ class Inti(context: Context) {
      */
     fun kirimKerjakan(
         aktivitas: FragmentActivity, tugas: String, proyek: String, akun: String, pesan: String, baru: Boolean, model: String?,
-        otomatis: Boolean = false,
+        otomatis: Boolean = false, sesi: String? = null,
     ): Map<String, Any?> {
+        require(sesi == null || (AmplopV1.POLA_SESI_KECIL.matches(sesi) && !baru && !otomatis)) { "sesi" }
         val p = pasanganAktif()
         val namaProyek = cekProyek(proyek, akun, "kerjakan")
         val kk = KunciKeystore.info(KunciKeystore.KERJAKAN) ?: throw GalatKunci("kunci_tidak_ada")
         val tambahan = linkedMapOf<String, Any>("tugas" to tugas, "proyek" to proyek, "akun" to akun, "mode" to "kerjakan", "pesan" to pesan, "baru" to baru)
         model?.let { tambahan["model"] = it }
         if (otomatis) tambahan["otomatis"] = true
+        sesi?.let { tambahan["sesi"] = it }
         val sekarang = System.currentTimeMillis()
         val id = Kripto.acakHeks(16)
         val kd = Perintah.kedaluwarsa("jalankan", "kerjakan", sekarang)
@@ -203,7 +205,7 @@ class Inti(context: Context) {
         val teks = Biometrik.Teks(
             judul = "Kerjakan di ${namaProyek.take(40)}",
             subjudul = (if (otomatis) "Akun: otomatis (mulai dari ${akun.take(30)})" else "Akun: ${akun.take(40)}") + " · Model: ${(model ?: "bawaan").take(30)}",
-            keterangan = "$potongan\n(${pesan.length} karakter)",
+            keterangan = (if (sesi != null) "Lanjutan sesi (cabang)\n" else "") + "$potongan\n(${pesan.length} karakter)",   // SEC-51: sesi ikut ditandatangani → disebut di prompt
         )
         val amplop = draf.selesaikan(tandaKerjakan(aktivitas, p, teks, draf.inputTanda))
         return kirimAmplop(p, id, amplop)

@@ -287,4 +287,83 @@ void main() {
     expect(s.kabar.length, 1);
     expect(s.belumDibaca, 1);
   });
+
+  group('G4 lanjut sesi (S-G4-15, KF-G4-01/02/05)', () {
+    const uuid = '3f1c2a9e-5b7d-4c11-9a2e-7d1f0b6c8e01';
+    _SumberUji sumber({List<String> fitur = const ['lanjut_sesi', 'akun_otomatis'], bool dataPribadi = false, String hp = 'kerjakan'}) =>
+        _SumberUji()
+          ..status({
+            'status': {
+              'fitur': fitur,
+              'proyek': [
+                {'id': 'simpeg', 'nama': 'SIMPEG', 'akun': ['akun1', 'akun2'], 'hp': hp, 'sibuk': false, 'dataPribadi': dataPribadi},
+              ],
+            },
+          });
+    SesiCermin sesi({String bisa = 'cabang', StatusSesi status = StatusSesi.selesai, String akun = 'akun2', String id = uuid}) =>
+        SesiCermin(sesi: id, akun: akun, proyek: 'simpeg', judul: 'Perbaiki NIP', asal: 'vscode', status: status, terbuka: false,
+            tingkat: 'ringkas', bisaLanjut: bisa);
+    void terima(_SumberUji s, String hasil, [String? alasan]) => s.kabarMasuk({
+          'jenis': 'tanda_terima',
+          'tanda_terima': {'perintah_id': 'p1', 'hasil': hasil, 'alasan': ?alasan},
+        });
+
+    test('keadaan tombol: fitur, hp, dataPribadi, UUID, dipakai, akun tidak aktif', () {
+      expect(sumber().tombolLanjut(sesi()), TombolLanjut.aktif);
+      expect(sumber().tombolLanjut(sesi(bisa: 'sama')), TombolLanjut.aktif);
+      expect(sumber(fitur: const []).tombolLanjut(sesi()), TombolLanjut.sembunyi, reason: 'Mac lama');
+      expect(sumber(dataPribadi: true).tombolLanjut(sesi()), TombolLanjut.sembunyi);
+      expect(sumber(hp: 'baca').tombolLanjut(sesi()), TombolLanjut.sembunyi);
+      expect(sumber().tombolLanjut(sesi(id: uuid.toUpperCase())), TombolLanjut.sembunyi);
+      expect(sumber().tombolLanjut(sesi(bisa: 'tidak')), TombolLanjut.dipakai);
+      expect(sumber().tombolLanjut(sesi(status: StatusSesi.menungguIzin)), TombolLanjut.dipakai);
+      expect(sumber().tombolLanjut(sesi(akun: 'akun3')), TombolLanjut.akunMati);
+      expect(sumber().mulaiLanjut(sesi(bisa: 'tidak')), isFalse);
+    });
+
+    test('sesi hanya di pesan pertama; baru:false, akun sesi, tanpa otomatis; pesan ke-2 tanpa sesi', () async {
+      final s = sumber();
+      await Future<void>.delayed(Duration.zero);
+      s.percakapanBaru('simpeg');
+      expect(s.mulaiLanjut(sesi()), isTrue);
+      expect(s.baruBerikutnya('simpeg'), isFalse);
+      final t1 = await s.kirim(proyekId: 'simpeg', akun: 'akun1', mode: 'rencana', pesan: 'lanjut', otomatis: true);
+      expect((t1.sesi, t1.baru, t1.akun, t1.otomatis), (uuid, false, 'akun2', false));
+      terima(s, 'diterima');
+      final t2 = await s.kirim(proyekId: 'simpeg', akun: 'akun2', mode: 'rencana', pesan: 'berikutnya');
+      expect(t2.sesi, isNull);
+      expect(s.lanjutan('simpeg')?.judul, 'Perbaiki NIP', reason: 'pita tetap sampai ditutup');
+      expect(t1.keEntri().containsKey('sesi'), isFalse);
+      s.dispose();
+    });
+
+    test('ditolak sesi_* → pita ditutup; ditolak alasan lain → sesi ikut lagi; percakapan baru menutup pita', () async {
+      final s = sumber();
+      await Future<void>.delayed(Duration.zero);
+      s.mulaiLanjut(sesi());
+      await s.kirim(proyekId: 'simpeg', akun: 'akun2', mode: 'rencana', pesan: 'a');
+      terima(s, 'ditolak', 'proyek_sedang_bekerja');
+      expect(s.lanjutan('simpeg'), isNotNull);
+      final t2 = await s.kirim(proyekId: 'simpeg', akun: 'akun2', mode: 'rencana', pesan: 'b');
+      expect(t2.sesi, uuid);
+      s.chat('simpeg').first.perintahId = 'p0';
+      terima(s, 'ditolak', 'sesi_sedang_dipakai');
+      expect(s.lanjutan('simpeg'), isNull);
+      expect(alasanTolak('sesi_sedang_dipakai'), 'Sedang dipakai di Mac — pakai aplikasi Claude (Remote Control)');
+      s.mulaiLanjut(sesi());
+      s.percakapanBaru('simpeg');
+      expect(s.lanjutan('simpeg'), isNull);
+      s.dispose();
+    });
+
+    test('7 alasan tolak G4 punya teks tanpa path; alasan lain apa adanya', () {
+      const kode = ['sesi_dengan_baru', 'sesi_tidak_ada', 'sesi_bukan_milik_proyek', 'sesi_sedang_dipakai', 'cermin_mati', 'sesi_data_pribadi',
+        'akun_tidak_aktif'];
+      for (final k in kode) {
+        expect(alasanTolak(k), isNot(k));
+        expect(alasanTolak(k), isNot(contains('/')));
+      }
+      expect(alasanTolak('proyek_sibuk'), 'proyek_sibuk');
+    });
+  });
 }
