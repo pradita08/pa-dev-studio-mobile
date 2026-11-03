@@ -4,6 +4,7 @@
 // Kerjakan: setelah L05a, Kotlin menampilkan BiometricPrompt sistem sendiri (wajib sidik jari, tanpa PIN — DESAIN §3.1, SEC-51).
 // Teks Claude ditampilkan sebagai teks biasa.
 // G4: pita "Melanjutkan" (dari tombol "Lanjutkan di Chat" di detail sesi) — akun terkunci selama pita, bisa ditutup.
+// G5: pita "Tersambung · sesi sama di Mac" (dari "Balas di sesi ini") — mode Kerjakan & akun terkunci, keadaan sesi dari status.sambung.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -131,11 +132,22 @@ class _LayarChatState extends State<LayarChat> {
 
   /// Roadmap 3: Mac memilih akun dengan sisa limit terbanyak (akun awal tetap dipakai bila masih lega → percakapan berlanjut).
   bool _otomatis(Proyek p) =>
-      s.akunOtomatisDidukung && p.akun.length > 1 && _akun == null && (_pilihOtomatis ?? true) && s.lanjutan(p.id) == null;
+      s.akunOtomatisDidukung && p.akun.length > 1 && _akun == null && (_pilihOtomatis ?? true) && s.lanjutan(p.id) == null && s.sambungan(p.id) == null;
+
+  /// G5: selama tersambung, pesan HP selalu mode Kerjakan (kontrak §10.1).
+  String _modeKirim(Proyek p) => s.sambungan(p.id) != null ? 'kerjakan' : _mode;
+
+  /// Teks galat kirim: kode alasan G5 (terlalu_cepat, sesi_tidak_tersambung, …) memakai teks kontrak.
+  /// [sambung]: hanya tugas sambung yang memakai teks "Kirim ulang?" (REV-01).
+  String _teksGalat(GalatKunci e, {bool sambung = false}) {
+    final teks = alasanTolak(e.kode, sambung: sambung);
+    return teks != e.kode ? teks : e.pesan;
+  }
 
   /// Akun yang dikirim ke Mac. Otomatis: akun yang terakhir dipakai proyek ini (agar percakapan berlanjut bila masih lega).
   String _akunAwal(Proyek p) {
     if (s.lanjutan(p.id) case final l?) return l.akun; // KF-G4-02: akun sesi terkunci selama pita
+    if (s.sambungan(p.id) case final sc?) return sc.akun; // G5: akun sesi terkunci selama tersambung
     if (_akun != null) return _akun!;
     if (_otomatis(p)) {
       for (final t in s.chat(p.id).reversed) {
@@ -151,19 +163,21 @@ class _LayarChatState extends State<LayarChat> {
     final akun = _akunAwal(p);
     final otomatis = _otomatis(p);
     if (pesan.isEmpty || _mengirim) return;
-    if (_mode == 'kerjakan') {
+    final mode = _modeKirim(p);
+    final sambung = s.sambungan(p.id) != null;
+    if (mode == 'kerjakan') {
       final ya = await _lembarKerjakan(p, akun, pesan, otomatis: otomatis);
       if (ya != true) return;
     }
     setState(() => _mengirim = true);
     try {
-      await s.kirim(proyekId: p.id, akun: akun, mode: _mode, pesan: pesan, otomatis: otomatis);
+      await s.kirim(proyekId: p.id, akun: akun, mode: mode, pesan: pesan, otomatis: otomatis);
       _ketik.clear();
     } on GalatKunci catch (e) {
       if (e.kode == 'dibatalkan') {
-        _pesan(_mode == 'kerjakan' ? 'Kerjakan dibatalkan. Pesan tidak dikirim.' : 'Dibatalkan.');
+        _pesan(mode == 'kerjakan' ? 'Kerjakan dibatalkan. Pesan tidak dikirim.' : 'Dibatalkan.');
       } else {
-        _pesan(e.pesan);
+        _pesan(_teksGalat(e, sambung: sambung));
       }
     } finally {
       if (mounted) setState(() => _mengirim = false);
@@ -374,6 +388,11 @@ class _LayarChatState extends State<LayarChat> {
             ),
           if (s.lanjutan(p.id) case final l?)
             Padding(padding: const EdgeInsets.fromLTRB(12, 10, 12, 0), child: _PitaLanjut(lanjut: l, onTutup: () => s.tutupLanjut(p.id))),
+          if (s.sambungan(p.id) case final sc?)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+              child: _PitaSambung(sambungan: sc, entri: s.sambungSesi(sc.sesi), sejak: p.sambungSejak, onTutup: () => s.tutupSambung(p.id)),
+            ),
           if (tim.isNotEmpty) _BarisTim(tim: tim),
           Expanded(
             child: daftar.isEmpty && sematan.isEmpty
@@ -406,9 +425,13 @@ class _LayarChatState extends State<LayarChat> {
                       tugas: daftar[daftar.length - 1 - (j - sematan.length)],
                       onKirimUlang: (t) async {
                         try {
-                          await s.kirimUlang(t);
+                          if (t.tahap == TahapTugas.gagal) {
+                            await s.kirimUlangSambung(t); // G5: tugas sambung gagal → pesan baru ke sesi yang sama
+                          } else {
+                            await s.kirimUlang(t);
+                          }
                         } on GalatKunci catch (e) {
-                          _pesan(e.kode == 'dibatalkan' ? 'Dibatalkan.' : e.pesan);
+                          _pesan(e.kode == 'dibatalkan' ? 'Dibatalkan.' : _teksGalat(e, sambung: t.sambung));
                         }
                       },
                     ),
@@ -423,14 +446,19 @@ class _LayarChatState extends State<LayarChat> {
   Widget _panelKetik(WarnaPadev w, Proyek p, Tugas? aktif) {
     final akun = _akunAwal(p);
     final otomatis = _otomatis(p);
-    final terkunci = s.lanjutan(p.id) != null;
+    final sc = s.sambungan(p.id);
+    final scEntri = sc == null ? null : s.sambungSesi(sc.sesi);
+    final putusSambung = sc != null && (scEntri == null || scEntri.keadaan == 'bypass');
+    final terkunci = s.lanjutan(p.id) != null || sc != null;
     final macPutus = s.macTersambung == false;
-    final sibukLain = p.sibuk && aktif == null;
-    final bisaKetik = !macPutus && !sibukLain && aktif == null;
+    final sibukLain = sc == null && p.sibuk && aktif == null;
+    final bisaKetik = !macPutus && !sibukLain && !putusSambung && aktif == null;
     final panjang = _ketik.text.length;
     String petunjuk = daftarKosong(p) ? 'Tulis perintah…' : 'Tulis perintah lanjutan…';
     if (macPutus) petunjuk = 'Menunggu Mac tersambung…';
     if (sibukLain) petunjuk = 'Proyek sedang mengerjakan tugas lain';
+    if (putusSambung) petunjuk = 'Sesi tidak menerima pesan HP';
+    if (sc != null && !putusSambung) petunjuk = 'Balas di sesi ini…';
     if (aktif != null) petunjuk = 'Tunggu tugas ini selesai…';
 
     return Container(
@@ -442,15 +470,15 @@ class _LayarChatState extends State<LayarChat> {
             child: Segmen<String>(
               label: 'Mode perintah',
               pilihan: const [('rencana', Simbol.daftarCek, 'Rencana saja'), ('kerjakan', Simbol.kilat, 'Kerjakan')],
-              nilai: _mode,
+              nilai: _modeKirim(p),
               sorot: 'kerjakan',
-              nonaktif: p.bolehKerjakan ? const {} : const {'kerjakan'},
+              nonaktif: sc != null ? const {'rencana'} : (p.bolehKerjakan ? const {} : const {'kerjakan'}),
               onUbah: (v) => setState(() => _mode = v),
             ),
           ),
           const SizedBox(width: 8),
           PopupMenuButton<String>(
-            tooltip: terkunci ? 'Akun terkunci selama melanjutkan sesi' : 'Pilih akun',
+            tooltip: terkunci ? 'Akun terkunci selama tersambung ke sesi' : 'Pilih akun',
             enabled: p.akun.length > 1 && !terkunci,
             onSelected: (v) => setState(() {
               _akun = v == _nilaiOtomatis ? null : v;
@@ -543,20 +571,20 @@ class _LayarChatState extends State<LayarChat> {
           else
             Semantics(
               button: true,
-              label: _mode == 'kerjakan' ? 'Kirim (Kerjakan)' : 'Kirim',
+              label: _modeKirim(p) == 'kerjakan' ? 'Kirim (Kerjakan)' : 'Kirim',
               excludeSemantics: true,
               child: SizedBox(
                 width: 48,
                 height: 48,
                 child: FilledButton(
-                  style: (_mode == 'kerjakan' ? gayaKerjakan(w) : FilledButton.styleFrom()).copyWith(
+                  style: (_modeKirim(p) == 'kerjakan' ? gayaKerjakan(w) : FilledButton.styleFrom()).copyWith(
                     padding: const WidgetStatePropertyAll(EdgeInsets.zero),
                     minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
                   ),
                   onPressed: bisaKetik && panjang > 0 && !_mengirim ? () => _kirim(p) : null,
                   child: _mengirim
                       ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: w.muted))
-                      : Icon(_mode == 'kerjakan' ? Simbol.kilat : Simbol.kirim, size: 20),
+                      : Icon(_modeKirim(p) == 'kerjakan' ? Simbol.kilat : Simbol.kirim, size: 20),
                 ),
               ),
             ),
@@ -599,6 +627,42 @@ class _PitaLanjut extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             keterangan(Simbol.info, 'Aturan proyek (CLAUDE.md) tidak ikut saat dilanjutkan dari HP'),
             keterangan(Simbol.gembok, 'Akun ${namaAkun(lanjut.akun)} terkunci sampai pita ditutup'),
+          ]),
+        ),
+        TextButton(
+          onPressed: onTutup,
+          style: TextButton.styleFrom(foregroundColor: w.ink, minimumSize: const Size(48, 40), padding: const EdgeInsets.symmetric(horizontal: 8)),
+          child: const Text('Tutup', style: TextStyle(decoration: TextDecoration.underline)),
+        ),
+      ]),
+    );
+  }
+}
+
+/// G5 pita tersambung (kontrak §10.2): sesi sama di Mac + keadaan dari `status.sambung`; hilang dari status ⇒ tidak tersambung lagi.
+class _PitaSambung extends StatelessWidget {
+  const _PitaSambung({required this.sambungan, required this.entri, required this.sejak, required this.onTutup});
+  final SambungChat sambungan;
+  final SesiSambung? entri;
+  final DateTime? sejak;
+  final VoidCallback onTutup;
+  @override
+  Widget build(BuildContext context) {
+    final w = WarnaPadev.dari(context);
+    final putus = entri == null || entri!.keadaan == 'bypass';
+    final lama = sambungSejakHari(sejak);
+    final baris = putus
+        ? alasanTolak(entri == null ? 'sesi_tidak_tersambung' : 'mode_bypass')
+        : '${entri!.teksKeadaan}${entri!.antre > 0 ? ' · ${entri!.antre} pesan antre' : ''}';
+    return Spanduk(
+      jenis: putus ? JenisSpanduk.peringatan : JenisSpanduk.netral,
+      ikon: Simbol.sesi,
+      teks: 'Tersambung · sesi sama di Mac${lama == null ? '' : ' ($lama)'}',
+      anak: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(sambungan.judul, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: w.ink, fontSize: 12.5, fontWeight: FontWeight.w600)),
+            Text(baris, style: TeksPadev.redup(w, ukuran: 12)),
           ]),
         ),
         TextButton(
@@ -709,7 +773,7 @@ class _ButirTugas extends StatelessWidget {
             if (t.mode == 'kerjakan') Icon(Simbol.kilat, size: 12, color: w.warnt),
             Text(
                 '${t.mode == 'kerjakan' ? 'Kerjakan' : 'Rencana'} · ${namaAkun(t.akunDipakai ?? t.akun)}${t.otomatis ? ' (otomatis)' : ''} · '
-                '${jamMenit(t.dibuat)}${t.baru ? ' · percakapan baru' : ''}${t.sesi != null ? ' · lanjutan sesi (cabang)' : ''}',
+                '${jamMenit(t.dibuat)}${t.baru ? ' · percakapan baru' : ''}${t.sambung ? ' · sesi yang sama di Mac' : t.sesi != null ? ' · lanjutan sesi (cabang)' : ''}',
                 style: TeksPadev.redup(w, ukuran: 11)),
           ]),
         ),
@@ -832,7 +896,23 @@ class _ButirTugas extends StatelessWidget {
           ));
         }
       case TahapTugas.gagal:
-        baris(_Kotak(fg: w.err, bg: w.errb, ikon: Simbol.galatLingkar, teks: 'Gagal${t.alasan == null ? '' : ': ${alasanTolak(t.alasan!)}'}'));
+        final kotak = _Kotak(fg: w.err, bg: w.errb, ikon: Simbol.galatLingkar, teks: 'Gagal${t.alasan == null ? '' : ': ${alasanTolak(t.alasan!, sambung: t.sambung)}'}');
+        if (t.sambung && SumberData.alasanBisaKirimUlang.contains(t.alasan)) {
+          baris(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            kotak,
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerRight,
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(minimumSize: const Size(0, 40)),
+                onPressed: () => onKirimUlang(t),
+                child: const IsiTombol(Simbol.segarkan, 'Kirim ulang'),
+              ),
+            ),
+          ]));
+        } else {
+          baris(kotak);
+        }
       case TahapTugas.dihentikan:
         baris(_Kotak(fg: w.ink, bg: w.chip, ikon: Simbol.henti, teks: 'Dihentikan'));
       case TahapTugas.batasWaktu:
@@ -843,7 +923,7 @@ class _ButirTugas extends StatelessWidget {
           fg: w.err,
           bg: w.errb,
           ikon: Simbol.larang,
-          teks: 'Ditolak Mac${t.alasan == null ? '' : ': ${alasanTolak(t.alasan!)}'}',
+          teks: 'Ditolak Mac${t.alasan == null ? '' : ': ${alasanTolak(t.alasan!, sambung: t.sambung)}'}',
         ));
       case TahapTugas.kedaluwarsa:
         baris(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [

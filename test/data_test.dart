@@ -1,5 +1,6 @@
 // Uji pengurai isi kabar (kontrak §2) → model tampilan.
 import 'package:flutter_test/flutter_test.dart';
+import 'package:padev_studio/kunci/kunci.dart';
 import 'package:padev_studio/layar/data.dart';
 
 class _SumberUji extends SumberData {
@@ -364,6 +365,129 @@ void main() {
         expect(alasanTolak(k), isNot(contains('/')));
       }
       expect(alasanTolak('proyek_sibuk'), 'proyek_sibuk');
+    });
+  });
+
+  group('G5 sambung sesi (kontrak §10.2/§10.3, V-S01..05)', () {
+    const s1 = '3f1c2a9e-5b7d-4c11-9a2e-7d1f0b6c8e01', s2 = '8a4e0c71-2d3b-4f5a-b6c7-1e9d8f0a2b02', s3 = 'c2d1e0f9-8a7b-4c6d-9e5f-0a1b2c3d4e03';
+    final kini = DateTime.now().millisecondsSinceEpoch;
+    Map<String, Object?> butir(String sesi, {String keadaan = 'menunggu', int antre = 0, String? giliran, Object? sejak, String proyek = 'simpeg'}) => {
+          'sesi': sesi, 'proyek': proyek, 'akun': 'akun1', 'sejak': sejak ?? kini - 60000, 'keadaan': keadaan, 'antre': antre, 'giliran': ?giliran,
+        };
+    _SumberUji sumber({List<String> fitur = const ['sambung_sesi'], List<Object?>? sambung, Object? sejak, String hp = 'kerjakan'}) => _SumberUji()
+      ..status({
+        'status': {
+          'fitur': fitur,
+          'proyek': [
+            {'id': 'simpeg', 'nama': 'SIMPEG', 'akun': ['akun1', 'akun2'], 'hp': hp, 'sibuk': false, 'sambung': true, 'sambungSejak': sejak},
+          ],
+          'sambung': sambung ?? [butir(s1), butir(s2, keadaan: 'bekerja', antre: 2, giliran: 'hp'), butir(s3, keadaan: 'mac')],
+        },
+      });
+    SesiCermin sesi(String id, {String akun = 'akun1'}) =>
+        SesiCermin(sesi: id, akun: akun, proyek: 'simpeg', judul: 'Perbaiki NIP', asal: 'vscode', status: StatusSesi.diam, terbuka: true, tingkat: 'isi');
+
+    test('V-S01 status.sambung 3 entri sah → tampil', () {
+      final s = sumber();
+      expect(s.sambung.map((e) => e.keadaan), ['menunggu', 'bekerja', 'mac']);
+      expect((s.sambungSesi(s2)!.antre, s.sambungSesi(s2)!.giliranHp), (2, true));
+      expect(s.sambungSesi(s1)!.giliranHp, isFalse);
+      expect(s.sambungDidukung, isTrue);
+      expect(s.cariProyek('simpeg')!.sambung, isTrue);
+    });
+
+    test('V-S02 entri keadaan:"aneh" dibuang, lainnya tetap (juga antre/giliran/sesi/sejak rusak)', () {
+      final s = sumber(sambung: [
+        butir(s1),
+        butir(s2, keadaan: 'aneh'),
+        butir(s3, antre: 21),
+        butir('bukan-uuid'),
+        butir(s3, sejak: 'kemarin'),
+        butir(s3, giliran: 'mac'),
+        'rusak',
+      ]);
+      expect(s.sambung.map((e) => e.sesi), [s1]);
+      expect(sumber(sambung: [for (var i = 0; i < 60; i++) butir(s1)]).sambung.length, 50);
+    });
+
+    test('V-S03 sambungSejak 8 hari lalu → "sejak 8 hari"; <= 7 hari tidak ada teks', () {
+      final kiniW = DateTime.now();
+      expect(sambungSejakHari(kiniW.subtract(const Duration(days: 8, hours: 1)), kini: kiniW), 'sejak 8 hari');
+      expect(sambungSejakHari(kiniW.subtract(const Duration(days: 7, hours: 23)), kini: kiniW), isNull);
+      expect(sambungSejakHari(null), isNull);
+      final s = sumber(sejak: kini - 8 * 24 * 3600 * 1000 - 1000);
+      expect(sambungSejakHari(s.cariProyek('simpeg')!.sambungSejak), 'sejak 8 hari');
+    });
+
+    test('V-S04 tanpa fitur sambung_sesi → "Balas di sesi ini" tersembunyi; bypass/akun beda/Kerjakan mati', () {
+      expect(sumber().tombolBalas(sesi(s1)), TombolBalas.aktif);
+      expect(sumber(fitur: const []).tombolBalas(sesi(s1)), TombolBalas.sembunyi);
+      expect(sumber().tombolBalas(sesi('d0d0d0d0-8a7b-4c6d-9e5f-0a1b2c3d4e04')), TombolBalas.sembunyi, reason: 'sesi tidak ada di status.sambung');
+      expect(sumber().tombolBalas(sesi(s1, akun: 'akun2')), TombolBalas.sembunyi, reason: 'akun beda');
+      expect(sumber(sambung: [butir(s1, keadaan: 'bypass')]).tombolBalas(sesi(s1)), TombolBalas.bypass);
+      expect(sumber(hp: 'rencana').tombolBalas(sesi(s1)), TombolBalas.tanpaKerjakan);
+      expect(sumber(fitur: const []).mulaiSambung(sesi(s1)), isFalse);
+    });
+
+    test('V-S05 alasan §10.3 → teks sehari-hari; kode tak dikenal apa adanya', () {
+      const peta = {
+        'sesi_tidak_tersambung': 'Sesi ini tidak tersambung lagi. Buka ulang daftar sesi.',
+        'terlalu_cepat': 'Terlalu cepat. Tunggu 2 detik lalu kirim lagi.',
+        'pesan_kosong': 'Pesannya kosong. Tulis ulang pesannya.',
+        'antrean_penuh': 'Antrean sesi ini penuh (20 pesan).',
+        'mode_bypass': 'Sesi ini mode lewati-izin, tidak menerima pesan HP.',
+        'sambung_berakhir': 'Sambungan proyek ini sudah dimatikan di Mac.',
+        'kedaluwarsa': 'Pesan terlalu lama menunggu (30 menit). Kirim ulang?',
+        'tidak_terkirim': 'Pesan tidak sampai ke sesi. Kirim ulang?',
+        'pelaksana_mulai_ulang': 'Pelaksana di Mac mulai ulang. Kirim ulang?',
+        'darurat': 'Dihentikan: kode darurat / jarak jauh dimatikan.',
+      };
+      peta.forEach((k, v) => expect(alasanTolak(k, sambung: true), v));
+      expect(alasanTolak('perangkat_dicabut'), 'perangkat_dicabut');
+      expect(alasanTolak('kode_aneh'), 'kode_aneh');
+    });
+
+    test('REV-01 teks "Kirim ulang?" hanya untuk tugas sambung; Chat biasa tetap kode apa adanya', () {
+      for (final k in ['kedaluwarsa', 'tidak_terkirim', 'pelaksana_mulai_ulang']) {
+        expect(alasanTolak(k), k);
+        expect(alasanTolak(k, sambung: true), isNot(k));
+      }
+      expect(alasanTolak('kedaluwarsa'), isNot(contains('30 menit')));
+      expect(alasanTolak('mode_bypass'), alasanTolak('mode_bypass', sambung: true), reason: 'alasan lain tidak bergantung sambung');
+    });
+
+    test('kirim saat tersambung: sesi+sambung di SETIAP pesan, kerjakan, baru:false, akun sesi, jeda 2 dtk', () async {
+      final s = sumber();
+      await Future<void>.delayed(Duration.zero);
+      s.percakapanBaru('simpeg');
+      expect(s.mulaiSambung(sesi(s1)), isTrue);
+      expect(s.baruBerikutnya('simpeg'), isFalse);
+      final t = await s.kirim(proyekId: 'simpeg', akun: 'akun2', mode: 'rencana', pesan: 'halo', otomatis: true);
+      expect((t.sesi, t.sambung, t.baru, t.akun, t.mode, t.otomatis), (s1, true, false, 'akun1', 'kerjakan', false));
+      expect(t.keEntri().containsKey('sesi'), isFalse);
+      await expectLater(s.kirim(proyekId: 'simpeg', akun: 'akun1', mode: 'kerjakan', pesan: 'lagi'), throwsA(isA<GalatKunci>().having((e) => e.kode, 'kode', 'terlalu_cepat')));
+      s.tutupSambung('simpeg');
+      expect(s.sambungan('simpeg'), isNull);
+      final biasa = await s.kirim(proyekId: 'simpeg', akun: 'akun1', mode: 'rencana', pesan: 'biasa');
+      expect((biasa.sesi, biasa.sambung), (null, false));
+      s.dispose();
+    });
+
+    test('sesi hilang dari status / bypass → kirim ditolak sebelum ke Mac; Kirim ulang tugas gagal membuat tugas baru', () async {
+      final s = sumber();
+      await Future<void>.delayed(Duration.zero);
+      s.mulaiSambung(sesi(s1));
+      s.status({'status': {'fitur': ['sambung_sesi'], 'proyek': [{'id': 'simpeg', 'nama': 'SIMPEG', 'akun': ['akun1'], 'hp': 'kerjakan', 'sibuk': false}], 'sambung': []}});
+      await expectLater(s.kirim(proyekId: 'simpeg', akun: 'akun1', mode: 'kerjakan', pesan: 'x'), throwsA(isA<GalatKunci>().having((e) => e.kode, 'kode', 'sesi_tidak_tersambung')));
+      expect(s.chat('simpeg'), isEmpty);
+      s.status({'status': {'fitur': ['sambung_sesi'], 'proyek': [{'id': 'simpeg', 'nama': 'SIMPEG', 'akun': ['akun1'], 'hp': 'kerjakan', 'sibuk': false}], 'sambung': [butir(s1)]}});
+      final t = await s.kirim(proyekId: 'simpeg', akun: 'akun1', mode: 'kerjakan', pesan: 'x');
+      t.tahap = TahapTugas.gagal;
+      t.alasan = 'tidak_terkirim';
+      expect(SumberData.alasanBisaKirimUlang.contains(t.alasan), isTrue);
+      s.tutupSambung('simpeg');
+      expect(() => s.kirimUlangSambung(t), throwsA(isA<GalatKunci>()));
+      s.dispose();
     });
   });
 }

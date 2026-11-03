@@ -116,7 +116,7 @@ class PluginKunci(messenger: BinaryMessenger, private val aktivitas: FragmentAct
             aktivitas, teks(c, "tugas", 200), teks(c, "proyek", 200), teks(c, "akun", 200),
             teks(c, "pesan", AmplopV1.MAKS_PESAN, boleh_kosong = true), c.argument<Boolean>("baru") ?: false,
             c.argument<String>("model")?.also { require(it.isNotEmpty() && it.length <= 100) { "model" } },
-            otomatis = c.argument<Boolean>("otomatis") == true, sesi = sesi(c),
+            otomatis = c.argument<Boolean>("otomatis") == true, sesi = sesi(c), sambung = c.argument<Boolean>("sambung") == true,
         )
         "hentikan" -> inti.kirimPerintah(aktivitas, "hentikan", mapOf("tugas" to teks(c, "tugas", 200)))
         "hapusSesi" -> inti.kirimPerintah(aktivitas, "hapus_sesi", mapOf("proyek" to teks(c, "proyek", 200), "akun" to teks(c, "akun", 200)))

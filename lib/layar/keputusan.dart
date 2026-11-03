@@ -2,6 +2,7 @@
 // PitaKeputusan (tab Proyek & Sesi) → LayarKeputusan: kartu per permintaan dengan isi yang diminta (perintah/berkas/rencana,
 // sudah disamarkan Mac), pertanyaan + pilihan, sisa waktu, dan tombol sesuai `boleh` dari Mac. Izinkan → Kotlin menampilkan
 // BiometricPrompt sendiri (K_kerjakan, SEC-51). Semua teks dari Mac tampil sebagai Text biasa (A-E1).
+// G5 (kontrak §10.4): kartu izin giliran HP = pita "Dari pesan HP Anda" + sebab sehari-hari, hanya Tolak / Izinkan, hitung mundur dari `sampai`.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -228,6 +229,7 @@ class _KartuKeputusanState extends State<KartuKeputusan> {
     final sibuk = _kirim || k.terkirim;
     return Kartu(
       anak: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        if (k.giliranHp) ...[_pitaGiliranHp(w), const SizedBox(height: 10)],
         Row(children: [
           Icon(ikon, size: 20, color: w.warnt),
           const SizedBox(width: 8),
@@ -269,7 +271,10 @@ class _KartuKeputusanState extends State<KartuKeputusan> {
               FilledButton(
                 style: gayaKerjakan(w),
                 onPressed: sibuk ? null : () => _jawab('izinkan'),
-                child: IsiTombol(_sesi && k.jenis != 'rencana' ? Simbol.centangLingkar : Simbol.sidikJari, k.jenis == 'rencana' ? 'Setujui rencana' : 'Izinkan sekali'),
+                child: IsiTombol(
+                  _sesi && k.jenis != 'rencana' ? Simbol.centangLingkar : Simbol.sidikJari,
+                  k.jenis == 'rencana' ? 'Setujui rencana' : (k.giliranHp ? 'Izinkan' : 'Izinkan sekali'),
+                ),
               ),
             if (k.bisa('izinkan_selalu') && !_sesi)
               TextButton(onPressed: sibuk ? null : _izinkanSelalu, child: const Text('Izinkan selalu')),
@@ -277,6 +282,26 @@ class _KartuKeputusanState extends State<KartuKeputusan> {
       ]),
     );
   }
+
+  /// G5: pita di atas kartu izin yang berasal dari pesan HP ini; sebab dari kode kontrak §10.4.
+  Widget _pitaGiliranHp(WarnaPadev w) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+        decoration: BoxDecoration(color: w.accb, borderRadius: BorderRadius.circular(10)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Icon(Simbol.hp, size: 16, color: w.accent),
+            const SizedBox(width: 6),
+            Text('Dari pesan HP Anda', style: TextStyle(color: w.accent, fontSize: 13, fontWeight: FontWeight.w800)),
+          ]),
+          if (k.sebab != null) ...[
+            const SizedBox(height: 2),
+            Text(teksSebab(k.sebab!), style: TextStyle(color: w.ink, fontSize: 13, fontWeight: FontWeight.w600)),
+          ],
+          const SizedBox(height: 2),
+          Text('Tidak disetujui sebelum waktu habis → perintah tidak dijalankan.', style: TeksPadev.redup(w, ukuran: 12)),
+        ]),
+      );
 
   List<Widget> _soal(WarnaPadev w, int i) {
     final q = k.pertanyaan[i];

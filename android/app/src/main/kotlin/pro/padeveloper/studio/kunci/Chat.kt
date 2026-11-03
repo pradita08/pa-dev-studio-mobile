@@ -53,7 +53,7 @@ object RiwayatChat {
                 "perintahId" -> require(teks(v, 80, kosong = false)) { "perintahId" }
                 "teks" -> require(teks(v, 32_000)) { "teks" }
                 "alasan" -> require(teks(v, 500)) { "alasan" }
-                "baru", "otomatis" -> require(v is Boolean) { k.toString() }
+                "baru", "otomatis", "sambung" -> require(v is Boolean) { k.toString() }
                 "akunDipakai" -> require(v is String && POLA_PROYEK.matches(v)) { "akunDipakai" }
                 "sesi" -> require(v is String && AmplopV1.POLA_SESI_KECIL.matches(v)) { "sesi" }   // G4: Tugas.sesi (Dart)
                 "waktu", "kedaluwarsa", "mulai", "sampai" -> require((bulat(v) ?: -1L) in 0..JsonKetat.SAFE_MAKS) { k.toString() }

@@ -67,7 +67,7 @@ class SumberNyata extends SumberData {
       // Kotlin menampilkan BiometricPrompt sendiri (proyek/akun/model/200 karakter pesan) — bukan layar Flutter (SEC-51).
       // G4: `sesi` hanya ada di pesan pertama setelah "Lanjutkan di Chat" (null = tidak dikirim).
       return (await Kunci.kirimKerjakan(
-          tugas: t.tugas, proyek: t.proyek, akun: t.akun, pesan: t.pesan, baru: t.baru, otomatis: t.otomatis, sesi: t.sesi)).id;
+          tugas: t.tugas, proyek: t.proyek, akun: t.akun, pesan: t.pesan, baru: t.baru, otomatis: t.otomatis, sesi: t.sesi, sambung: t.sambung)).id;
     }
     return (await Kunci.kirimRencana(
           tugas: t.tugas, proyek: t.proyek, akun: t.akun, pesan: t.pesan, baru: t.baru, otomatis: t.otomatis, sesi: t.sesi)).id;

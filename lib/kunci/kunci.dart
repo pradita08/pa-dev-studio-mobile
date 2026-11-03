@@ -277,11 +277,13 @@ abstract final class Kunci {
     String? model,
     bool otomatis = false,
     String? sesi,
+    bool sambung = false,
   }) async =>
       HasilKirim._(await _peta('kirimKerjakan', {
         'tugas': tugas, 'proyek': proyek, 'akun': akun, 'pesan': pesan, 'baru': baru, 'model': model,
         if (otomatis) 'otomatis': true, // roadmap 3: hanya bila status.fitur berisi akun_otomatis (Mac lama menolak field ini)
         'sesi': ?sesi, // G4: pesan pertama "Lanjutkan di Chat" (status.fitur lanjut_sesi); baru wajib false, tanpa otomatis
+        if (sambung) 'sambung': true, // G5 §10.1: balas sesi panel yang sama (hanya bersama sesi)
       }));
 
   static Future<HasilKirim> hentikan(String tugas) async => HasilKirim._(await _peta('hentikan', {'tugas': tugas}));

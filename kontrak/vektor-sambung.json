@@ -1,0 +1,1312 @@
+{
+  "v": 1,
+  "sumber": "KONTRAK-apk-v2 §10.8 (rev. 4, SAH 2026-11-03); kelompok R/P diuji Mac saja (uji-sambung-kontrak.js, uji-penjaga-hp.js)",
+  "catatan": "K: isi perintah (plaintext) untuk cekIsiPerintah Mac/Kotlin; peran = kunci penanda tangan (V-K07 diuji lewat amplop bertanda). harapan null = sah. C: isi kabar keputusan utuh (Mac cekIsiKabar = Kotlin Keputusan.cekIsiKabar); pihak \"mac\" = perilaku penyusun Mac, dilewati Kotlin. S: muatan status (isi.status) untuk Dart data.dart; sekarang = jam tiruan (ms).",
+  "K": [
+    {
+      "id": "V-K01",
+      "varian": "a",
+      "keterangan": "jalankan sambung sah",
+      "peran": "k_kerjakan",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "id": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "urut": 7,
+        "dibuat": 1791000000000,
+        "kedaluwarsa": 1791000180000,
+        "jenis": "jalankan",
+        "tugas": "t-sambung-1",
+        "proyek": "kantor",
+        "akun": "akun2",
+        "mode": "kerjakan",
+        "baru": false,
+        "sambung": true,
+        "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+        "pesan": "Lanjutkan perbaikan kartu sesi"
+      },
+      "harapan": null
+    },
+    {
+      "id": "V-K02",
+      "varian": "a",
+      "keterangan": "sambung:true tanpa sesi",
+      "peran": "k_kerjakan",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "id": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "urut": 7,
+        "dibuat": 1791000000000,
+        "kedaluwarsa": 1791000180000,
+        "jenis": "jalankan",
+        "tugas": "t-sambung-1",
+        "proyek": "kantor",
+        "akun": "akun2",
+        "mode": "kerjakan",
+        "baru": false,
+        "sambung": true,
+        "pesan": "Lanjutkan perbaikan kartu sesi"
+      },
+      "harapan": "isi_bentuk"
+    },
+    {
+      "id": "V-K03",
+      "varian": "a",
+      "keterangan": "sambung:true + baru:true",
+      "peran": "k_kerjakan",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "id": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "urut": 7,
+        "dibuat": 1791000000000,
+        "kedaluwarsa": 1791000180000,
+        "jenis": "jalankan",
+        "tugas": "t-sambung-1",
+        "proyek": "kantor",
+        "akun": "akun2",
+        "mode": "kerjakan",
+        "baru": true,
+        "sambung": true,
+        "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+        "pesan": "Lanjutkan perbaikan kartu sesi"
+      },
+      "harapan": "isi_bentuk"
+    },
+    {
+      "id": "V-K04",
+      "varian": "a",
+      "keterangan": "sambung:true + mode rencana",
+      "peran": "k_kerjakan",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "id": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "urut": 7,
+        "dibuat": 1791000000000,
+        "kedaluwarsa": 1791000600000,
+        "jenis": "jalankan",
+        "tugas": "t-sambung-1",
+        "proyek": "kantor",
+        "akun": "akun2",
+        "mode": "rencana",
+        "baru": false,
+        "sambung": true,
+        "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+        "pesan": "Lanjutkan perbaikan kartu sesi"
+      },
+      "harapan": "isi_bentuk"
+    },
+    {
+      "id": "V-K05",
+      "varian": "a",
+      "keterangan": "sambung:false",
+      "peran": "k_kerjakan",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "id": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "urut": 7,
+        "dibuat": 1791000000000,
+        "kedaluwarsa": 1791000180000,
+        "jenis": "jalankan",
+        "tugas": "t-sambung-1",
+        "proyek": "kantor",
+        "akun": "akun2",
+        "mode": "kerjakan",
+        "baru": false,
+        "sambung": false,
+        "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+        "pesan": "Lanjutkan perbaikan kartu sesi"
+      },
+      "harapan": "isi_bentuk"
+    },
+    {
+      "id": "V-K05",
+      "varian": "b",
+      "keterangan": "sambung:\"ya\"",
+      "peran": "k_kerjakan",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "id": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "urut": 7,
+        "dibuat": 1791000000000,
+        "kedaluwarsa": 1791000180000,
+        "jenis": "jalankan",
+        "tugas": "t-sambung-1",
+        "proyek": "kantor",
+        "akun": "akun2",
+        "mode": "kerjakan",
+        "baru": false,
+        "sambung": "ya",
+        "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+        "pesan": "Lanjutkan perbaikan kartu sesi"
+      },
+      "harapan": "isi_bentuk"
+    },
+    {
+      "id": "V-K05",
+      "varian": "c",
+      "keterangan": "sambung:1 (tipe lain)",
+      "peran": "k_kerjakan",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "id": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "urut": 7,
+        "dibuat": 1791000000000,
+        "kedaluwarsa": 1791000180000,
+        "jenis": "jalankan",
+        "tugas": "t-sambung-1",
+        "proyek": "kantor",
+        "akun": "akun2",
+        "mode": "kerjakan",
+        "baru": false,
+        "sambung": 1,
+        "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+        "pesan": "Lanjutkan perbaikan kartu sesi"
+      },
+      "harapan": "isi_bentuk"
+    },
+    {
+      "id": "V-K06",
+      "varian": "a",
+      "keterangan": "sambung:true + otomatis:true",
+      "peran": "k_kerjakan",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "id": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "urut": 7,
+        "dibuat": 1791000000000,
+        "kedaluwarsa": 1791000180000,
+        "jenis": "jalankan",
+        "tugas": "t-sambung-1",
+        "proyek": "kantor",
+        "akun": "akun2",
+        "mode": "kerjakan",
+        "baru": false,
+        "sambung": true,
+        "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+        "pesan": "Lanjutkan perbaikan kartu sesi",
+        "otomatis": true
+      },
+      "harapan": "isi_bentuk"
+    },
+    {
+      "id": "V-K06",
+      "varian": "b",
+      "keterangan": "sambung:true + otomatis:false (otomatis dilarang sama sekali)",
+      "peran": "k_kerjakan",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "id": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "urut": 7,
+        "dibuat": 1791000000000,
+        "kedaluwarsa": 1791000180000,
+        "jenis": "jalankan",
+        "tugas": "t-sambung-1",
+        "proyek": "kantor",
+        "akun": "akun2",
+        "mode": "kerjakan",
+        "baru": false,
+        "sambung": true,
+        "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+        "pesan": "Lanjutkan perbaikan kartu sesi",
+        "otomatis": false
+      },
+      "harapan": "isi_bentuk"
+    },
+    {
+      "id": "V-K07",
+      "varian": "a",
+      "keterangan": "jalankan sambung sah, ditandatangani K_rencana",
+      "peran": "k_rencana",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "id": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "urut": 7,
+        "dibuat": 1791000000000,
+        "kedaluwarsa": 1791000180000,
+        "jenis": "jalankan",
+        "tugas": "t-sambung-1",
+        "proyek": "kantor",
+        "akun": "akun2",
+        "mode": "kerjakan",
+        "baru": false,
+        "sambung": true,
+        "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+        "pesan": "Lanjutkan perbaikan kartu sesi"
+      },
+      "harapan": "kerjakan_tanpa_k_kerjakan"
+    }
+  ],
+  "C": [
+    {
+      "id": "V-C01",
+      "varian": "a",
+      "pihak": "mac+kotlin",
+      "keterangan": "giliran_hp + sebab internet, boleh tolak/izinkan",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "urut_mac": 1791000000001,
+        "dibuat": 1791000000000,
+        "jenis": "keputusan",
+        "keputusan": {
+          "daftar": [
+            {
+              "id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+              "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+              "proyek": "kantor",
+              "akun": "akun2",
+              "jenis": "izin",
+              "alat": "Bash",
+              "ringkas": "curl -I https://contoh.id",
+              "boleh": [
+                "tolak",
+                "izinkan"
+              ],
+              "dibuat": 1791000000000,
+              "sampai": 1791000300000,
+              "giliran_hp": true,
+              "sebab": "internet"
+            }
+          ],
+          "selesai": []
+        }
+      },
+      "harapan": null
+    },
+    {
+      "id": "V-C01",
+      "varian": "b",
+      "pihak": "mac+kotlin",
+      "keterangan": "sebab sah rahasia",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "urut_mac": 1791000000001,
+        "dibuat": 1791000000000,
+        "jenis": "keputusan",
+        "keputusan": {
+          "daftar": [
+            {
+              "id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+              "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+              "proyek": "kantor",
+              "akun": "akun2",
+              "jenis": "izin",
+              "alat": "Bash",
+              "ringkas": "curl -I https://contoh.id",
+              "boleh": [
+                "tolak",
+                "izinkan"
+              ],
+              "dibuat": 1791000000000,
+              "sampai": 1791000300000,
+              "giliran_hp": true,
+              "sebab": "rahasia"
+            }
+          ],
+          "selesai": []
+        }
+      },
+      "harapan": null
+    },
+    {
+      "id": "V-C01",
+      "varian": "c",
+      "pihak": "mac+kotlin",
+      "keterangan": "sebab sah pembungkus",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "urut_mac": 1791000000001,
+        "dibuat": 1791000000000,
+        "jenis": "keputusan",
+        "keputusan": {
+          "daftar": [
+            {
+              "id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+              "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+              "proyek": "kantor",
+              "akun": "akun2",
+              "jenis": "izin",
+              "alat": "Bash",
+              "ringkas": "curl -I https://contoh.id",
+              "boleh": [
+                "tolak",
+                "izinkan"
+              ],
+              "dibuat": 1791000000000,
+              "sampai": 1791000300000,
+              "giliran_hp": true,
+              "sebab": "pembungkus"
+            }
+          ],
+          "selesai": []
+        }
+      },
+      "harapan": null
+    },
+    {
+      "id": "V-C01",
+      "varian": "d",
+      "pihak": "mac+kotlin",
+      "keterangan": "sebab sah karakter",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "urut_mac": 1791000000001,
+        "dibuat": 1791000000000,
+        "jenis": "keputusan",
+        "keputusan": {
+          "daftar": [
+            {
+              "id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+              "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+              "proyek": "kantor",
+              "akun": "akun2",
+              "jenis": "izin",
+              "alat": "Bash",
+              "ringkas": "curl -I https://contoh.id",
+              "boleh": [
+                "tolak",
+                "izinkan"
+              ],
+              "dibuat": 1791000000000,
+              "sampai": 1791000300000,
+              "giliran_hp": true,
+              "sebab": "karakter"
+            }
+          ],
+          "selesai": []
+        }
+      },
+      "harapan": null
+    },
+    {
+      "id": "V-C01",
+      "varian": "e",
+      "pihak": "mac+kotlin",
+      "keterangan": "sebab sah skrip_baru",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "urut_mac": 1791000000001,
+        "dibuat": 1791000000000,
+        "jenis": "keputusan",
+        "keputusan": {
+          "daftar": [
+            {
+              "id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+              "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+              "proyek": "kantor",
+              "akun": "akun2",
+              "jenis": "izin",
+              "alat": "Bash",
+              "ringkas": "curl -I https://contoh.id",
+              "boleh": [
+                "tolak",
+                "izinkan"
+              ],
+              "dibuat": 1791000000000,
+              "sampai": 1791000300000,
+              "giliran_hp": true,
+              "sebab": "skrip_baru"
+            }
+          ],
+          "selesai": []
+        }
+      },
+      "harapan": null
+    },
+    {
+      "id": "V-C01",
+      "varian": "f",
+      "pihak": "mac+kotlin",
+      "keterangan": "sebab sah mcp",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "urut_mac": 1791000000001,
+        "dibuat": 1791000000000,
+        "jenis": "keputusan",
+        "keputusan": {
+          "daftar": [
+            {
+              "id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+              "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+              "proyek": "kantor",
+              "akun": "akun2",
+              "jenis": "izin",
+              "alat": "Bash",
+              "ringkas": "curl -I https://contoh.id",
+              "boleh": [
+                "tolak",
+                "izinkan"
+              ],
+              "dibuat": 1791000000000,
+              "sampai": 1791000300000,
+              "giliran_hp": true,
+              "sebab": "mcp"
+            }
+          ],
+          "selesai": []
+        }
+      },
+      "harapan": null
+    },
+    {
+      "id": "V-C01",
+      "varian": "g",
+      "pihak": "mac+kotlin",
+      "keterangan": "sebab sah di_luar_proyek",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "urut_mac": 1791000000001,
+        "dibuat": 1791000000000,
+        "jenis": "keputusan",
+        "keputusan": {
+          "daftar": [
+            {
+              "id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+              "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+              "proyek": "kantor",
+              "akun": "akun2",
+              "jenis": "izin",
+              "alat": "Bash",
+              "ringkas": "curl -I https://contoh.id",
+              "boleh": [
+                "tolak",
+                "izinkan"
+              ],
+              "dibuat": 1791000000000,
+              "sampai": 1791000300000,
+              "giliran_hp": true,
+              "sebab": "di_luar_proyek"
+            }
+          ],
+          "selesai": []
+        }
+      },
+      "harapan": null
+    },
+    {
+      "id": "V-C01",
+      "varian": "h",
+      "pihak": "mac+kotlin",
+      "keterangan": "sebab sah izin",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "urut_mac": 1791000000001,
+        "dibuat": 1791000000000,
+        "jenis": "keputusan",
+        "keputusan": {
+          "daftar": [
+            {
+              "id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+              "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+              "proyek": "kantor",
+              "akun": "akun2",
+              "jenis": "izin",
+              "alat": "Bash",
+              "ringkas": "curl -I https://contoh.id",
+              "boleh": [
+                "tolak",
+                "izinkan"
+              ],
+              "dibuat": 1791000000000,
+              "sampai": 1791000300000,
+              "giliran_hp": true,
+              "sebab": "izin"
+            }
+          ],
+          "selesai": []
+        }
+      },
+      "harapan": null
+    },
+    {
+      "id": "V-C01",
+      "varian": "tanya",
+      "pihak": "mac+kotlin",
+      "keterangan": "giliran_hp jenis tanya, boleh tolak/jawab",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "urut_mac": 1791000000001,
+        "dibuat": 1791000000000,
+        "jenis": "keputusan",
+        "keputusan": {
+          "daftar": [
+            {
+              "id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+              "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+              "proyek": "kantor",
+              "akun": "akun2",
+              "jenis": "tanya",
+              "alat": "AskUserQuestion",
+              "ringkas": "Pustaka",
+              "boleh": [
+                "tolak",
+                "jawab"
+              ],
+              "dibuat": 1791000000000,
+              "sampai": 1791000300000,
+              "giliran_hp": true,
+              "sebab": "izin",
+              "pertanyaan": [
+                {
+                  "teks": "Pakai pustaka mana?",
+                  "judul": "Pustaka",
+                  "banyak": false,
+                  "pilihan": [
+                    {
+                      "label": "A",
+                      "ket": ""
+                    },
+                    {
+                      "label": "B",
+                      "ket": ""
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "selesai": []
+        }
+      },
+      "harapan": null
+    },
+    {
+      "id": "V-C01",
+      "varian": "rencana",
+      "pihak": "mac+kotlin",
+      "keterangan": "giliran_hp jenis rencana, boleh tolak/izinkan",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "urut_mac": 1791000000001,
+        "dibuat": 1791000000000,
+        "jenis": "keputusan",
+        "keputusan": {
+          "daftar": [
+            {
+              "id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+              "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+              "proyek": "kantor",
+              "akun": "akun2",
+              "jenis": "rencana",
+              "alat": "ExitPlanMode",
+              "ringkas": "Rencana",
+              "boleh": [
+                "tolak",
+                "izinkan"
+              ],
+              "dibuat": 1791000000000,
+              "sampai": 1791000300000,
+              "giliran_hp": true,
+              "sebab": "izin"
+            }
+          ],
+          "selesai": []
+        }
+      },
+      "harapan": null
+    },
+    {
+      "id": "V-C02",
+      "varian": "a",
+      "pihak": "mac+kotlin",
+      "keterangan": "giliran_hp tanpa sebab",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "urut_mac": 1791000000001,
+        "dibuat": 1791000000000,
+        "jenis": "keputusan",
+        "keputusan": {
+          "daftar": [
+            {
+              "id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+              "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+              "proyek": "kantor",
+              "akun": "akun2",
+              "jenis": "izin",
+              "alat": "Bash",
+              "ringkas": "curl -I https://contoh.id",
+              "boleh": [
+                "tolak",
+                "izinkan"
+              ],
+              "dibuat": 1791000000000,
+              "sampai": 1791000300000,
+              "giliran_hp": true
+            }
+          ],
+          "selesai": []
+        }
+      },
+      "harapan": "isi_bentuk"
+    },
+    {
+      "id": "V-C02",
+      "varian": "b",
+      "pihak": "mac+kotlin",
+      "keterangan": "sebab tanpa giliran_hp",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "urut_mac": 1791000000001,
+        "dibuat": 1791000000000,
+        "jenis": "keputusan",
+        "keputusan": {
+          "daftar": [
+            {
+              "id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+              "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+              "proyek": "kantor",
+              "akun": "akun2",
+              "jenis": "izin",
+              "alat": "Bash",
+              "ringkas": "curl -I https://contoh.id",
+              "boleh": [
+                "tolak",
+                "izinkan"
+              ],
+              "dibuat": 1791000000000,
+              "sampai": 1791000300000,
+              "sebab": "internet"
+            }
+          ],
+          "selesai": []
+        }
+      },
+      "harapan": "isi_bentuk"
+    },
+    {
+      "id": "V-C02",
+      "varian": "c",
+      "pihak": "mac+kotlin",
+      "keterangan": "giliran_hp:false (hanya true yang sah)",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "urut_mac": 1791000000001,
+        "dibuat": 1791000000000,
+        "jenis": "keputusan",
+        "keputusan": {
+          "daftar": [
+            {
+              "id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+              "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+              "proyek": "kantor",
+              "akun": "akun2",
+              "jenis": "izin",
+              "alat": "Bash",
+              "ringkas": "curl -I https://contoh.id",
+              "boleh": [
+                "tolak",
+                "izinkan"
+              ],
+              "dibuat": 1791000000000,
+              "sampai": 1791000300000,
+              "giliran_hp": false,
+              "sebab": "internet"
+            }
+          ],
+          "selesai": []
+        }
+      },
+      "harapan": "isi_bentuk"
+    },
+    {
+      "id": "V-C03",
+      "varian": "a",
+      "pihak": "mac+kotlin",
+      "keterangan": "sebab tidak dikenal",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "urut_mac": 1791000000001,
+        "dibuat": 1791000000000,
+        "jenis": "keputusan",
+        "keputusan": {
+          "daftar": [
+            {
+              "id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+              "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+              "proyek": "kantor",
+              "akun": "akun2",
+              "jenis": "izin",
+              "alat": "Bash",
+              "ringkas": "curl -I https://contoh.id",
+              "boleh": [
+                "tolak",
+                "izinkan"
+              ],
+              "dibuat": 1791000000000,
+              "sampai": 1791000300000,
+              "giliran_hp": true,
+              "sebab": "lain"
+            }
+          ],
+          "selesai": []
+        }
+      },
+      "harapan": "isi_bentuk"
+    },
+    {
+      "id": "V-C04",
+      "varian": "a",
+      "pihak": "mac+kotlin",
+      "keterangan": "giliran_hp + boleh izinkan_selalu",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "urut_mac": 1791000000001,
+        "dibuat": 1791000000000,
+        "jenis": "keputusan",
+        "keputusan": {
+          "daftar": [
+            {
+              "id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+              "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+              "proyek": "kantor",
+              "akun": "akun2",
+              "jenis": "izin",
+              "alat": "Bash",
+              "ringkas": "curl -I https://contoh.id",
+              "boleh": [
+                "tolak",
+                "izinkan",
+                "izinkan_selalu"
+              ],
+              "dibuat": 1791000000000,
+              "sampai": 1791000300000,
+              "giliran_hp": true,
+              "sebab": "internet"
+            }
+          ],
+          "selesai": []
+        }
+      },
+      "harapan": "isi_bentuk"
+    },
+    {
+      "id": "V-C04",
+      "varian": "b",
+      "pihak": "mac+kotlin",
+      "keterangan": "giliran_hp jenis izin + boleh jawab",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "urut_mac": 1791000000001,
+        "dibuat": 1791000000000,
+        "jenis": "keputusan",
+        "keputusan": {
+          "daftar": [
+            {
+              "id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+              "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+              "proyek": "kantor",
+              "akun": "akun2",
+              "jenis": "izin",
+              "alat": "Bash",
+              "ringkas": "curl -I https://contoh.id",
+              "boleh": [
+                "tolak",
+                "jawab"
+              ],
+              "dibuat": 1791000000000,
+              "sampai": 1791000300000,
+              "giliran_hp": true,
+              "sebab": "internet"
+            }
+          ],
+          "selesai": []
+        }
+      },
+      "harapan": "isi_bentuk"
+    },
+    {
+      "id": "V-C04",
+      "varian": "c",
+      "pihak": "mac+kotlin",
+      "keterangan": "giliran_hp jenis tanya + boleh izinkan",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "urut_mac": 1791000000001,
+        "dibuat": 1791000000000,
+        "jenis": "keputusan",
+        "keputusan": {
+          "daftar": [
+            {
+              "id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+              "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+              "proyek": "kantor",
+              "akun": "akun2",
+              "jenis": "tanya",
+              "alat": "AskUserQuestion",
+              "ringkas": "Pustaka",
+              "boleh": [
+                "tolak",
+                "izinkan"
+              ],
+              "dibuat": 1791000000000,
+              "sampai": 1791000300000,
+              "giliran_hp": true,
+              "sebab": "izin",
+              "pertanyaan": [
+                {
+                  "teks": "Pakai pustaka mana?",
+                  "judul": "Pustaka",
+                  "banyak": false,
+                  "pilihan": [
+                    {
+                      "label": "A",
+                      "ket": ""
+                    },
+                    {
+                      "label": "B",
+                      "ket": ""
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "selesai": []
+        }
+      },
+      "harapan": "isi_bentuk"
+    },
+    {
+      "id": "V-C04",
+      "varian": "d",
+      "pihak": "mac+kotlin",
+      "keterangan": "giliran_hp jenis rencana + boleh jawab",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "urut_mac": 1791000000001,
+        "dibuat": 1791000000000,
+        "jenis": "keputusan",
+        "keputusan": {
+          "daftar": [
+            {
+              "id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+              "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+              "proyek": "kantor",
+              "akun": "akun2",
+              "jenis": "rencana",
+              "alat": "ExitPlanMode",
+              "ringkas": "Rencana",
+              "boleh": [
+                "tolak",
+                "jawab"
+              ],
+              "dibuat": 1791000000000,
+              "sampai": 1791000300000,
+              "giliran_hp": true,
+              "sebab": "izin"
+            }
+          ],
+          "selesai": []
+        }
+      },
+      "harapan": "isi_bentuk"
+    },
+    {
+      "id": "V-C05",
+      "varian": "a",
+      "pihak": "mac+kotlin",
+      "keterangan": "bentuk lama tanpa field G5 (boleh izinkan_selalu tetap sah)",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "urut_mac": 1791000000001,
+        "dibuat": 1791000000000,
+        "jenis": "keputusan",
+        "keputusan": {
+          "daftar": [
+            {
+              "id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+              "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+              "proyek": "kantor",
+              "akun": "akun2",
+              "jenis": "izin",
+              "alat": "Bash",
+              "ringkas": "curl -I https://contoh.id",
+              "boleh": [
+                "tolak",
+                "izinkan",
+                "izinkan_selalu"
+              ],
+              "dibuat": 1791000000000,
+              "sampai": 1791000300000
+            }
+          ],
+          "selesai": []
+        }
+      },
+      "harapan": null
+    },
+    {
+      "id": "V-C06",
+      "varian": "a",
+      "pihak": "mac",
+      "keterangan": "kartu giliran HP disusun untuk perangkat bukan asal",
+      "skenario": {
+        "asal": "1f600ae09b7479f9",
+        "penerima": "2e711bf3a0c9d8e4"
+      },
+      "harapan": "tidak_ada_di_snapshot"
+    },
+    {
+      "id": "V-C07",
+      "varian": "a",
+      "pihak": "mac",
+      "keterangan": "keputusan_jawab izinkan_selalu untuk butir giliran HP",
+      "skenario": {
+        "pilih": "izinkan_selalu"
+      },
+      "harapan": "pilihan_tidak_diizinkan"
+    },
+    {
+      "id": "V-C08",
+      "varian": "a",
+      "pihak": "mac",
+      "keterangan": "kartu giliran HP tidak dijawab 300 dtk",
+      "skenario": {
+        "batasDtk": 300
+      },
+      "harapan": {
+        "hook": "deny",
+        "selesai": "kedaluwarsa"
+      }
+    },
+    {
+      "id": "V-C09",
+      "varian": "a",
+      "pihak": "mac",
+      "keterangan": "kartu giliran HP saat Mac dipakai (diamMac 1 dtk)",
+      "skenario": {
+        "diamMacDtk": 1
+      },
+      "harapan": {
+        "terbit": true,
+        "selesai": null
+      }
+    }
+  ],
+  "S": [
+    {
+      "id": "V-S01",
+      "keterangan": "status.sambung sah 3 entri → semua tampil",
+      "sekarang": 1791000000000,
+      "status": {
+        "proyek": [
+          {
+            "id": "kantor",
+            "nama": "Kantor",
+            "akun": [
+              "akun2"
+            ],
+            "hp": "kerjakan",
+            "sibuk": false,
+            "batasMenit": 30,
+            "sambung": true,
+            "sambungSejak": 1790308800000
+          },
+          {
+            "id": "sim-gaji-2",
+            "nama": "SIM Gaji",
+            "akun": [
+              "akun1"
+            ],
+            "hp": "rencana",
+            "sibuk": false,
+            "batasMenit": 30,
+            "sambung": true,
+            "sambungSejak": 1790827200000
+          }
+        ],
+        "versi": "1.0.0",
+        "fitur": [
+          "lanjut_sesi",
+          "sambung_sesi"
+        ],
+        "sambung": [
+          {
+            "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+            "proyek": "kantor",
+            "akun": "akun2",
+            "sejak": 1790996400000,
+            "keadaan": "menunggu",
+            "antre": 0
+          },
+          {
+            "sesi": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "proyek": "kantor",
+            "akun": "akun2",
+            "sejak": 1790999400000,
+            "keadaan": "bekerja",
+            "antre": 2,
+            "giliran": "hp"
+          },
+          {
+            "sesi": "16fd2706-8baf-433b-82eb-8c7fada847da",
+            "proyek": "sim-gaji-2",
+            "akun": "akun1",
+            "sejak": 1790999940000,
+            "keadaan": "bypass",
+            "antre": 0
+          }
+        ]
+      },
+      "harapan": {
+        "sambung": [
+          "0f8fad5b-d9cb-469f-a165-70867728950e",
+          "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+          "16fd2706-8baf-433b-82eb-8c7fada847da"
+        ]
+      }
+    },
+    {
+      "id": "V-S02",
+      "keterangan": "entri keadaan \"aneh\" dibuang, lainnya tetap",
+      "sekarang": 1791000000000,
+      "status": {
+        "proyek": [
+          {
+            "id": "kantor",
+            "nama": "Kantor",
+            "akun": [
+              "akun2"
+            ],
+            "hp": "kerjakan",
+            "sibuk": false,
+            "batasMenit": 30,
+            "sambung": true,
+            "sambungSejak": 1790308800000
+          },
+          {
+            "id": "sim-gaji-2",
+            "nama": "SIM Gaji",
+            "akun": [
+              "akun1"
+            ],
+            "hp": "rencana",
+            "sibuk": false,
+            "batasMenit": 30,
+            "sambung": true,
+            "sambungSejak": 1790827200000
+          }
+        ],
+        "versi": "1.0.0",
+        "fitur": [
+          "lanjut_sesi",
+          "sambung_sesi"
+        ],
+        "sambung": [
+          {
+            "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+            "proyek": "kantor",
+            "akun": "akun2",
+            "sejak": 1790996400000,
+            "keadaan": "menunggu",
+            "antre": 0
+          },
+          {
+            "sesi": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "proyek": "kantor",
+            "akun": "akun2",
+            "sejak": 1790999400000,
+            "keadaan": "aneh",
+            "antre": 2,
+            "giliran": "hp"
+          },
+          {
+            "sesi": "16fd2706-8baf-433b-82eb-8c7fada847da",
+            "proyek": "sim-gaji-2",
+            "akun": "akun1",
+            "sejak": 1790999940000,
+            "keadaan": "bypass",
+            "antre": 0
+          }
+        ]
+      },
+      "harapan": {
+        "sambung": [
+          "0f8fad5b-d9cb-469f-a165-70867728950e",
+          "16fd2706-8baf-433b-82eb-8c7fada847da"
+        ]
+      }
+    },
+    {
+      "id": "V-S03",
+      "keterangan": "proyek[].sambungSejak 8 hari lalu → \"sejak 8 hari\" (>7 hari); 2 hari → tanpa teks",
+      "sekarang": 1791000000000,
+      "status": {
+        "proyek": [
+          {
+            "id": "kantor",
+            "nama": "Kantor",
+            "akun": [
+              "akun2"
+            ],
+            "hp": "kerjakan",
+            "sibuk": false,
+            "batasMenit": 30,
+            "sambung": true,
+            "sambungSejak": 1790308800000
+          },
+          {
+            "id": "sim-gaji-2",
+            "nama": "SIM Gaji",
+            "akun": [
+              "akun1"
+            ],
+            "hp": "rencana",
+            "sibuk": false,
+            "batasMenit": 30,
+            "sambung": true,
+            "sambungSejak": 1790827200000
+          }
+        ],
+        "versi": "1.0.0",
+        "fitur": [
+          "lanjut_sesi",
+          "sambung_sesi"
+        ],
+        "sambung": [
+          {
+            "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+            "proyek": "kantor",
+            "akun": "akun2",
+            "sejak": 1790996400000,
+            "keadaan": "menunggu",
+            "antre": 0
+          },
+          {
+            "sesi": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "proyek": "kantor",
+            "akun": "akun2",
+            "sejak": 1790999400000,
+            "keadaan": "bekerja",
+            "antre": 2,
+            "giliran": "hp"
+          },
+          {
+            "sesi": "16fd2706-8baf-433b-82eb-8c7fada847da",
+            "proyek": "sim-gaji-2",
+            "akun": "akun1",
+            "sejak": 1790999940000,
+            "keadaan": "bypass",
+            "antre": 0
+          }
+        ]
+      },
+      "harapan": {
+        "sambungSejakTeks": {
+          "kantor": "sejak 8 hari",
+          "sim-gaji-2": null
+        }
+      }
+    },
+    {
+      "id": "V-S04",
+      "keterangan": "tanpa fitur sambung_sesi → tombol \"Balas di sesi ini\" tidak ada",
+      "sekarang": 1791000000000,
+      "status": {
+        "proyek": [
+          {
+            "id": "kantor",
+            "nama": "Kantor",
+            "akun": [
+              "akun2"
+            ],
+            "hp": "kerjakan",
+            "sibuk": false,
+            "batasMenit": 30,
+            "sambung": true,
+            "sambungSejak": 1790308800000
+          },
+          {
+            "id": "sim-gaji-2",
+            "nama": "SIM Gaji",
+            "akun": [
+              "akun1"
+            ],
+            "hp": "rencana",
+            "sibuk": false,
+            "batasMenit": 30,
+            "sambung": true,
+            "sambungSejak": 1790827200000
+          }
+        ],
+        "versi": "1.0.0",
+        "fitur": [
+          "lanjut_sesi"
+        ],
+        "sambung": [
+          {
+            "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+            "proyek": "kantor",
+            "akun": "akun2",
+            "sejak": 1790996400000,
+            "keadaan": "menunggu",
+            "antre": 0
+          },
+          {
+            "sesi": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "proyek": "kantor",
+            "akun": "akun2",
+            "sejak": 1790999400000,
+            "keadaan": "bekerja",
+            "antre": 2,
+            "giliran": "hp"
+          },
+          {
+            "sesi": "16fd2706-8baf-433b-82eb-8c7fada847da",
+            "proyek": "sim-gaji-2",
+            "akun": "akun1",
+            "sejak": 1790999940000,
+            "keadaan": "bypass",
+            "antre": 0
+          }
+        ]
+      },
+      "harapan": {
+        "tombolBalas": false
+      }
+    },
+    {
+      "id": "V-S05",
+      "keterangan": "alasan §10.3 → teks HP; kode tak dikenal tampil apa adanya",
+      "alasan": {
+        "sesi_tidak_tersambung": "Sesi ini tidak tersambung lagi. Buka ulang daftar sesi.",
+        "terlalu_cepat": "Terlalu cepat. Tunggu 2 detik lalu kirim lagi.",
+        "antrean_penuh": "Antrean sesi ini penuh (20 pesan).",
+        "mode_bypass": "Sesi ini mode lewati-izin, tidak menerima pesan HP.",
+        "sambung_berakhir": "Sambungan proyek ini sudah dimatikan di Mac.",
+        "kedaluwarsa": "Pesan terlalu lama menunggu (30 menit). Kirim ulang?",
+        "tidak_terkirim": "Pesan tidak sampai ke sesi. Kirim ulang?",
+        "pelaksana_mulai_ulang": "Pelaksana di Mac mulai ulang. Kirim ulang?",
+        "darurat": "Dihentikan: kode darurat / jarak jauh dimatikan.",
+        "kode_asing_xyz": "kode_asing_xyz"
+      }
+    }
+  ]
+}

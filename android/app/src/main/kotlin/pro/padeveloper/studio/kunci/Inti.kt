@@ -186,9 +186,10 @@ class Inti(context: Context) {
      */
     fun kirimKerjakan(
         aktivitas: FragmentActivity, tugas: String, proyek: String, akun: String, pesan: String, baru: Boolean, model: String?,
-        otomatis: Boolean = false, sesi: String? = null,
+        otomatis: Boolean = false, sesi: String? = null, sambung: Boolean = false,
     ): Map<String, Any?> {
         require(sesi == null || (AmplopV1.POLA_SESI_KECIL.matches(sesi) && !baru && !otomatis)) { "sesi" }
+        require(!sambung || sesi != null) { "sambung" }   // G5 §10.1: sambung ⇒ sesi + baru:false + tanpa otomatis
         val p = pasanganAktif()
         val namaProyek = cekProyek(proyek, akun, "kerjakan")
         val kk = KunciKeystore.info(KunciKeystore.KERJAKAN) ?: throw GalatKunci("kunci_tidak_ada")
@@ -196,6 +197,7 @@ class Inti(context: Context) {
         model?.let { tambahan["model"] = it }
         if (otomatis) tambahan["otomatis"] = true
         sesi?.let { tambahan["sesi"] = it }
+        if (sambung) tambahan["sambung"] = true
         val sekarang = System.currentTimeMillis()
         val id = Kripto.acakHeks(16)
         val kd = Perintah.kedaluwarsa("jalankan", "kerjakan", sekarang)
@@ -205,7 +207,7 @@ class Inti(context: Context) {
         val teks = Biometrik.Teks(
             judul = "Kerjakan di ${namaProyek.take(40)}",
             subjudul = (if (otomatis) "Akun: otomatis (mulai dari ${akun.take(30)})" else "Akun: ${akun.take(40)}") + " · Model: ${(model ?: "bawaan").take(30)}",
-            keterangan = (if (sesi != null) "Lanjutan sesi (cabang)\n" else "") + "$potongan\n(${pesan.length} karakter)",   // SEC-51: sesi ikut ditandatangani → disebut di prompt
+            keterangan = (if (sambung) "Balasan ke sesi yang menunggu\n" else if (sesi != null) "Lanjutan sesi (cabang)\n" else "") + "$potongan\n(${pesan.length} karakter)",   // SEC-51: sesi ikut ditandatangani → disebut di prompt
         )
         val amplop = draf.selesaikan(tandaKerjakan(aktivitas, p, teks, draf.inputTanda))
         return kirimAmplop(p, id, amplop)
@@ -341,7 +343,7 @@ class Inti(context: Context) {
         val alat = (butir["alat"] as? String ?: "alat").take(40)
         val ringkas = (butir["ringkas"] as? String ?: "").replace(Regex("\\s+"), " ").trim().let { if (it.length > 200) it.take(200) + "…" else it }
         val teks = Biometrik.Teks(
-            judul = if (butir["jenis"] == "rencana") "Setujui rencana · ${(butir["proyek"] as? String ?: "").take(40)}"
+            judul = Keputusan.judulGiliranHp(butir) ?: if (butir["jenis"] == "rencana") "Setujui rencana · ${(butir["proyek"] as? String ?: "").take(40)}"
             else "Izinkan $alat · ${(butir["proyek"] as? String ?: "").take(40)}",
             subjudul = if (pilih == "izinkan_selalu") "Izinkan SELALU untuk input yang sama persis" else "Sekali ini saja",
             keterangan = ringkas.ifEmpty { null },

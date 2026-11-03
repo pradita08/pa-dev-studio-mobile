@@ -398,5 +398,78 @@ void main() {
       await t.pumpWidget(const SizedBox());
       dipakai.dispose();
     });
+
+    testWidgets('G5 "Balas di sesi ini" → pita Tersambung + keadaan, mode Kerjakan & akun terkunci; tanpa fitur / bypass', (t) async {
+      Map<String, Object?> status(List<String> fitur, String keadaan) => {
+            'jenis': 'status',
+            'status': {
+              'fitur': fitur,
+              'proyek': [
+                {'id': 'simpeg', 'nama': 'SIMPEG', 'akun': ['akun1', 'akun2'], 'hp': 'kerjakan', 'sibuk': false, 'sambung': true},
+              ],
+              'sambung': [
+                {'sesi': _s1, 'proyek': 'simpeg', 'akun': 'akun2', 'sejak': _ms(5), 'keadaan': keadaan, 'antre': 1},
+              ],
+            },
+          };
+      t.view.physicalSize = const Size(390 * 3, 844 * 3); // 390px: tanpa overflow
+      t.view.devicePixelRatio = 3;
+      addTearDown(t.view.reset);
+      final s = _SumberUji()
+        ..kabarMasuk(status(['sambung_sesi'], 'menunggu'))
+        ..kabarMasuk(_kabarSesi([_butir(_s1, status: 'diam')]));
+      await t.pumpWidget(_app(LayarSesiDetail(sumber: s, sesi: s.daftarSesi.single)));
+      await t.pump();
+      await t.tap(find.text('Balas di sesi ini'));
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 500));
+      expect(find.text('Tersambung · sesi sama di Mac'), findsOneWidget);
+      expect(find.text('menunggu pesan Anda · 1 pesan antre'), findsOneWidget);
+      expect(find.text('Balas di sesi ini…'), findsOneWidget);
+      PopupMenuButton<String> akun() => t.widget<PopupMenuButton<String>>(find.byType(PopupMenuButton<String>));
+      expect(akun().enabled, isFalse);
+      s.kabarMasuk(status(['sambung_sesi'], 'bypass'));
+      await t.pump();
+      expect(find.text('Sesi ini mode lewati-izin, tidak menerima pesan HP.'), findsOneWidget);
+      await t.tap(find.text('Tutup'));
+      await t.pump();
+      expect(find.textContaining('Tersambung ·'), findsNothing);
+      await t.pumpWidget(const SizedBox());
+      s.dispose();
+
+      final lama = _SumberUji()
+        ..kabarMasuk(status(const [], 'menunggu'))
+        ..kabarMasuk(_kabarSesi([_butir(_s1, status: 'diam')]));
+      await t.pumpWidget(_app(LayarSesiDetail(sumber: lama, sesi: lama.daftarSesi.single)));
+      expect(find.text('Balas di sesi ini'), findsNothing, reason: 'V-S04 Mac tanpa sambung_sesi');
+      await t.pumpWidget(const SizedBox());
+      lama.dispose();
+
+      final bypass = _SumberUji()
+        ..kabarMasuk(status(['sambung_sesi'], 'bypass'))
+        ..kabarMasuk(_kabarSesi([_butir(_s1, status: 'diam')]));
+      await t.pumpWidget(_app(LayarSesiDetail(sumber: bypass, sesi: bypass.daftarSesi.single)));
+      expect(t.widget<FilledButton>(find.widgetWithText(FilledButton, 'Balas di sesi ini')).onPressed, isNull);
+      expect(find.text('Sesi ini mode lewati-izin, tidak menerima pesan HP.'), findsOneWidget);
+      await t.pumpWidget(const SizedBox());
+      bypass.dispose();
+    });
+
+    testWidgets('G5 kartu sesi tersambung memakai chip "Tersambung"', (t) async {
+      final s = _SumberUji()
+        ..kabarMasuk({
+          'jenis': 'status',
+          'status': {
+            'fitur': ['sambung_sesi'],
+            'proyek': [{'id': 'simpeg', 'nama': 'SIMPEG', 'akun': ['akun2'], 'hp': 'kerjakan', 'sibuk': false}],
+            'sambung': [{'sesi': _s1, 'proyek': 'simpeg', 'akun': 'akun2', 'sejak': _ms(5), 'keadaan': 'menunggu', 'antre': 0}],
+          },
+        })
+        ..kabarMasuk(_kabarSesi([_butir(_s1, status: 'diam'), _butir(_s2, status: 'diam')]));
+      await t.pumpWidget(_app(Scaffold(body: ListView(children: [for (final x in s.daftarSesi) KartuSesi(sesi: x, sumber: s, onTap: () {})]))));
+      expect(find.text('Tersambung'), findsOneWidget);
+      await t.pumpWidget(const SizedBox());
+      s.dispose();
+    });
   });
 }

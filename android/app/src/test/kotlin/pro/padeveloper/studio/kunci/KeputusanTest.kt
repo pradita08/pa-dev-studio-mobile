@@ -92,4 +92,48 @@ class KeputusanTest {
         assertNull(Keputusan.cariButir(snap, "c".repeat(32)))
         assertNull(Keputusan.cariButir(null, id))
     }
+
+    // ---------------------------------------------------------------- G5 §10.2 (vektor V-C01..C05) + judul §10.4
+
+    private fun daftar(b: Map<String, Any?>) = kabar(mapOf("daftar" to listOf(b), "selesai" to emptyList<Any>()))
+
+    @Test
+    fun giliranHpSah() { // V-C01, V-C05
+        for (sebab in Keputusan.SEBAB) assertNull(sebab, daftar(butir("giliran_hp" to true, "sebab" to sebab)))
+        assertNull(daftar(butir()))
+        assertNull(daftar(butir("jenis" to "izin", "boleh" to listOf("tolak", "izinkan", "izinkan_selalu")))) // izin biasa tetap boleh izinkan_selalu
+    }
+
+    @Test
+    fun giliranHpSalahDitolak() {
+        val t = Alasan.ISI_BENTUK
+        assertEquals(t, daftar(butir("giliran_hp" to true)))                       // V-C02: tanpa sebab
+        assertEquals(t, daftar(butir("sebab" to "internet")))                      // V-C02: sebab tanpa giliran_hp
+        assertEquals(t, daftar(butir("giliran_hp" to true, "sebab" to "lain")))    // V-C03
+        assertEquals(t, daftar(butir("giliran_hp" to false, "sebab" to "internet"))) // hanya true yang sah
+        assertEquals(t, daftar(butir("giliran_hp" to true, "sebab" to "internet", "boleh" to listOf("tolak", "izinkan", "izinkan_selalu")))) // V-C04
+        assertEquals(t, daftar(butir("jenis" to "rencana", "boleh" to listOf("tolak", "jawab"))))
+        assertEquals(t, daftar(butir("jenis" to "tanya", "pertanyaan" to tanya, "boleh" to listOf("tolak", "izinkan"))))
+    }
+
+    @Test
+    fun judulGiliranHp() {
+        val g = mapOf<String, Any>("giliran_hp" to true, "sebab" to "internet", "proyek" to "p1")
+        assertEquals("Izinkan dari giliran HP · internet · p1", Keputusan.judulGiliranHp(g))
+        assertNull(Keputusan.judulGiliranHp(mapOf("proyek" to "p1")))
+    }
+
+    /** Kelompok C vektor-sambung.json (Bima), pihak "mac+kotlin": isi kabar utuh lewat Keputusan.cekIsiKabar; pihak "mac" dilewati. */
+    @Test
+    fun vektorKelompokC() {
+        org.junit.Assume.assumeTrue("kontrak/vektor-sambung.json tidak ada", UjiBantu.ada("vektor-sambung.json"))
+        var diuji = 0
+        for (k in UjiBantu.l(UjiBantu.baca("vektor-sambung.json")["C"])) {
+            val x = UjiBantu.m(k)
+            if (x["pihak"] == "mac") continue
+            assertEquals("${x["id"]}/${x["varian"]}", x["harapan"] as? String, AmplopV1.cekIsiKabar(UjiBantu.m(x["isi"])))
+            diuji++
+        }
+        assertEquals(19, diuji)
+    }
 }

@@ -15,6 +15,8 @@ object Keputusan {
     /** Pilihan yang wajib ditandatangani K_kerjakan (BIOMETRIC_STRONG tiap pemakaian), sama dengan Kerjakan. */
     val PILIH_KERJAKAN = listOf("izinkan", "izinkan_selalu")
     val JENIS = listOf("izin", "tanya", "rencana")
+    /** G5 §10.2: sebab kartu izin giliran HP (Mac pelaksana-penjaga-hp.js). */
+    val SEBAB = listOf("internet", "rahasia", "pembungkus", "karakter", "skrip_baru", "mcp", "di_luar_proyek", "izin")
     val ALASAN_SELESAI = listOf("dijawab_hp", "dijawab_mac", "kedaluwarsa", "batal")
 
     const val MAKS_DAFTAR = 10
@@ -80,10 +82,31 @@ object Keputusan {
         "pertanyaan" to o { daftar(it, MAKS_PERTANYAAN) { q -> cocok(q, SKEMA_TANYA) } },
         "boleh" to w { daftar(it, 4) { p -> p is String && p in PILIH } && (it as List<*>).contains("tolak") },
         "dibuat" to w { bulat(it, 0) }, "sampai" to w { bulat(it, 0) },
+        "giliran_hp" to o { it == true }, "sebab" to o { it is String && it in SEBAB },   // G5 §10.2
     )
+    /**
+     * G5 §10.2 cek silang butir (skema sudah lolos): `giliran_hp` ada ⇔ `sebab` ada; giliran HP tanpa `izinkan_selalu`;
+     * tanya ⊆ {tolak,jawab}, rencana ⊆ {tolak,izinkan}; izin giliran HP ⊆ {tolak,izinkan} (izin biasa tetap boleh `izinkan_selalu`).
+     */
+    private fun silangButir(b: Map<*, *>): Boolean {
+        val boleh = (b["boleh"] as List<*>).toSet()
+        val giliran = b.containsKey("giliran_hp")
+        if (giliran != b.containsKey("sebab")) return false
+        if (giliran && "izinkan_selalu" in boleh) return false
+        return when (b["jenis"]) {
+            "tanya" -> boleh.all { it == "tolak" || it == "jawab" }
+            "rencana" -> boleh.all { it == "tolak" || it == "izinkan" }
+            else -> !giliran || boleh.all { it == "tolak" || it == "izinkan" }
+        }
+    }
+
+    /** Judul BiometricPrompt kartu giliran HP (§10.4) dari butir terverifikasi; null bila bukan giliran HP (prompt hanya muncul di luar jendela kerjakanPin). */
+    fun judulGiliranHp(butir: Map<String, Any>): String? =
+        if (butir["giliran_hp"] == true) "Izinkan dari giliran HP · ${(butir["sebab"] as? String ?: "").take(20)} · ${(butir["proyek"] as? String ?: "").take(40)}" else null
+
     private val SKEMA_SELESAI = mapOf("id" to w(::id32), "alasan" to w { it is String && it in ALASAN_SELESAI })
     private val SKEMA_KABAR = mapOf(
-        "daftar" to w { daftar(it, MAKS_DAFTAR) { b -> b is Map<*, *> && cocok(b, SKEMA_BUTIR) && (b["jenis"] == "tanya") == (b["pertanyaan"] is List<*>) } },
+        "daftar" to w { daftar(it, MAKS_DAFTAR) { b -> b is Map<*, *> && cocok(b, SKEMA_BUTIR) && (b["jenis"] == "tanya") == (b["pertanyaan"] is List<*>) && silangButir(b) } },
         "selesai" to w { daftar(it, MAKS_SELESAI) { s -> cocok(s, SKEMA_SELESAI) } },
     )
     private val UMUM_KABAR = setOf("mac_id", "perangkat_id", "urut_mac", "dibuat", "jenis")

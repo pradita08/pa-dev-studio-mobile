@@ -182,4 +182,65 @@ void main() {
       expect(find.text('Claude butuh 2 keputusan'), findsOneWidget);
     });
   });
+
+  group('G5 kartu izin giliran HP (kontrak §10.4)', () {
+    Map<String, Object?> hp(String id, {String sebab = 'internet', List<String> boleh = const ['tolak', 'izinkan']}) =>
+        _butir(id, boleh: boleh)..addAll({'giliran_hp': true, 'sebab': sebab});
+
+    test('giliran_hp/sebab diurai; izinkan_selalu tidak pernah dianggap boleh; kartu biasa tidak berubah', () {
+      final s = _SumberUji();
+      s.kabarMasuk(_kabar(1, [hp(_idA, boleh: ['tolak', 'izinkan', 'izinkan_selalu']), _butir(_idB)]));
+      final a = s.keputusan.firstWhere((k) => k.id == _idA), b = s.keputusan.firstWhere((k) => k.id == _idB);
+      expect((a.giliranHp, a.sebab, a.bisa('izinkan_selalu'), a.bisa('izinkan')), (true, 'internet', false, true));
+      expect((b.giliranHp, b.sebab, b.bisa('izinkan_selalu')), (false, null, true));
+    });
+
+    test('8 sebab → teks sehari-hari persis kontrak; kode tak dikenal apa adanya', () {
+      const peta = {
+        'internet': 'Perintah ke internet',
+        'rahasia': 'Menyentuh berkas yang mungkin rahasia',
+        'pembungkus': 'Perintah yang tidak bisa diperiksa otomatis',
+        'karakter': 'Perintah memuat karakter tersembunyi',
+        'skrip_baru': 'Menjalankan skrip yang baru diubah',
+        'mcp': 'Alat layanan luar (MCP)',
+        'di_luar_proyek': 'Berkas di luar folder proyek',
+        'izin': 'Claude Code meminta izin',
+      };
+      peta.forEach((k, v) => expect(teksSebab(k), v));
+      expect(teksSebab('aneh'), 'aneh');
+    });
+
+    testWidgets('pita "Dari pesan HP Anda" + sebab, hanya Tolak / Izinkan, hitung mundur; Izinkan mengirim izinkan', (t) async {
+      t.view.physicalSize = const Size(390 * 3, 844 * 3); // 390px: tanpa overflow
+      t.view.devicePixelRatio = 3;
+      addTearDown(t.view.reset);
+      final s = _SumberUji();
+      s.kabarMasuk(_kabar(1, [hp(_idA, sebab: 'skrip_baru', boleh: ['tolak', 'izinkan', 'izinkan_selalu'])]));
+      await t.pumpWidget(_app(LayarKeputusan(sumber: s)));
+      await t.pump();
+      expect(find.text('Dari pesan HP Anda'), findsOneWidget);
+      expect(find.text('Menjalankan skrip yang baru diubah'), findsOneWidget);
+      expect(find.text('git push origin main'), findsOneWidget, reason: 'ringkas utuh');
+      expect(find.text('Tolak'), findsOneWidget);
+      expect(find.text('Izinkan'), findsOneWidget);
+      expect(find.text('Izinkan sekali'), findsNothing);
+      expect(find.text('Izinkan selalu'), findsNothing);
+      expect(find.byWidgetPredicate((x) => x is Text && RegExp(r'^[3-5]:\d\d$').hasMatch(x.data ?? '')), findsOneWidget, reason: 'hitung mundur dari sampai');
+      t.view.reset(); // baris "Terkirim…" selebar font uji (Ahem) bisa meluap di 390px; bukan galat tampilan nyata
+      await t.pump();
+      await t.tap(find.text('Izinkan'));
+      await t.pump();
+      expect(s.dikirim, ['aaaa:izinkan:-:-']);
+      await t.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('kartu izin biasa tidak punya pita', (t) async {
+      final s = _SumberUji();
+      s.kabarMasuk(_kabar(1, [_butir(_idA)]));
+      await t.pumpWidget(_app(LayarKeputusan(sumber: s)));
+      await t.pump();
+      expect(find.text('Dari pesan HP Anda'), findsNothing);
+      await t.pumpWidget(const SizedBox());
+    });
+  });
 }

@@ -1,5 +1,5 @@
 // L11 Sesi (KONTRAK-apk-v2 §6.2, F1): daftar sesi Claude Code 48 jam dari kabar `cermin_sesi` + "Cari sesi lama" (≤30 hari).
-// Penanda tingkat (ringkas/isi) per sesi. Pita "Butuh keputusan" (F1b) dan Lanjutkan (F3) belum ada di sini.
+// Penanda tingkat (ringkas/isi) per sesi. Pita "Butuh keputusan" (F1b) dan Lanjutkan (F3) belum ada di sini. G5: chip "Tersambung" di kartu sesi.
 // Build non-rilis: cermin nyata mati (K-07) → keadaan jujur "Tab Sesi aktif di APK rilis" + contoh tampilan (pratinjau, !kReleaseMode).
 // Semua teks dari Mac tampil sebagai Text biasa (A-E1).
 import 'package:flutter/foundation.dart';
@@ -201,6 +201,7 @@ class KartuSesi extends StatelessWidget {
     final proyek = sumber.namaProyek(x.proyek);
     final judul = x.judul.isEmpty ? 'Sesi tanpa judul' : x.judul;
     final tim = ringkasTim(x);
+    final tersambung = sumber.sambungDidukung ? sumber.sambungSesi(x.sesi) : null; // G5: sesi menunggu pesan HP
     final waktu = waktuLalu(x.terakhir);
     final status = switch (x.status) {
       StatusSesi.bekerja => 'bekerja',
@@ -210,14 +211,17 @@ class KartuSesi extends StatelessWidget {
     };
     return Kartu(
       onTap: onTap,
-      semantik: '$judul, $status, $proyek, ${namaAkun(x.akun)}, $asal, ${x.isi ? 'isi percakapan' : 'ringkas'}${waktu.isEmpty ? '' : ', $waktu'}'
+      semantik: '$judul, $status${tersambung == null ? '' : ', tersambung'}, $proyek, ${namaAkun(x.akun)}, $asal, ${x.isi ? 'isi percakapan' : 'ringkas'}${waktu.isEmpty ? '' : ', $waktu'}'
           '${tim.isEmpty ? '' : ', $tim'}',
       anak: ExcludeSemantics(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             ChipPadev.sesi(context, x.status),
-            const Spacer(),
-            Text(waktu, style: TeksPadev.redup(w, ukuran: 12)),
+            if (tersambung != null) ...[
+              const SizedBox(width: 6),
+              ChipPadev(ikon: Simbol.sesi, label: 'Tersambung', fg: w.accent, bg: w.accb),
+            ],
+            Expanded(child: Text(waktu, textAlign: TextAlign.end, maxLines: 1, overflow: TextOverflow.ellipsis, style: TeksPadev.redup(w, ukuran: 12))),
           ]),
           const SizedBox(height: 8),
           Text(judul, maxLines: 2, overflow: TextOverflow.ellipsis, style: TeksPadev.judulKartu(w).copyWith(height: 1.3)),

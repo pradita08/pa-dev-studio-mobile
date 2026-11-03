@@ -174,6 +174,8 @@ object AmplopV1 {
             "otomatis" to (false to { v: Any? -> v is Boolean }),
             // G4 "Lanjutkan di Chat": hanya pesan pertama; Mac menolak sesi + baru:true (`sesi_dengan_baru`)
             "sesi" to (false to { v: Any? -> v is String && POLA_SESI_KECIL.matches(v) }),
+            // G5 §10.1 "Balas di sesi ini": hanya `true` yang sah (false/tipe lain → isi_bentuk); syarat lintas field di cekSilangSambung
+            "sambung" to (false to { v: Any? -> v == true }),
         ),
         "hentikan" to mapOf("tugas" to (true to { v: Any? -> str(v, 200) })),
         "hapus_sesi" to mapOf("proyek" to (true to { v: Any? -> str(v, 200) }), "akun" to (true to { v: Any? -> str(v, 200) })),
@@ -204,7 +206,14 @@ object AmplopV1 {
             val (wajib, cek) = aturan
             if (isi.containsKey(k)) { if (!cek(isi[k])) return Alasan.ISI_BENTUK } else if (wajib) return Alasan.ISI_BENTUK
         }
-        return Cermin.cekSilangPerintah(isi) ?: Keputusan.cekSilangPerintah(isi) ?: Review.cekSilangPerintah(isi)
+        return cekSilangSambung(isi) ?: Cermin.cekSilangPerintah(isi) ?: Keputusan.cekSilangPerintah(isi) ?: Review.cekSilangPerintah(isi)
+    }
+
+    /** G5 §10.1: `sambung` ⇒ `sesi` ada, `baru:false`, `mode:"kerjakan"`, tanpa `otomatis` (proyek+akun sudah wajib di skema). null = sah. */
+    fun cekSilangSambung(isi: Map<*, *>): String? {
+        if (isi["jenis"] != "jalankan" || !isi.containsKey("sambung")) return null
+        if (!isi.containsKey("sesi") || isi["baru"] != false || isi["mode"] != "kerjakan" || isi.containsKey("otomatis")) return Alasan.ISI_BENTUK
+        return null
     }
 
     /** Isi kabar Mac→HP (field umum + tanda_terima ketat; jenis lain bentuk bebas). null = sah. */

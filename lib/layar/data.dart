@@ -88,9 +88,15 @@ class Proyek {
     this.utama = 'diam',
     this.grup,
     this.dataPribadi = false,
+    this.sambung = false,
+    this.sambungSejak,
   });
 
   final String id, nama;
+
+  /// `status.proyek[].sambung/sambungSejak` (G5, kontrak §10.2): sesi proyek ini menunggu pesan HP; `sambungSejak` memicu "sejak N hari" bila > 7 hari.
+  final bool sambung;
+  final DateTime? sambungSejak;
 
   /// `status.proyek[].dataPribadi` (G4, K-G4-1a): proyek data pribadi tidak bisa dilanjutkan dari HP.
   final bool dataPribadi;
@@ -153,9 +159,13 @@ class Tugas {
     required this.dibuat,
     this.otomatis = false,
     this.sesi,
+    this.sambung = false,
   });
 
   final String tugas, proyek, akun, mode, pesan;
+
+  /// G5 (kontrak §10.1): pesan ke sesi panel yang sama di Mac (`jalankan.sambung:true` + `sesi` di SETIAP pesan). Tidak disimpan di [keEntri].
+  final bool sambung;
   final bool baru;
   final DateTime dibuat;
 
@@ -469,8 +479,14 @@ class Keputusan {
     required this.dibuat,
     required this.sampai,
     this.pertanyaan = const [],
+    this.giliranHp = false,
+    this.sebab,
   });
   final String id, sesi, proyek, akun;
+
+  /// G5 (kontrak §10.2/§10.4): kartu izin dari giliran pesan HP; [sebab] = kode (teks lewat [teksSebab]).
+  final bool giliranHp;
+  final String? sebab;
 
   /// 'izin' (alat: Bash, Edit, …) | 'tanya' (AskUserQuestion) | 'rencana' (ExitPlanMode).
   final String jenis;
@@ -483,7 +499,7 @@ class Keputusan {
 
   /// Jawaban sudah dikirim dari HP ini (menunggu Mac menutupnya).
   bool terkirim = false;
-  bool bisa(String pilih) => boleh.contains(pilih);
+  bool bisa(String pilih) => boleh.contains(pilih) && !(giliranHp && pilih == 'izinkan_selalu');
   bool get kedaluwarsa => DateTime.now().isAfter(sampai);
   Duration get sisa => sampai.difference(DateTime.now());
 }
@@ -628,6 +644,15 @@ abstract class SumberData extends ChangeNotifier {
   /// G4: Mac bisa melanjutkan sesi tab Sesi sebagai cabang (`jalankan` + `sesi`). Mac lama → tombol tidak tampil.
   bool get lanjutSesi => fiturMac.contains('lanjut_sesi');
 
+  /// G5: Mac menjembatani HP ↔ sesi panel yang sama (`jalankan` + `sambung`). Mac lama → tombol "Balas di sesi ini" tidak tampil.
+  bool get sambungDidukung => fiturMac.contains('sambung_sesi');
+
+  /// G5 `status.sambung` (kontrak §10.2): sesi proyek bertanda yang menunggu pesan HP. Entri rusak dibuang per butir.
+  List<SesiSambung> sambung = const [];
+  SesiSambung? sambungSesi(String sesi) => sambung.where((x) => x.sesi == sesi).firstOrNull;
+  final Map<String, SambungChat> _sambungChat = {};
+  DateTime? _sambungTerakhirKirim;
+
   /// HP yang terhubung ke Mac (null = Mac belum mengirim field ini / pelaksana lama).
   List<PerangkatTerhubung>? perangkatTerhubung;
   int maksPerangkat = 2;
@@ -708,11 +733,39 @@ abstract class SumberData extends ChangeNotifier {
     return TombolLanjut.aktif;
   }
 
+  /// G5: sambungan Chat proyek ini ke sesi panel yang sama (null = tidak ada). Selama ada, akun terkunci & mode Kerjakan.
+  SambungChat? sambungan(String proyekId) => _sambungChat[proyekId];
+
+  /// V-S04: "Balas di sesi ini" hanya bila Mac punya `sambung_sesi`, sesi ada di `status.sambung` (proyek & akun sama) dan bukan bypass.
+  TombolBalas tombolBalas(SesiCermin x) {
+    final p = cariProyek(x.proyek), e = sambungSesi(x.sesi);
+    if (!sambungDidukung || p == null || e == null || e.proyek != x.proyek || e.akun != x.akun || !_polaSesi.hasMatch(x.sesi)) {
+      return TombolBalas.sembunyi;
+    }
+    if (e.keadaan == 'bypass') return TombolBalas.bypass;
+    return p.bolehKerjakan ? TombolBalas.aktif : TombolBalas.tanpaKerjakan;
+  }
+
+  bool mulaiSambung(SesiCermin x) {
+    if (tombolBalas(x) != TombolBalas.aktif) return false;
+    final j = x.judul.trim().isEmpty ? 'Sesi tanpa judul' : x.judul.trim();
+    _sambungChat[x.proyek] = SambungChat(sesi: x.sesi, judul: j.length > 80 ? '${j.substring(0, 80)}…' : j, akun: x.akun);
+    _lanjut.remove(x.proyek);
+    _baruBerikutnya.remove(x.proyek);
+    beritahu();
+    return true;
+  }
+
+  void tutupSambung(String proyekId) {
+    if (_sambungChat.remove(proyekId) != null) beritahu();
+  }
+
   /// Ketuk "Lanjutkan di Chat": pesan berikutnya ke proyek ini membawa `sesi` (baru:false, akun sesi, tanpa otomatis).
   bool mulaiLanjut(SesiCermin x) {
     if (tombolLanjut(x) != TombolLanjut.aktif) return false;
     final j = x.judul.trim().isEmpty ? 'Sesi tanpa judul' : x.judul.trim();
     _lanjut[x.proyek] = LanjutSesi(sesi: x.sesi, judul: j.length > 80 ? '${j.substring(0, 80)}…' : j, akun: x.akun);
+    _sambungChat.remove(x.proyek);
     _baruBerikutnya.remove(x.proyek);
     beritahu();
     return true;
@@ -1122,6 +1175,23 @@ abstract class SumberData extends ChangeNotifier {
   /// Rencana: langsung. Kerjakan: Kotlin menampilkan BiometricPrompt sendiri (SEC-51) di dalam transportKirim.
   /// Melempar GalatKunci (mis. 'dibatalkan') agar layar bisa memberi tahu pengguna.
   Future<Tugas> kirim({required String proyekId, required String akun, required String mode, required String pesan, bool otomatis = false}) async {
+    final sc = _sambungChat[proyekId];
+    if (sc != null) {
+      // G5 kontrak §10.1: sambung ⇒ sesi di SETIAP pesan, baru:false, mode kerjakan, akun sesi, tanpa otomatis; HP menjaga jeda ≥2 dtk
+      final e = sambungSesi(sc.sesi);
+      if (!sambungDidukung || e == null || e.proyek != proyekId) throw const GalatKunci('sesi_tidak_tersambung');
+      if (e.keadaan == 'bypass') throw const GalatKunci('mode_bypass');
+      final kini = DateTime.now();
+      if (_sambungTerakhirKirim != null && kini.difference(_sambungTerakhirKirim!) < const Duration(seconds: 2)) throw const GalatKunci('terlalu_cepat');
+      _sambungTerakhirKirim = kini;
+      final t = Tugas(
+        tugas: idTugas(), proyek: proyekId, akun: sc.akun, mode: 'kerjakan', pesan: pesan, baru: false, dibuat: kini, sesi: sc.sesi, sambung: true);
+      (_chat[proyekId] ??= []).add(t);
+      _tandaiChat(proyekId);
+      beritahu();
+      await _kirimTugas(t);
+      return t;
+    }
     final l = _lanjut[proyekId];
     final sesi = l == null || l.dipakai ? null : l.sesi;
     final t = Tugas(
@@ -1140,6 +1210,13 @@ abstract class SumberData extends ChangeNotifier {
     beritahu();
     await _kirimTugas(t);
     return t;
+  }
+
+  /// G5: "Kirim ulang" untuk tugas sambung yang gagal (`kedaluwarsa`/`tidak_terkirim`/`pelaksana_mulai_ulang`) → tugas BARU (id lama sudah dipakai Mac).
+  static const alasanBisaKirimUlang = {'kedaluwarsa', 'tidak_terkirim', 'pelaksana_mulai_ulang'};
+  Future<Tugas> kirimUlangSambung(Tugas t) {
+    if (_sambungChat[t.proyek]?.sesi != t.sesi) throw const GalatKunci('sesi_tidak_tersambung');
+    return kirim(proyekId: t.proyek, akun: t.akun, mode: 'kerjakan', pesan: t.pesan);
   }
 
   Future<void> kirimUlang(Tugas t) async {
@@ -1192,6 +1269,7 @@ abstract class SumberData extends ChangeNotifier {
   void percakapanBaru(String proyekId) {
     _baruBerikutnya[proyekId] = true;
     _lanjut.remove(proyekId);
+    _sambungChat.remove(proyekId);
     beritahu();
   }
 
@@ -1200,6 +1278,7 @@ abstract class SumberData extends ChangeNotifier {
     _chat[proyekId]?.removeWhere((t) => !t.aktif);
     _baruBerikutnya[proyekId] = true;
     _lanjut.remove(proyekId);
+    _sambungChat.remove(proyekId);
     _tandaiChat(proyekId);
     beritahu();
   }
@@ -1277,6 +1356,8 @@ abstract class SumberData extends ChangeNotifier {
         utama: switch (_teks(m['utama'])) { final u? when u == 'bekerja' || u == 'menunggu_izin' => u, _ => 'diam' },
         grup: switch (_teks(m['grup'])?.trim()) { final g? when g.isNotEmpty => g.length > 30 ? g.substring(0, 30) : g, _ => null },
         dataPribadi: m['dataPribadi'] == true,
+        sambung: m['sambung'] == true,
+        sambungSejak: m['sambung'] == true ? _waktu(m['sambungSejak']) : null,
       ));
     }
     proyek = daftar;
@@ -1321,6 +1402,7 @@ abstract class SumberData extends ChangeNotifier {
       ];
     }
     fiturMac = {for (final f in _daftar(st['fitur']).take(20)) if (f is String && f.length <= 40) f};
+    sambung = [for (final b in _daftar(st['sambung']).take(50)) ?SesiSambung.dari(_peta(b))];
     antreLimit = _daftar(st['antre']).length;
     pemakaian = _ringkasPemakaian(_peta(st['pemakaian']));
   }
@@ -1539,6 +1621,8 @@ abstract class SumberData extends ChangeNotifier {
         boleh: [for (final p in _daftar(x['boleh'])) p.toString()],
         dibuat: dibuat,
         sampai: sampai,
+        giliranHp: x['giliran_hp'] == true,
+        sebab: x['giliran_hp'] == true ? _teks(x['sebab']) : null,
         pertanyaan: [
           for (final q in _daftar(x['pertanyaan']))
             if (_peta(q) case final qq?)
@@ -2224,7 +2308,8 @@ String namaAkun(String id) {
 
 /// Pesan untuk kode galat cermin (kode Mac di `cermin_riwayat.galat` + kode lokal) — selebihnya pesan GalatKunci.
 /// G4: teks alasan tolak `jalankan` + `sesi` dari Mac (kontrak G4, tanpa path). Alasan lain tampil apa adanya.
-String alasanTolak(String kode) => switch (kode) {
+/// REV-01: teks "Kirim ulang?" (kedaluwarsa/tidak_terkirim/pelaksana_mulai_ulang) hanya untuk tugas sambung ([sambung]); Chat biasa memakai kode apa adanya.
+String alasanTolak(String kode, {bool sambung = false}) => !sambung && SumberData.alasanBisaKirimUlang.contains(kode) ? kode : switch (kode) {
       'sesi_dengan_baru' => 'Lanjutan sesi tidak bisa digabung dengan percakapan baru',
       'sesi_tidak_ada' => 'Sesi ini tidak ada lagi di Mac (lebih dari 30 hari atau sudah dihapus)',
       'sesi_bukan_milik_proyek' => 'Sesi ini bukan milik proyek atau akun ini',
@@ -2232,8 +2317,82 @@ String alasanTolak(String kode) => switch (kode) {
       'cermin_mati' => 'Pembaca sesi di Mac mati',
       'sesi_data_pribadi' => 'Proyek data pribadi tidak bisa dilanjutkan dari HP',
       'akun_tidak_aktif' => 'Akun sesi ini tidak aktif di Mac',
+      // G5 (kontrak §10.3)
+      'sesi_tidak_tersambung' => 'Sesi ini tidak tersambung lagi. Buka ulang daftar sesi.',
+      'terlalu_cepat' => 'Terlalu cepat. Tunggu 2 detik lalu kirim lagi.',
+      'pesan_kosong' => 'Pesannya kosong. Tulis ulang pesannya.',
+      'antrean_penuh' => 'Antrean sesi ini penuh (20 pesan).',
+      'mode_bypass' => 'Sesi ini mode lewati-izin, tidak menerima pesan HP.',
+      'sambung_berakhir' => 'Sambungan proyek ini sudah dimatikan di Mac.',
+      'kedaluwarsa' => 'Pesan terlalu lama menunggu (30 menit). Kirim ulang?',
+      'tidak_terkirim' => 'Pesan tidak sampai ke sesi. Kirim ulang?',
+      'pelaksana_mulai_ulang' => 'Pelaksana di Mac mulai ulang. Kirim ulang?',
+      'darurat' => 'Dihentikan: kode darurat / jarak jauh dimatikan.',
       _ => kode,
     };
+
+/// G5 (kontrak §10.4): sebab kartu izin giliran HP dalam bahasa sehari-hari; kode tak dikenal tampil apa adanya.
+String teksSebab(String kode) => switch (kode) {
+      'internet' => 'Perintah ke internet',
+      'rahasia' => 'Menyentuh berkas yang mungkin rahasia',
+      'pembungkus' => 'Perintah yang tidak bisa diperiksa otomatis',
+      'karakter' => 'Perintah memuat karakter tersembunyi',
+      'skrip_baru' => 'Menjalankan skrip yang baru diubah',
+      'mcp' => 'Alat layanan luar (MCP)',
+      'di_luar_proyek' => 'Berkas di luar folder proyek',
+      'izin' => 'Claude Code meminta izin',
+      _ => kode,
+    };
+
+/// SEC-139: "sejak N hari" hanya bila tersambung > 7 hari (selain itu null).
+String? sambungSejakHari(DateTime? sejak, {DateTime? kini}) {
+  if (sejak == null) return null;
+  final h = (kini ?? DateTime.now()).difference(sejak).inDays;
+  return h > 7 ? 'sejak $h hari' : null;
+}
+
+enum TombolBalas { sembunyi, aktif, bypass, tanpaKerjakan }
+
+/// G5 `status.sambung[]` (kontrak §10.2): satu sesi panel yang menunggu pesan HP.
+class SesiSambung {
+  const SesiSambung({required this.sesi, required this.proyek, required this.akun, required this.sejak, required this.keadaan, this.antre = 0, this.giliranHp = false});
+  final String sesi, proyek, akun;
+  final DateTime sejak;
+
+  /// 'menunggu' | 'bekerja' | 'mac' | 'latar' | 'bypass'
+  final String keadaan;
+  final int antre;
+  final bool giliranHp;
+
+  static const _keadaan = {'menunggu', 'bekerja', 'mac', 'latar', 'bypass'};
+
+  /// null = butir rusak (dibuang).
+  static SesiSambung? dari(Map<String, Object?>? m) {
+    if (m == null) return null;
+    final sesi = m['sesi'], proyek = m['proyek'], akun = m['akun'], keadaan = m['keadaan'];
+    final sejak = SumberData._waktu(m['sejak']);
+    final antre = m['antre'] ?? 0;
+    if (sesi is! String || !_polaSesi.hasMatch(sesi) || proyek is! String || proyek.isEmpty || proyek.length > 40 || akun is! String || akun.isEmpty) return null;
+    if (akun.length > 40 || sejak == null || keadaan is! String || !_keadaan.contains(keadaan) || antre is! int || antre < 0 || antre > 20) return null;
+    if (m['giliran'] != null && m['giliran'] != 'hp') return null;
+    return SesiSambung(sesi: sesi, proyek: proyek, akun: akun, sejak: sejak, keadaan: keadaan, antre: antre, giliranHp: m['giliran'] == 'hp');
+  }
+
+  /// Teks keadaan untuk pita Chat / kartu sesi.
+  String get teksKeadaan => switch (keadaan) {
+        'menunggu' => 'menunggu pesan Anda',
+        'bekerja' => 'Claude sedang bekerja${giliranHp ? ' untuk pesan HP' : ''}',
+        'mac' => 'Mac sedang dipakai',
+        'latar' => 'berjalan di latar',
+        _ => 'mode lewati-izin, tidak menerima pesan HP',
+      };
+}
+
+/// G5: sambungan Chat proyek → sesi panel yang sama (dari tombol "Balas di sesi ini").
+class SambungChat {
+  const SambungChat({required this.sesi, required this.judul, required this.akun});
+  final String sesi, judul, akun;
+}
 
 final _polaSesi = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$');
 
