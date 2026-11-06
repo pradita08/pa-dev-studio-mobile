@@ -134,6 +134,6 @@ class KeputusanTest {
             assertEquals("${x["id"]}/${x["varian"]}", x["harapan"] as? String, AmplopV1.cekIsiKabar(UjiBantu.m(x["isi"])))
             diuji++
         }
-        assertEquals(19, diuji)
+        assertEquals(20, diuji)
     }
 }

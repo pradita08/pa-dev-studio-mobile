@@ -51,7 +51,7 @@ cek('pesan dibersihkan: pola [hp:…] dan label dibuang (V-R12 unit)', !/deadbee
     ]),
     cermin: { retensiJamRelay: 6 }, jarakJauh: true, batasMenit: { rencana: 30, kerjakan: 60 },
     keputusan: { nyala: true, tingkatMaks: 'izinkan_selalu', batasDtk: 300, tundaNotifDtk: 8, maksPerJam: 20, izinSelaluHari: 30, maksAturanProyek: 50, sinyalSesiPid: false, diamDtk: 60 },
-    sambung: { ...S.BAWAAN, entrypoint: ['claude-vscode'] },
+    sambung: { ...S.BAWAAN, entrypoint: ['claude-vscode'], jalurKartu: 'ask' },   // bawaan G5-G4 = 'tahan'; jalur kartu PermissionRequest (V-C06..09) diuji di sini
   };
   const sk = { kotak: [], kabar: [], halo: [] };
   const srv = http.createServer((req, res) => {

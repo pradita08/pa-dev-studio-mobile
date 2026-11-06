@@ -928,6 +928,40 @@
       "harapan": "isi_bentuk"
     },
     {
+      "id": "V-C04",
+      "varian": "e",
+      "pihak": "mac+kotlin",
+      "keterangan": "REV-04: rencana BUKAN giliran HP + boleh jawab (aturan jenis tanya/rencana berlaku untuk semua butir)",
+      "isi": {
+        "mac_id": "dac41f4ed3e1ec5d",
+        "perangkat_id": "1f600ae09b7479f9",
+        "urut_mac": 1791000000001,
+        "dibuat": 1791000000000,
+        "jenis": "keputusan",
+        "keputusan": {
+          "daftar": [
+            {
+              "id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+              "sesi": "0f8fad5b-d9cb-469f-a165-70867728950e",
+              "proyek": "kantor",
+              "akun": "akun2",
+              "jenis": "rencana",
+              "alat": "ExitPlanMode",
+              "ringkas": "Rencana",
+              "boleh": [
+                "tolak",
+                "jawab"
+              ],
+              "dibuat": 1791000000000,
+              "sampai": 1791000300000
+            }
+          ],
+          "selesai": []
+        }
+      },
+      "harapan": "isi_bentuk"
+    },
+    {
       "id": "V-C05",
       "varian": "a",
       "pihak": "mac+kotlin",
