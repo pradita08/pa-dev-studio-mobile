@@ -68,19 +68,6 @@ jobs:
             ~/.gradle/wrapper
           key: dep-${{ hashFiles('pubspec.lock', 'android/app/gradle.lockfile', 'android/gradle/wrapper/gradle-wrapper.properties') }}
 
-      - name: Periksa aset kantor 3D (sidik.json dari buat-kantor-apk.js)
-        run: |
-          node -e '
-            const fs = require("fs"), c = require("crypto"), d = "assets/kantor/";
-            const s = JSON.parse(fs.readFileSync(d + "sidik.json", "utf8")).berkas;
-            let salah = 0;
-            for (const [f, h] of Object.entries(s)) {
-              const x = c.createHash("sha256").update(fs.readFileSync(d + f)).digest("hex");
-              if (x !== h) { console.error("BEDA: " + f); salah++; }
-            }
-            if (salah) process.exit(1);
-            console.log("aset kantor cocok: " + Object.keys(s).length + " berkas");'
-
       - name: Keystore debug tetap (opsional)
         env:
           KS: ${{ secrets.PADEV_DEBUG_KEYSTORE_B64 }}

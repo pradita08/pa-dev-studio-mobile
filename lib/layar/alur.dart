@@ -32,6 +32,9 @@ class DivisiAlur {
   final String kunci;
   StatusAlur status = StatusAlur.belum;
   String? aktivitas;
+
+  /// Rincian alat terakhir (`status.kantor[].detail`, ≤80 huruf, sudah disamarkan Mac); null bila tidak ada.
+  String? detail;
   DateTime? mulai, selesai;
   int jumlahAlat = 0;
 
@@ -54,6 +57,9 @@ class AlurKerja {
   /// Kepala (Claude utama): bekerja / menunggu izin / selesai / diam.
   StatusAlur kepala = StatusAlur.belum;
   String? aktivitasKepala;
+
+  /// Rincian alat terakhir Kepala (lihat [DivisiAlur.detail]); null bila tidak ada.
+  String? detailKepala;
   DateTime? mulai, selesai, terakhir;
 
   /// Divisi & agen pendukung yang terlibat di putaran ini (urut pertama kali muncul).
@@ -101,6 +107,7 @@ class AlurKerja {
       final w = DateTime.fromMillisecondsSinceEpoch(e['ts'] as int);
       final kind = e['kind'], tool = e['tool'] is String ? e['tool'] as String : null;
       final agentId = e['agentId'] is String ? e['agentId'] as String : null;
+      final detail = kind == 'tool' && e['detail'] is String ? e['detail'] as String : null;
       a.terakhir = w;
       if (agentId == null) {
         // ---- Kepala (sesi utama)
@@ -112,6 +119,7 @@ class AlurKerja {
             a._catat(w, 'Perintah masuk ke Kepala', 'perintah');
           case 'tool' when tool == 'Agent' || tool == 'Task':
             a.kepala = StatusAlur.bekerja;
+            a.detailKepala = detail;
             final d = div(kunciDari(e['sub'] ?? 'general-purpose'));
             if (d.status == StatusAlur.belum || d.status == StatusAlur.selesai) d.status = StatusAlur.ditugaskan;
             a.aktivitasKepala = 'Menugaskan ${d.nama}';
@@ -119,6 +127,7 @@ class AlurKerja {
           case 'tool':
             a.kepala = StatusAlur.bekerja;
             a.aktivitasKepala = labelAlat(tool);
+            a.detailKepala = detail;
           case 'tool_done':
             if (a.kepala == StatusAlur.menungguIzin) a.kepala = StatusAlur.bekerja;
           case 'tool_fail':
@@ -154,7 +163,8 @@ class AlurKerja {
           d
             ..mulai ??= w
             ..jumlahAlat += 1
-            ..aktivitas = labelAlat(tool);
+            ..aktivitas = labelAlat(tool)
+            ..detail = detail;
         case 'tool_done':
           if (d.status == StatusAlur.menungguIzin) d.status = StatusAlur.bekerja;
         case 'tool_fail':

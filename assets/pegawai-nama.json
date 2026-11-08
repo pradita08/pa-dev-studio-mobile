@@ -3,79 +3,85 @@
   "jenis": "pegawai",
   "orang": {
     "div:analis#1": {
-      "nama": "Fajar"
+      "nama": "Putut"
     },
     "div:analis#2": {
-      "nama": "Nadia"
+      "nama": "Irham"
     },
     "div:analis#3": {
-      "nama": "Sinta"
+      "nama": "Nadia"
     },
     "div:programmer#1": {
-      "nama": "Bima"
+      "nama": "Pradita"
     },
     "div:programmer#2": {
-      "nama": "Rizky"
+      "nama": "Zaenal"
     },
     "div:programmer#3": {
-      "nama": "Putri"
+      "nama": "Nikmah"
     },
     "div:ui#1": {
-      "nama": "Laras"
+      "nama": "Dinda"
     },
     "div:ui#2": {
-      "nama": "Ayu"
+      "nama": "Bima"
     },
     "div:ui#3": {
-      "nama": "Citra"
+      "nama": "Nanda"
     },
     "div:reviewer#1": {
-      "nama": "Arya"
+      "nama": "Ragil"
     },
     "div:reviewer#2": {
-      "nama": "Hendra"
+      "nama": "Hendri"
     },
     "div:reviewer#3": {
-      "nama": "Yoga"
+      "nama": "Novi"
     },
     "div:qa#1": {
-      "nama": "Dewi"
-    },
-    "div:qa#2": {
-      "nama": "Aisyah"
-    },
-    "div:qa#3": {
-      "nama": "Salma"
-    },
-    "div:security#1": {
-      "nama": "Sekar"
-    },
-    "div:security#2": {
-      "nama": "Intan"
-    },
-    "div:security#3": {
-      "nama": "Wulan"
-    },
-    "div:dokumentasi#1": {
-      "nama": "Rendra"
-    },
-    "div:dokumentasi#2": {
-      "nama": "Rudi"
-    },
-    "div:dokumentasi#3": {
       "nama": "Galih"
     },
+    "div:qa#2": {
+      "nama": "Begi"
+    },
+    "div:qa#3": {
+      "nama": "Rosul"
+    },
+    "div:security#1": {
+      "nama": "Willy"
+    },
+    "div:security#2": {
+      "nama": "Burhan"
+    },
+    "div:security#3": {
+      "nama": "Fitria"
+    },
+    "div:dokumentasi#1": {
+      "nama": "Trisno"
+    },
+    "div:dokumentasi#2": {
+      "nama": "Heffa"
+    },
+    "div:dokumentasi#3": {
+      "nama": "Erna"
+    },
     "div:devops#1": {
-      "nama": "Bayu"
+      "nama": "Khairil"
     },
     "div:devops#2": {
-      "nama": "Teguh"
+      "nama": "Fahri"
     },
     "div:devops#3": {
-      "nama": "Dimas"
+      "nama": "Ridwan"
     },
     "fullstack-quickfix#1": {
-      "nama": "Raka"
+      "nama": "Alfian"
+    },
+    "kepala": {
+      "nama": "Nerro"
+    },
+    "resepsionis": {
+      "nama": "Alvio"
     }
   }
 }

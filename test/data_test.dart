@@ -70,14 +70,15 @@ void main() {
     b.dispose();
   });
 
-  test('F2b status.kantor → kejadian bersih untuk kantor 3D (field asing/isi dibuang); tanpa field → null', () {
+  test('F2b/G8 status.kantor → kejadian bersih (field asing/isi dibuang; detail hanya tool ≤80); tanpa field → null', () {
     final s = _SumberUji()
       ..status({
         'status': {
           'proyek': [],
           'kantor': [
             {'ts': 1, 'kind': 'tool', 'tool': 'Edit', 'who': 'divisi-programmer', 'agentId': 'ag1', 'session': 'abc', 'detail': '/Users/x/rahasia.php', 'text': 'isi'},
-            {'ts': 2, 'kind': 'notify', 'type': 'permission_prompt'},
+            {'ts': 2, 'kind': 'notify', 'type': 'permission_prompt', 'detail': 'bukan alat'},
+            {'ts': 4, 'kind': 'tool', 'tool': 'Bash', 'detail': 'x' * 81},
             {'ts': 3, 'kind': 'hapus_semua'},
             {'kind': 'prompt'},
             'bukan peta',
@@ -85,11 +86,105 @@ void main() {
         },
       });
     expect(s.kantor, [
-      {'ts': 1, 'kind': 'tool', 'session': 'abc', 'who': 'divisi-programmer', 'agentId': 'ag1', 'tool': 'Edit'},
+      {'ts': 1, 'kind': 'tool', 'session': 'abc', 'who': 'divisi-programmer', 'agentId': 'ag1', 'tool': 'Edit', 'detail': '/Users/x/rahasia.php'},
       {'ts': 2, 'kind': 'notify', 'type': 'permission_prompt'},
+      {'ts': 4, 'kind': 'tool', 'tool': 'Bash'},
     ]);
     s.status({'status': {'proyek': []}});
     expect(s.kantor, isNull);
+  });
+
+  group('G8 status.rekap', () {
+    Map<String, Object?> hari(String tgl, List<Object?> t) => {'tgl': tgl, 't': t, 'n': [1, 0, 2], 'c': [3, 0, 1]};
+    Map<String, Object?> rekap() => {
+          'v': 1,
+          'dibuat': 1791000000000,
+          'zona': '+07:00',
+          'awal': '2026-10-01',
+          'agen': ['kepala', 'divisi-programmer', 'general-purpose'],
+          'hari': [
+            for (var i = 2; i <= 7; i++) hari('2026-11-0$i', [i * 10, i, 0]),
+            hari('2026-11-08', [100, 5, 7]),
+          ],
+          'bulan': [
+            {'bln': '2026-10', 't': [9, 9, 9], 'n': [1, 1, 1], 'c': [0, 0, 0], 'asing': 'x'},
+            {'bln': '2026-11', 't': [8, 8, 8], 'n': [1, 1, 1], 'c': [0, 0, 0]},
+          ],
+          'proyek': 'rahasia',
+        };
+    RekapAgen? baca(Map<String, Object?> r) => (_SumberUji()..status({'status': {'proyek': [], 'rekap': r}})).rekap;
+
+    test('agen kosong (Mac baru tanpa pemakaian) → rekap kosong, bukan null (QA-1)', () {
+      final kosong = <String, Object?>{'v': 1, 'dibuat': 1791000000000, 'zona': '+07:00', 'agen': [],
+        'hari': [for (var i = 2; i <= 8; i++) {'tgl': '2026-11-0$i', 't': [], 'n': [], 'c': []}], 'bulan': []};
+      final r = baca(kosong);
+      expect(r, isNotNull);
+      expect(r!.agen, isEmpty);
+      expect(r.token7Hari('kepala'), 0);
+    });
+
+    test('bentuk sah → RekapAgen; token7Hari/harianAgen per agen; kelompok', () {
+      final r = baca(rekap())!;
+      expect(r.dibuat, DateTime.fromMillisecondsSinceEpoch(1791000000000));
+      expect(r.awal, '2026-10-01');
+      expect(r.agen, ['kepala', 'divisi-programmer', 'general-purpose']);
+      expect(r.hari.length, 7);
+      expect(r.hari.last.kunci, '2026-11-08');
+      expect(r.bulan.map((b) => b.kunci), ['2026-10', '2026-11']);
+      expect(r.harianAgen('divisi-programmer'), [2, 3, 4, 5, 6, 7, 5]);
+      expect(r.token7Hari('kepala'), 20 + 30 + 40 + 50 + 60 + 70 + 100);
+      expect(r.token7Hari('divisi-qa'), 0);
+      expect(r.harianAgen('divisi-qa'), List.filled(7, 0));
+      expect(RekapAgen.kelompok('kepala'), 'kepala');
+      expect(RekapAgen.kelompok('divisi-programmer'), 'programmer');
+      expect(RekapAgen.kelompok('divisi-'), 'pendukung');
+      expect(RekapAgen.kelompok('general-purpose'), 'pendukung');
+      expect(RekapAgen.kelompok('lainnya'), 'pendukung');
+    });
+
+    test('periode cacat dibuang (panjang ≠ agen, angka negatif/pecahan/teks, kunci salah); hari kurang → 0 di depan', () {
+      final m = rekap();
+      final h = m['hari'] as List;
+      h[0] = hari('2026-11-02', [1, 2]);
+      h[1] = hari('2026-11-03', [1, -2, 0]);
+      h[2] = hari('2026-11-04', [1, 2.5, 0]);
+      h[3] = hari('2026-11-05', [1, '2', 0]);
+      h[4] = hari('5 Nov', [1, 2, 0]);
+      final r = baca(m)!;
+      expect(r.hari.map((x) => x.kunci), ['2026-11-07', '2026-11-08']);
+      expect(r.harianAgen('kepala'), [0, 0, 0, 0, 0, 70, 100]);
+      expect(r.bulan.length, 2);
+    });
+
+    test('bentuk salah → null (versi, dibuat, agen tidak sah/ganda/>24, bukan peta); tanpa field → null', () {
+      expect(baca({...rekap(), 'v': 2}), isNull);
+      expect(baca({...rekap(), 'dibuat': '1791000000000'}), isNull);
+      expect(baca({...rekap(), 'agen': ['kepala', 'Divisi QA', 'x']}), isNull);
+      expect(baca({...rekap(), 'agen': ['kepala', 'kepala', 'x']}), isNull);
+      expect(baca({...rekap(), 'agen': [for (var i = 0; i < 25; i++) 'a$i']}), isNull);
+      expect((_SumberUji()..status({'status': {'proyek': [], 'rekap': 'x'}})).rekap, isNull);
+      expect((_SumberUji()..status({'status': {'proyek': []}})).rekap, isNull);
+    });
+
+    test('rekap contoh pratinjau: sah dan 7 hari', () {
+      final r = RekapAgen.contoh(DateTime(2026, 11, 8));
+      expect(r.hari.length, 7);
+      expect(r.hari.last.kunci, '2026-11-08');
+      expect(r.bulan.last.kunci, '2026-11');
+      expect(r.token7Hari('divisi-programmer'), greaterThan(0));
+      for (final p in [...r.hari, ...r.bulan]) {
+        expect([p.token.length, p.tugas.length, p.sen.length], everyElement(r.agen.length));
+      }
+    });
+  });
+
+  test('NamaPegawai: kunci tanpa #ke (kepala/resepsionis) dibaca', () {
+    NamaPegawai.atur({'kepala': 'Nerro', 'resepsionis': 'Alvio', 'div:programmer#1': 'Bima'});
+    expect(NamaPegawai.cari('kepala'), 'Nerro');
+    expect(NamaPegawai.cari('resepsionis'), 'Alvio');
+    expect(NamaPegawai.cari('divisi-programmer'), 'Bima');
+    expect(NamaPegawai.cari('kepala', 2), isNull);
+    NamaPegawai.atur(const {});
   });
 
   test('status.perangkat → HP terhubung (n/maks, HP ini); tanpa field → null', () {

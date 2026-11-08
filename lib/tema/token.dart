@@ -148,6 +148,10 @@ abstract final class Simbol {
   static const cariLama = IconData(0xf02f, fontFamily: _f); // manage_search (Cari sesi lama)
   static const atas = IconData(0xe5ce, fontFamily: _f); // expand_less (muat lebih lama)
   static const kode = IconData(0xe86f, fontFamily: _f); // code (VS Code)
+
+  // G8 (titik kode dicek di cmap MaterialSymbolsRounded.ttf)
+  static const grafik = IconData(0xe26b, fontFamily: _f); // bar_chart (Rekap)
+  static const salin = IconData(0xe14d, fontFamily: _f); // content_copy (salin blok kode)
 }
 
 /// Pilihan tampilan Pengaturan (Terang/Gelap/Ikuti sistem). Disimpan di memori saja — penyimpanan permanen butuh fasad (lihat progres UI).

@@ -49,13 +49,10 @@ Mac (folder induk): `bash _mobile_padev_studio_3d/bangun.sh debug` lalu `bash _m
 Pemasangan ke Mac (QR) tetap butuh SHA-256 sertifikat APK dicatat di konfigurasi pelaksana (`apkSertifikatDebugSha256` untuk
 debug/profile, `apkSertifikatSha256` untuk rilis).
 
-## Kantor 3D (F2)
-Tab Kantor menampilkan kantor 3D (sama dengan kantor laptop) di atas daftar divisi. `assets/kantor/` + `assets/pegawai-nama.json`
-**dibuat** dari repo kantor: `node _app_padev_studio_3d/buat-kantor-apk.js` (cek: `--cek`); jangan diedit di sini. Native:
-`android/.../kantor/Kantor3d.kt` — WebView terkunci: hanya aset dari daftar tetap di `https://kantor.padev-apk.invalid/`
-(request lain 403, tanpa jaringan), tanpa `addJavascriptInterface`, tanpa file/cookie/storage, CSP ketat; data satu arah
-(`kantorHp.terima(json)`), render dijeda saat tab tidak terlihat. Data tim = `status.proyek[].divisi` `[{peran, status, ke}]`
-dari pelaksana (nama dari `pegawai-nama.json`).
+## Kantor (G8, tanpa 3D)
+Tab Kantor = segmen **Agen | Rekap**: alur kerja live dari `status.kantor` + kartu agen, dan rekap token setara per jenis agen
+dari `status.rekap` (Mac lama tanpa `rekap` → layar meminta pelaksana terbaru). Nama pegawai dari `assets/pegawai-nama.json`,
+**dibuat** dari repo kantor: `node _app_padev_studio_3d/buat-kantor-apk.js _mobile_padev_studio_3d` (cek: `--cek`); jangan diedit di sini.
 
 ## Struktur
 - `lib/kunci/kunci.dart` — fasad Dart, satu-satunya jalan UI ke native (kanal `pro.padeveloper.studio/kunci`).

@@ -2,7 +2,7 @@
 // tampil keputusan (izin/pertanyaan Claude di Mac, dijawab di sini — F1b), review hasil Kerjakan (roadmap 2), dan Claude yang
 // sedang berjalan di Mac untuk proyek ini (cermin sesi → detail & riwayat langsung).
 // Kerjakan: setelah L05a, Kotlin menampilkan BiometricPrompt sistem sendiri (wajib sidik jari, tanpa PIN — DESAIN §3.1, SEC-51).
-// Teks Claude ditampilkan sebagai teks biasa.
+// Teks Claude: polos selama mengalir, markdown (TeksClaude) setelah selesai; langkah alat diringkas (RingkasLangkah), status akhir satu baris (G8).
 // G4: pita "Melanjutkan" (dari tombol "Lanjutkan di Chat" di detail sesi) — akun terkunci selama pita, bisa ditutup.
 // G5: pita "Tersambung · sesi sama di Mac" (dari "Balas di sesi ini") — mode Kerjakan & akun terkunci, keadaan sesi dari status.sambung.
 import 'dart:async';
@@ -749,8 +749,6 @@ class _ButirTugas extends StatelessWidget {
   final Tugas tugas;
   final ValueChanged<Tugas> onKirimUlang;
 
-  static (IconData, String) _alat(String a) => alatTampil(a);
-
   @override
   Widget build(BuildContext context) {
     final w = WarnaPadev.dari(context);
@@ -844,56 +842,31 @@ class _ButirTugas extends StatelessWidget {
       ));
     }
 
-    for (final a in t.alat) {
-      final (ikon, label) = _alat(a.alat);
-      final ubah = label == 'Mengubah';
-      baris(Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(ikon, size: 15, color: ubah ? w.warnt : w.muted),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text.rich(TextSpan(children: [
-            TextSpan(text: '$label · ', style: TextStyle(color: ubah ? w.warnt : w.muted, fontSize: 12.5)),
-            TextSpan(text: a.ringkas, style: TeksPadev.mono(ubah ? w.warnt : w.muted)),
-          ])),
-        ),
-      ]));
-    }
+    final jalan = t.tahap == TahapTugas.bekerja;
+    if (t.alat.isNotEmpty) baris(RingkasLangkah(langkah: [for (final a in t.alat) (a.alat, a.ringkas, false)], berjalan: jalan));
 
     final teks = t.teks.toString();
-    if (teks.isNotEmpty || t.tahap == TahapTugas.bekerja) {
-      baris(Align(
-        alignment: Alignment.centerLeft,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * .86),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: w.panel,
-              border: Border.all(color: w.line),
-              borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(14), topRight: Radius.circular(14), bottomRight: Radius.circular(14), bottomLeft: Radius.circular(4)),
-            ),
-            child: Semantics(
-              liveRegion: t.tahap == TahapTugas.selesai,
-              child: Text.rich(TextSpan(children: [
+    if (teks.isNotEmpty || jalan) {
+      // jawaban lebar penuh; selama mengalir teks polos + kursor (syarat Willy 7), setelah itu markdown
+      baris(Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(color: w.panel, border: Border.all(color: w.line), borderRadius: BorderRadius.circular(14)),
+        child: !jalan
+            ? TeksClaude(teks)
+            : Text.rich(TextSpan(children: [
                 TextSpan(text: teks.isEmpty ? 'Claude sedang bekerja' : teks, style: TextStyle(color: teks.isEmpty ? w.muted : w.ink, fontSize: 14, height: 1.45)),
-                if (t.tahap == TahapTugas.bekerja)
-                  WidgetSpan(
-                    alignment: PlaceholderAlignment.middle,
-                    child: Padding(padding: const EdgeInsets.only(left: 3), child: Container(width: 7, height: 15, color: w.accent)),
-                  ),
+                WidgetSpan(
+                  alignment: PlaceholderAlignment.middle,
+                  child: Padding(padding: const EdgeInsets.only(left: 3), child: Container(width: 7, height: 15, color: w.accent)),
+                ),
               ])),
-            ),
-          ),
-        ),
       ));
     }
 
     switch (t.tahap) {
       case TahapTugas.selesai:
-        baris(_Kotak(
-          fg: w.okt,
-          bg: w.okb,
+        baris(_BarisAkhir(
+          warna: w.okt,
           ikon: Simbol.centangLingkar,
           teks: 'Selesai${t.durasi == null ? '' : ' · ${durasiBaca(t.durasi!)}'}'
               '${t.pemakaian == null ? '' : ' · ${tokenBaca(t.pemakaian!.token)} token · ${t.pemakaian!.giliran} giliran'}',
@@ -926,10 +899,9 @@ class _ButirTugas extends StatelessWidget {
           baris(kotak);
         }
       case TahapTugas.dihentikan:
-        baris(_Kotak(fg: w.ink, bg: w.chip, ikon: Simbol.henti, teks: 'Dihentikan'));
+        baris(_BarisAkhir(warna: w.muted, ikon: Simbol.henti, teks: 'Dihentikan'));
       case TahapTugas.batasWaktu:
-        baris(_Kotak(
-            fg: w.warnt, bg: w.warnb, ikon: Simbol.jam, teks: 'Dihentikan otomatis: batas waktu${t.batasMenit == null ? '' : ' ${t.batasMenit} mnt'}'));
+        baris(_BarisAkhir(warna: w.warnt, ikon: Simbol.jam, teks: 'Dihentikan otomatis: batas waktu${t.batasMenit == null ? '' : ' ${t.batasMenit} mnt'}'));
       case TahapTugas.ditolak:
         baris(_Kotak(
           fg: w.err,
@@ -964,6 +936,23 @@ class _ButirTugas extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: anak),
     );
   }
+}
+
+/// Status akhir yang tidak butuh tindakan (Selesai / Dihentikan / Batas waktu): satu baris, bukan kotak.
+class _BarisAkhir extends StatelessWidget {
+  const _BarisAkhir({required this.warna, required this.ikon, required this.teks});
+  final Color warna;
+  final IconData ikon;
+  final String teks;
+  @override
+  Widget build(BuildContext context) => Semantics(
+        liveRegion: true,
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Padding(padding: const EdgeInsets.only(top: 1), child: Icon(ikon, size: 15, color: warna)),
+          const SizedBox(width: 6),
+          Expanded(child: Text(teks, style: TextStyle(color: warna, fontSize: 12.5, fontWeight: FontWeight.w700, height: 1.35))),
+        ]),
+      );
 }
 
 class _StatusKecil extends StatelessWidget {

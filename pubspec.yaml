@@ -13,6 +13,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # G8 chat: parser markdown (dart-lang, dipin persis; syarat pakai Willy di TeksClaude: tanpa HTML/tautan/gambar)
+  markdown: 7.3.1
 
 dev_dependencies:
   flutter_test:
@@ -21,9 +23,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  # F2 kantor 3D: dibuat `node buat-kantor-apk.js` di repo kantor (jangan diedit di sini)
+  # nama pegawai: dibuat `node buat-kantor-apk.js` di repo kantor (jangan diedit di sini); kantor 3D dibuang (G8)
   assets:
-    - assets/kantor/
     - assets/pegawai-nama.json
   fonts:
     - family: PlusJakartaSans

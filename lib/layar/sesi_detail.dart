@@ -2,7 +2,7 @@
 // Hemat (K-04): `cermin_buka` hanya saat layar ini terbuka & aplikasi aktif, kirim ulang 7,5 mnt; `cermin_tutup` saat keluar/latar.
 // Celah `urut_cermin` → "Ada bagian yang hilang". Proyek tingkat ringkas → pesan/jawaban tanpa isi + keterangan.
 // Kartu keputusan (F1b) sesi ini tampil paling bawah & bisa dijawab di sini. G4: tombol "Lanjutkan di Chat" (cabang, S-G4-15). G5: "Balas di sesi ini".
-// Semua teks luar via Text (A-E1).
+// Semua teks luar via Text (A-E1). G8: jawaban Claude = TeksClaude (markdown tanpa tautan); langkah alat berurutan diringkas (RingkasLangkah).
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -252,7 +252,16 @@ class _LayarSesiDetailState extends State<LayarSesiDetail> with WidgetsBindingOb
         child: SingleChildScrollView(child: IsiKosong(ikon: Simbol.obrolan, judul: 'Belum ada percakapan di sesi ini')),
       );
     }
-    final n = r.entri.length, m = kartu.length;
+    // entri alat berurutan → satu kelompok (RingkasLangkah)
+    final grup = <List<EntriSesi>>[];
+    for (final e in r.entri) {
+      if (e.peran == PeranEntri.alat && grup.isNotEmpty && grup.last.first.peran == PeranEntri.alat) {
+        grup.last.add(e);
+      } else {
+        grup.add([e]);
+      }
+    }
+    final n = grup.length, m = kartu.length;
     return ListView.builder(
       reverse: true,
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
@@ -261,7 +270,16 @@ class _LayarSesiDetailState extends State<LayarSesiDetail> with WidgetsBindingOb
         if (j < m) return kartu[j];   // keputusan sesi ini: paling bawah
         final i = j - m;
         if (i == n) return _KepalaRiwayat(riwayat: r, onMuat: () => _muat(lebihLama: true));
-        return Padding(padding: const EdgeInsets.only(top: 8), child: ButirEntriSesi(entri: r.entri[n - 1 - i]));
+        final g = grup[n - 1 - i];
+        return Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: g.length == 1
+              ? ButirEntriSesi(entri: g.first)
+              : RingkasLangkah(
+                  langkah: [for (final e in g) (e.alat ?? 'Alat', e.ringkas ?? '', e.gagal)],
+                  berjalan: i == 0 && sesi.status == StatusSesi.bekerja,
+                ),
+        );
       },
     );
   }
@@ -415,19 +433,11 @@ class ButirEntriSesi extends StatelessWidget {
         ]);
       case PeranEntri.claude:
         if (e.teks == null) return tanpaIsi(Simbol.claude, 'Jawaban Claude', kanan: false);
-        return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: lebar * .86),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: w.panel,
-                border: Border.all(color: w.line),
-                borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(14), topRight: Radius.circular(14), bottomRight: Radius.circular(14), bottomLeft: Radius.circular(4)),
-              ),
-              child: Text(e.teks!, style: TextStyle(color: w.ink, fontSize: 14, height: 1.45)),
-            ),
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(color: w.panel, border: Border.all(color: w.line), borderRadius: BorderRadius.circular(14)),
+            child: TeksClaude(e.teks!),
           ),
           meta('Claude', kanan: false),
         ]);

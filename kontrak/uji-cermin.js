@@ -502,9 +502,13 @@ const cm = C.buatCermin({ cfg, log: () => {}, folder: folderPel, rumah: tmp });
   cek('status.kantor: halo segera setelah kejadian, daftar ≤40 berisi tool Edit divisi & notify permission_prompt', Array.isArray(kantor) && kantor.length <= 40
     && kantor.some(e => e.kind === 'tool' && e.tool === 'Edit' && e.who === 'divisi-programmer' && e.agentId === 'agK1')
     && kantor.some(e => e.kind === 'notify' && e.type === 'permission_prompt'), tK.slice(0, 400));
-  cek('status.kantor: tanpa isi (detail/teks/path/cwd/transkrip) & sesi di-hash 16 heksa', Array.isArray(kantor) && !/rahasia|teks rahasia|\/Users\/|transcript|cwd/.test(tK)
-    && kantor.every(e => /^[0-9a-f]{16}$/.test(e.session) && e.detail === undefined && e.text === undefined && !tK.includes(s1) && !tK.includes(sCli)
-      && Object.keys(e).every(k => ['ts', 'session', 'kind', 'who', 'agentId', 'tool', 'sub', 'type', 'proyek'].includes(k))), tK.slice(0, 400));
+  // G8 §10.13 C: detail ≤80 hanya kind tool (disamarkan cermin, tanpa path rumah); selain itu tetap tanpa isi
+  const tKtanpaDetail = JSON.stringify((kantor || []).map(({ detail, ...e }) => e));
+  cek('status.kantor: tanpa isi (teks/path/cwd/transkrip) & sesi di-hash 16 heksa; detail ≤80 hanya kind tool', Array.isArray(kantor) && !/rahasia|\/Users\/|transcript|cwd/.test(tKtanpaDetail)
+    && !/\/Users\/|teks rahasia|izin rahasia/.test(tK)
+    && kantor.every(e => /^[0-9a-f]{16}$/.test(e.session) && (e.detail === undefined || (e.kind === 'tool' && typeof e.detail === 'string' && e.detail.length <= 80))
+      && e.text === undefined && !tK.includes(s1) && !tK.includes(sCli)
+      && Object.keys(e).every(k => ['ts', 'session', 'kind', 'who', 'agentId', 'tool', 'sub', 'type', 'proyek', 'detail'].includes(k))), tK.slice(0, 400));
   cek('status.kantor: tiap kejadian membawa id proyek (alur kerja per proyek di HP)', Array.isArray(kantor) && kantor.length > 0 && kantor.every(e => e.proyek === 'proj'), tK.slice(0, 300));
   const pr = stK && stK.isi.status.perangkat;
   cek('status.perangkat: HP terhubung (nama, mode, dipasang, ini) maks 2, tanpa id/kunci', Array.isArray(pr) && pr.length >= 1 && stK.isi.status.maksPerangkat === 2

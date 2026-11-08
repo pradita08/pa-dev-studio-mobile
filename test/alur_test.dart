@@ -2,7 +2,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:padev_studio/layar/alur.dart';
 
-Map<String, Object?> ev(int dt, String kind, {String proyek = 'simpeg', String? who, String? agentId, String? tool, String? sub, String? type}) => {
+Map<String, Object?> ev(int dt, String kind, {String proyek = 'simpeg', String? who, String? agentId, String? tool, String? sub, String? type, String? detail}) => {
       'ts': 1791000000000 + dt * 1000,
       'kind': kind,
       'proyek': proyek,
@@ -11,6 +11,7 @@ Map<String, Object?> ev(int dt, String kind, {String proyek = 'simpeg', String? 
       'tool': ?tool,
       'sub': ?sub,
       'type': ?type,
+      'detail': ?detail,
     };
 
 void main() {
@@ -57,6 +58,21 @@ void main() {
     expect(e.divisi, isEmpty);
     expect(AlurKerja.proyekTerbaru(putaran), 'etpp');
     expect(AlurKerja.dari(putaran, 'tidak-ada').kosong, isTrue);
+  });
+
+  test('G8 detail alat terakhir: Kepala & divisi; tanpa detail → null', () {
+    final a = AlurKerja.dari([
+      ev(0, 'prompt'),
+      ev(1, 'tool', tool: 'Read', detail: 'app/Models/A.php'),
+      ev(2, 'agent_start', who: 'divisi-qa', agentId: 'q'),
+      ev(3, 'tool', who: 'divisi-qa', agentId: 'q', tool: 'Bash', detail: 'php spark test'),
+      ev(4, 'tool_done', who: 'divisi-qa', agentId: 'q', tool: 'Bash', detail: 'diabaikan'),
+    ], 'simpeg');
+    expect(a.detailKepala, 'app/Models/A.php');
+    expect(a.divisi['qa']!.detail, 'php spark test');
+    final b = AlurKerja.dari([ev(0, 'prompt'), ev(1, 'tool', tool: 'Read', detail: 'x'), ev(2, 'tool', tool: 'Grep')], 'simpeg');
+    expect(b.detailKepala, isNull, reason: 'alat terakhir tanpa detail');
+    expect(AlurKerja.dari([ev(0, 'prompt')], 'simpeg').detailKepala, isNull);
   });
 
   test('label alat tanpa isi; nama agen dirapikan', () {

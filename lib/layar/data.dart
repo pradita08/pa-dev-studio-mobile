@@ -22,7 +22,7 @@ class Divisi {
   final String? namaMac;
   final String peran;
 
-  /// Urutan anggota berperan sama (1 = ketua, maks 3 = slot kantor 3D).
+  /// Urutan anggota berperan sama (1 = ketua, maks 3 per peran).
   final int ke;
 
   /// Nama dari Mac bila ada; Mac v2 hanya mengirim peran + ke → nama pegawai dari aset pegawai-nama.json (F2), lalu peran.
@@ -62,6 +62,104 @@ class RingkasPemakaian {
   const RingkasPemakaian({required this.hariIni, required this.proyek, required this.akun});
   final ButirPemakaian hariIni;
   final List<ButirPemakaian> proyek, akun;
+}
+
+/// Satu periode rekap (hari `tgl` atau bulan `bln`): angka per indeks [RekapAgen.agen] (KONTRAK-apk-v2 §10.13 B/D).
+class RekapPeriode {
+  const RekapPeriode(this.kunci, this.token, this.tugas, this.sen);
+
+  /// 'YYYY-MM-DD' (hari) atau 'YYYY-MM' (bulan), WIB.
+  final String kunci;
+
+  /// token setara · jumlah tugas · perkiraan biaya (sen USD).
+  final List<int> token, tugas, sen;
+}
+
+/// Rekap token per jenis agen dari `status.rekap` (G8). Hanya angka + nama agen (tanpa proyek/sesi/isi).
+class RekapAgen {
+  const RekapAgen({required this.dibuat, this.awal, required this.agen, required this.hari, required this.bulan});
+  final DateTime dibuat;
+
+  /// Tanggal data tertua di Mac ('YYYY-MM-DD'); null bila tidak dikirim.
+  final String? awal;
+  final List<String> agen;
+
+  /// [hari] maks 7 (lama → baru, hari ini terakhir); [bulan] maks 12 (lama → baru).
+  final List<RekapPeriode> hari, bulan;
+
+  /// Total token setara [agen] selama 7 hari; agen tak dikenal → 0.
+  int token7Hari(String agen) => harianAgen(agen).fold(0, (a, b) => a + b);
+
+  /// 7 angka token [agen] (lama → baru); hari yang tidak ada → 0 di depan.
+  List<int> harianAgen(String agen) {
+    final i = this.agen.indexOf(agen);
+    final isi = [for (final h in hari) i < 0 ? 0 : h.token[i]];
+    return [...List.filled(7 - isi.length, 0), ...isi];
+  }
+
+  /// `kepala` → `kepala` · `divisi-<x>` → `<x>` · selain itu → `pendukung`.
+  static String kelompok(String agen) => agen == 'kepala'
+      ? 'kepala'
+      : agen.startsWith('divisi-') && agen.length > 7
+          ? agen.substring(7)
+          : 'pendukung';
+
+  static final _reAgen = RegExp(r'^[a-z0-9:_-]{1,40}$'), _reTgl = RegExp(r'^\d{4}-\d{2}-\d{2}$'), _reBln = RegExp(r'^\d{4}-\d{2}$');
+
+  /// Parse ketat `status.rekap`: bentuk/versi/agen salah → null; periode cacat (kunci salah, panjang ≠ agen, angka bukan int ≥0) dibuang.
+  static RekapAgen? dari(Object? v) {
+    if (v is! Map || v['v'] != 1) return null;
+    final dibuat = v['dibuat'], agen = v['agen'], awal = v['awal'];
+    // agen:[] sah (Mac baru tanpa pemakaian) → rekap kosong, bukan "Mac lama" (QA-1 G8)
+    if (dibuat is! int || dibuat <= 0 || agen is! List || agen.length > 24) return null;
+    if (agen.any((a) => a is! String || !_reAgen.hasMatch(a)) || agen.toSet().length != agen.length) return null;
+    final nama = agen.cast<String>().toList(growable: false);
+    List<int>? angka(Object? x) =>
+        x is List && x.length == nama.length && x.every((n) => n is int && n >= 0) ? List<int>.unmodifiable(x.cast<int>()) : null;
+    List<RekapPeriode> periode(Object? x, String kunci, RegExp re, int maks) {
+      final hasil = <RekapPeriode>[];
+      for (final p in x is List ? x.take(60) : const []) {
+        if (p is! Map) continue;
+        final k = p[kunci], t = angka(p['t']), n = angka(p['n']), c = angka(p['c']);
+        if (k is String && re.hasMatch(k) && t != null && n != null && c != null) hasil.add(RekapPeriode(k, t, n, c));
+      }
+      return List.unmodifiable(hasil.length > maks ? hasil.sublist(hasil.length - maks) : hasil);
+    }
+
+    return RekapAgen(
+      dibuat: DateTime.fromMillisecondsSinceEpoch(dibuat),
+      awal: awal is String && _reTgl.hasMatch(awal) ? awal : null,
+      agen: nama,
+      hari: periode(v['hari'], 'tgl', _reTgl, 7),
+      bulan: periode(v['bulan'], 'bln', _reBln, 12),
+    );
+  }
+
+  /// Data contoh untuk sumber pratinjau (debug/profile) saja; bukan data nyata.
+  static RekapAgen contoh(DateTime kini) {
+    String d(DateTime w) => '${w.year}-${w.month.toString().padLeft(2, '0')}-${w.day.toString().padLeft(2, '0')}';
+    const agen = ['kepala', 'divisi-analis', 'divisi-programmer', 'divisi-ui', 'divisi-reviewer', 'divisi-qa', 'divisi-security', 'general-purpose', 'lainnya'];
+    const dasar = [420000, 90000, 610000, 230000, 120000, 150000, 80000, 60000, 15000];
+    final hari = [
+      for (var i = 6; i >= 0; i--)
+        RekapPeriode(
+          d(kini.subtract(Duration(days: i))),
+          [for (var j = 0; j < agen.length; j++) i == 3 && j > 0 ? 0 : dasar[j] * (7 - i + j % 3) ~/ 5],
+          [for (var j = 0; j < agen.length; j++) i == 3 && j > 0 ? 0 : 1 + (i + j) % 3],
+          [for (var j = 0; j < agen.length; j++) i == 3 && j > 0 ? 0 : dasar[j] * (7 - i + j % 3) ~/ 50000],
+        ),
+    ];
+    final bulan = [
+      for (var i = 2; i >= 0; i--)
+        RekapPeriode(
+          d(DateTime(kini.year, kini.month - i)).substring(0, 7),
+          [for (final b in dasar) b * (30 - i * 7)],
+          [for (var j = 0; j < agen.length; j++) 20 + j * 3 - i],
+          [for (final b in dasar) b * (30 - i * 7) ~/ 10000],
+        ),
+    ];
+    return RekapAgen(dibuat: kini, awal: d(kini.subtract(const Duration(days: 75))), agen: agen, hari: hari, bulan: bulan);
+  }
 }
 
 class ButirPemakaian {
@@ -104,7 +202,7 @@ class Proyek {
   /// Label bagian tab Proyek dari Mac (folder induk: KOMINFO/ARDANA/PRIVATE/Umum…); null = pelaksana lama → [grupUmum].
   final String? grup;
 
-  /// Claude sesi utama proyek ini (Kepala di kantor 3D): 'bekerja' | 'menunggu_izin' | 'diam'.
+  /// Claude sesi utama proyek ini (Kepala di tab Kantor): 'bekerja' | 'menunggu_izin' | 'diam'.
   final String utama;
   final List<String> akun;
 
@@ -349,7 +447,7 @@ abstract final class NamaPegawai {
   /// [ke] = urutan divisi berperan sama di satu sesi (1 = ketua).
   static String? cari(String peran, [int ke = 1]) {
     final p = peranPendek(peran);
-    return _peta['div:$p#$ke'] ?? _peta['$p#$ke'];
+    return _peta['div:$p#$ke'] ?? _peta['$p#$ke'] ?? (ke == 1 ? _peta[p] : null); // 'kepala'/'resepsionis' tanpa #ke
   }
 
   /// "Bima (programmer)" · "QA" bila nama tidak diketahui.
@@ -632,6 +730,9 @@ abstract class SumberData extends ChangeNotifier {
   /// Roadmap 3: ringkasan pemakaian token dari Mac (null = Mac lama / belum ada data).
   RingkasPemakaian? pemakaian;
 
+  /// G8: rekap token setara per jenis agen (`status.rekap`); null = Mac lama / belum ada → UI meminta pelaksana terbaru.
+  RekapAgen? rekap;
+
   /// Fitur Mac dari `status.fitur` (mis. 'akun_otomatis', 'antre_limit'); kosong = pelaksana lama.
   Set<String> fiturMac = const {};
 
@@ -660,8 +761,9 @@ abstract class SumberData extends ChangeNotifier {
   List<PerangkatTerhubung>? perangkatTerhubung;
   int maksPerangkat = 2;
 
-  /// Kejadian kantor terbaru dari Mac (`status.kantor`, F2b) untuk kantor 3D = office.html: bentuk normalize() server.js TANPA
-  /// isi (tanpa detail/teks/path; sesi di-hash). null = Mac belum mengirim field ini (pelaksana lama).
+  /// Kejadian kantor terbaru dari Mac (`status.kantor`, F2b) untuk alur tab Kantor: bentuk normalize() server.js TANPA isi
+  /// (tanpa teks; sesi di-hash); hanya `kind:'tool'` boleh membawa `detail` ≤80 huruf (G8, sudah disamarkan Mac).
+  /// null = Mac belum mengirim field ini (pelaksana lama).
   List<Map<String, Object?>>? kantor;
   String? versiMac;
 
@@ -1110,7 +1212,7 @@ abstract class SumberData extends ChangeNotifier {
 
   bool _kantorTerlihat = false;
 
-  /// Tab Kantor (3D) sedang terlihat → status ditarik tiap 4 dtk agar kantor bergerak mengikuti laptop (Mac mengirim status
+  /// Tab Kantor sedang terlihat → status ditarik tiap 4 dtk agar kantor bergerak mengikuti laptop (Mac mengirim status
   /// segera saat tim/Kepala berubah).
   set kantorTerlihat(bool v) {
     if (v == _kantorTerlihat) return;
@@ -1409,6 +1511,8 @@ abstract class SumberData extends ChangeNotifier {
     sambung = [for (final b in _daftar(st['sambung']).take(50)) ?SesiSambung.dari(_peta(b))];
     antreLimit = _daftar(st['antre']).length;
     pemakaian = _ringkasPemakaian(_peta(st['pemakaian']));
+    // pratinjau (debug/profile) tanpa `rekap` di data contoh → rekap contoh agar layar Rekap bisa tampil
+    rekap = RekapAgen.dari(st['rekap']) ?? (pratinjau ? RekapAgen.contoh(DateTime.now()) : null);
   }
 
   RingkasPemakaian? _ringkasPemakaian(Map<String, Object?>? m) {
@@ -1451,6 +1555,7 @@ abstract class SumberData extends ChangeNotifier {
         'sub': ?t(e['sub'], 80),
         'type': ?t(e['type'], 40),
         'proyek': ?t(e['proyek'], 40),
+        if (e['kind'] == 'tool') 'detail': ?t(e['detail'], 80),
       });
     }
     return hasil;
