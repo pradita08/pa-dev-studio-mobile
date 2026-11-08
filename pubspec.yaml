@@ -1,7 +1,7 @@
 name: padev_studio
 description: "PADEV Studio — pemantau & pengirim perintah kantor PADEV dari HP (Android)."
 publish_to: 'none'
-version: 0.2.0+2
+version: 0.2.0+30
 
 environment:
   sdk: ^3.12.0

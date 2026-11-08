@@ -1,7 +1,12 @@
 // Uji pengurai isi kabar (kontrak §2) → model tampilan.
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:padev_studio/kunci/kunci.dart';
+import 'package:padev_studio/komponen/komponen.dart';
+import 'package:padev_studio/layar/alur.dart';
 import 'package:padev_studio/layar/data.dart';
+import 'package:padev_studio/layar/rekap.dart';
+import 'package:padev_studio/tema/token.dart';
 
 class _SumberUji extends SumberData {
   void status(Map<String, Object?> isi) => terapkanStatus(isi);
@@ -156,14 +161,39 @@ void main() {
       expect(r.bulan.length, 2);
     });
 
-    test('bentuk salah → null (versi, dibuat, agen tidak sah/ganda/>24, bukan peta); tanpa field → null', () {
+    test('bentuk salah → null (versi, dibuat, agen tidak sah/ganda/>32, bukan peta); tanpa field → null', () {
       expect(baca({...rekap(), 'v': 2}), isNull);
       expect(baca({...rekap(), 'dibuat': '1791000000000'}), isNull);
       expect(baca({...rekap(), 'agen': ['kepala', 'Divisi QA', 'x']}), isNull);
       expect(baca({...rekap(), 'agen': ['kepala', 'kepala', 'x']}), isNull);
-      expect(baca({...rekap(), 'agen': [for (var i = 0; i < 25; i++) 'a$i']}), isNull);
+      expect(baca({...rekap(), 'agen': [for (var i = 0; i < 33; i++) 'a$i']}), isNull);
+      expect(baca({...rekap(), 'agen': ['kepala', 'divisi-qa#4', 'x']}), isNull);
+      expect(baca({...rekap(), 'agen': ['kepala#1', 'divisi-qa', 'x']}), isNull);
+      expect(baca({...rekap(), 'agen': ['kepala', 'explore#1', 'x']}), isNull);
+      expect(baca({...rekap(), 'agen': ['kepala', 'divisi-#1', 'x']}), isNull);
       expect((_SumberUji()..status({'status': {'proyek': [], 'rekap': 'x'}})).rekap, isNull);
       expect((_SumberUji()..status({'status': {'proyek': []}})).rekap, isNull);
+    });
+
+    test('G9 per orang: 32 agen sah; divisi-x = jumlah #1..#3; kelompok membuang #n; orang(agen)', () {
+      expect(baca({...rekap(), 'agen': [for (var i = 0; i < 32; i++) 'a$i'], 'hari': [], 'bulan': []}), isNotNull);
+      final r = baca({
+        ...rekap(),
+        'agen': ['kepala', 'divisi-programmer#1', 'divisi-programmer#2', 'divisi-programmer#3', 'divisi-qa#1'],
+        'hari': [for (var i = 2; i <= 8; i++) {'tgl': '2026-11-0$i', 't': [1, 10, 20, 0, 5], 'n': [0, 0, 0, 0, 0], 'c': [0, 0, 0, 0, 0]}],
+      })!;
+      expect(r.harianAgen('divisi-programmer'), List.filled(7, 30)); // 10 + 20 + 0 (orang #3 bertoken 0 tetap dihitung)
+      expect(r.token7Hari('divisi-programmer'), 210);
+      expect(r.token7Hari('divisi-programmer#2'), 140);
+      expect(r.token7Hari('divisi-qa'), 35);
+      expect(r.token7Hari('kepala'), 7);
+      expect(r.token7Hari('divisi-ui'), 0);
+      expect(RekapAgen.kelompok('divisi-qa#2'), 'qa');
+      expect(RekapAgen.kelompok('divisi-#2'), 'pendukung');
+      expect(RekapAgen.orang('divisi-qa#2'), ('qa', 2));
+      expect(RekapAgen.orang('divisi-qa'), ('qa', 1));
+      expect(RekapAgen.orang('kepala'), ('kepala', 1));
+      expect(RekapAgen.orang('explore'), ('explore', 1));
     });
 
     test('rekap contoh pratinjau: sah dan 7 hari', () {
@@ -172,9 +202,73 @@ void main() {
       expect(r.hari.last.kunci, '2026-11-08');
       expect(r.bulan.last.kunci, '2026-11');
       expect(r.token7Hari('divisi-programmer'), greaterThan(0));
+      expect(r.agen.length, lessThanOrEqualTo(32));
+      expect(r.token7Hari('divisi-programmer'), r.token7Hari('divisi-programmer#1') + r.token7Hari('divisi-programmer#2'));
       for (final p in [...r.hari, ...r.bulan]) {
         expect([p.token.length, p.tugas.length, p.sen.length], everyElement(r.agen.length));
       }
+    });
+  });
+
+  group('G9 Rekap per orang (tampil semua, token 0 tetap)', () {
+    // nama + angka dalam SATU baris (BarisBatang), bukan sekadar ada teks '0' di layar
+    void baris(WidgetTester t, String nama, String token) {
+      final b = find.ancestor(of: find.text(nama), matching: find.byType(BarisBatang));
+      expect(b, findsOneWidget, reason: '$nama harus tampil');
+      expect(find.descendant(of: b, matching: find.text(token)), findsOneWidget, reason: '$nama harus bertoken $token');
+    }
+
+    Future<void> tampil(WidgetTester t, RekapAgen r) async {
+      t.view.physicalSize = const Size(390, 5000);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.reset);
+      addTearDown(() => NamaPegawai.atur(const {}));
+      final s = _SumberUji()..memuatAwal = false;
+      s.rekap = r;
+      await t.pumpWidget(MaterialApp(theme: temaPadev(Brightness.light), home: Scaffold(body: LayarRekap(sumber: s))));
+    }
+
+    Map<String, String> aset() => {
+          for (final p in namaDivisi.keys)
+            for (final ke in [1, 2, 3]) 'div:$p#$ke': '${p.toUpperCase()}$ke',
+          'kepala': 'Nerro',
+        };
+
+    RekapAgen rekapDari(List<String> agen, List<int> tokenHari) => RekapAgen(
+          dibuat: DateTime(2026, 11, 9),
+          agen: agen,
+          bulan: const [],
+          hari: [for (var i = 1; i <= 7; i++) RekapPeriode('2026-11-0$i', tokenHari, List.filled(agen.length, 1), List.filled(agen.length, 0))],
+        );
+
+    testWidgets('contoh: jumlah divisi + orang, 0 token tampil', (t) async {
+      NamaPegawai.atur({'div:programmer#1': 'Pradita', 'div:programmer#2': 'Zaenal', 'div:programmer#3': 'Nikmah'});
+      await tampil(t, RekapAgen.contoh(DateTime(2026, 11, 9)));
+      expect(find.text('Programmer'), findsOneWidget);
+      baris(t, 'Nikmah', '0');
+      expect(find.text('Analis #2'), findsOneWidget); // nama orang belum ada → "<Divisi> #ke"
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('R tanpa divisi-x#3 → orang ke-3 tetap tampil 0; R tanpa satu divisi sama sekali → 3 orang 0 + jumlah 0', (t) async {
+      NamaPegawai.atur(aset());
+      // hanya programmer#1 (700 = 100/hari) dan programmer#2 (70); divisi lain tidak ada di R
+      await tampil(t, rekapDari(['kepala', 'divisi-programmer#1', 'divisi-programmer#2'], [10, 100, 10]));
+      baris(t, 'PROGRAMMER1', '700');
+      baris(t, 'PROGRAMMER2', '70');
+      baris(t, 'PROGRAMMER3', '0'); // tak ada di R
+      baris(t, 'Programmer', '770');
+      for (final p in namaDivisi.keys.where((k) => k != 'programmer')) {
+        baris(t, namaDivisi[p]!, '0');
+        for (final ke in [1, 2, 3]) {
+          baris(t, '${p.toUpperCase()}$ke', '0');
+        }
+      }
+      // judul menghitung baris agen yang tampil: kepala + 8 divisi × 3 orang
+      expect(find.text('PER AGEN · 25 AGEN · 7 HARI'), findsOneWidget);
+      // divisi total 0 di bawah divisi berisi
+      expect(t.getTopLeft(find.text('Programmer')).dy, lessThan(t.getTopLeft(find.text('Analis')).dy));
+      expect(t.takeException(), isNull);
     });
   });
 

@@ -314,7 +314,7 @@ class _KartuKepala extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Claude · Kepala', style: TextStyle(color: w.ink, fontSize: 15, fontWeight: FontWeight.w800)),
+            Text('${NamaPegawai.cari('kepala') ?? 'Nerro'} · Kepala', style: TextStyle(color: w.ink, fontSize: 15, fontWeight: FontWeight.w800)),
             if (alur.aktivitasKepala != null) Text(alur.aktivitasKepala!, style: TeksPadev.redup(w, ukuran: 13)),
             if (alur.detailKepala != null && alur.berjalan)
               Text(alur.detailKepala!, maxLines: 1, overflow: TextOverflow.ellipsis, style: TeksPadev.mono(w.muted)),

@@ -91,28 +91,40 @@ class RekapAgen {
   int token7Hari(String agen) => harianAgen(agen).fold(0, (a, b) => a + b);
 
   /// 7 angka token [agen] (lama → baru); hari yang tidak ada → 0 di depan.
+  /// `divisi-<x>` = JUMLAH semua `divisi-<x>#n` (G9); kunci persis (`divisi-<x>#2`, `kepala`) = miliknya sendiri.
   List<int> harianAgen(String agen) {
-    final i = this.agen.indexOf(agen);
-    final isi = [for (final h in hari) i < 0 ? 0 : h.token[i]];
+    final ix = [for (final (i, a) in this.agen.indexed) if (a == agen || a.startsWith('$agen#')) i];
+    final isi = [for (final h in hari) ix.fold(0, (s, i) => s + h.token[i])];
     return [...List.filled(7 - isi.length, 0), ...isi];
   }
 
-  /// `kepala` → `kepala` · `divisi-<x>` → `<x>` · selain itu → `pendukung`.
-  static String kelompok(String agen) => agen == 'kepala'
-      ? 'kepala'
-      : agen.startsWith('divisi-') && agen.length > 7
-          ? agen.substring(7)
-          : 'pendukung';
+  /// `kepala` → `kepala` · `divisi-<x>` / `divisi-<x>#n` → `<x>` · selain itu → `pendukung`.
+  static String kelompok(String agen) {
+    final a = agen.contains('#') ? agen.substring(0, agen.indexOf('#')) : agen;
+    return a == 'kepala'
+        ? 'kepala'
+        : a.startsWith('divisi-') && a.length > 7
+            ? a.substring(7)
+            : 'pendukung';
+  }
 
-  static final _reAgen = RegExp(r'^[a-z0-9:_-]{1,40}$'), _reTgl = RegExp(r'^\d{4}-\d{2}-\d{2}$'), _reBln = RegExp(r'^\d{4}-\d{2}$');
+  /// `divisi-qa#2` → `('qa', 2)` · `divisi-qa` → `('qa', 1)` · `kepala` → `('kepala', 1)` · pendukung → `(nama agen, 1)`. Untuk [NamaPegawai.cari].
+  static (String, int) orang(String agen) {
+    final i = agen.indexOf('#');
+    final k = kelompok(agen);
+    return (k == 'pendukung' ? (i < 0 ? agen : agen.substring(0, i)) : k, i < 0 ? 1 : int.tryParse(agen.substring(i + 1)) ?? 1);
+  }
+
+  static final _reAgen = RegExp(r'^[a-z0-9:_-]{1,40}(#[1-3])?$'), _reTgl = RegExp(r'^\d{4}-\d{2}-\d{2}$'), _reBln = RegExp(r'^\d{4}-\d{2}$');
 
   /// Parse ketat `status.rekap`: bentuk/versi/agen salah → null; periode cacat (kunci salah, panjang ≠ agen, angka bukan int ≥0) dibuang.
   static RekapAgen? dari(Object? v) {
     if (v is! Map || v['v'] != 1) return null;
     final dibuat = v['dibuat'], agen = v['agen'], awal = v['awal'];
     // agen:[] sah (Mac baru tanpa pemakaian) → rekap kosong, bukan "Mac lama" (QA-1 G8)
-    if (dibuat is! int || dibuat <= 0 || agen is! List || agen.length > 24) return null;
-    if (agen.any((a) => a is! String || !_reAgen.hasMatch(a)) || agen.toSet().length != agen.length) return null;
+    if (dibuat is! int || dibuat <= 0 || agen is! List || agen.length > 32) return null;
+    // '#n' hanya sah di belakang divisi-<x> (§10.14)
+    if (agen.any((a) => a is! String || !_reAgen.hasMatch(a) || (a.contains('#') && !(a.startsWith('divisi-') && a.indexOf('#') > 7))) || agen.toSet().length != agen.length) return null;
     final nama = agen.cast<String>().toList(growable: false);
     List<int>? angka(Object? x) =>
         x is List && x.length == nama.length && x.every((n) => n is int && n >= 0) ? List<int>.unmodifiable(x.cast<int>()) : null;
@@ -138,8 +150,11 @@ class RekapAgen {
   /// Data contoh untuk sumber pratinjau (debug/profile) saja; bukan data nyata.
   static RekapAgen contoh(DateTime kini) {
     String d(DateTime w) => '${w.year}-${w.month.toString().padLeft(2, '0')}-${w.day.toString().padLeft(2, '0')}';
-    const agen = ['kepala', 'divisi-analis', 'divisi-programmer', 'divisi-ui', 'divisi-reviewer', 'divisi-qa', 'divisi-security', 'general-purpose', 'lainnya'];
-    const dasar = [420000, 90000, 610000, 230000, 120000, 150000, 80000, 60000, 15000];
+    // beberapa divisi berisi 2–3 orang (G9); satu orang bertoken 0 (programmer#3) untuk menguji baris kosong
+    const agen = ['kepala', 'divisi-analis#1', 'divisi-analis#2', 'divisi-programmer#1', 'divisi-programmer#2', 'divisi-programmer#3', 'divisi-ui#1',
+      'divisi-ui#2', 'divisi-reviewer', 'divisi-qa#1', 'divisi-qa#2', 'divisi-security', 'divisi-dokumentasi', 'divisi-devops', 'fullstack-quickfix',
+      'explore', 'plan', 'general-purpose', 'lainnya'];
+    const dasar = [420000, 60000, 30000, 380000, 230000, 0, 160000, 70000, 120000, 90000, 60000, 80000, 40000, 30000, 25000, 70000, 20000, 60000, 15000];
     final hari = [
       for (var i = 6; i >= 0; i--)
         RekapPeriode(

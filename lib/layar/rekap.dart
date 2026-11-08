@@ -71,15 +71,23 @@ class _LayarRekapState extends State<LayarRekap> {
     final grafikLabel = bulanan ? [for (final p in r.bulan) _labelBulan(p.kunci)] : labelHari(r).sublist(7 - r.hari.length);
     final judulGrafik = bulanan ? 'Token per bulan' : 'Token per hari';
 
-    // per divisi (RekapAgen.kelompok), maks 8 baris + "Lainnya"
-    final kelompok = <String, int>{};
+    // per divisi: satu baris jumlah + 3 baris orang (#1..#3, G9); SEMUA divisi dari aset pegawai tampil walau tak ada di rekap (token 0, owner 2026-11-09).
+    // Kepala & pendukung satu baris. Urut token terbesar; yang 0 di bawah (nama sebagai pemutus seri).
+    final grup = <String, List<(String, int)>>{};
     for (final (i, a) in r.agen.indexed) {
-      if (perAgen[i] > 0) kelompok.update(RekapAgen.kelompok(a), (v) => v + perAgen[i], ifAbsent: () => perAgen[i]);
+      grup.putIfAbsent(_kunciGrup(a), () => []).add((a, perAgen[i]));
     }
-    final urut = kelompok.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-    final tampil = urut.take(urut.length > 8 ? 7 : 8).toList();
-    final sisa = urut.skip(tampil.length).fold(0, (a, e) => a + e.value);
-    final maks = urut.isEmpty ? 0 : urut.first.value;
+    for (final k in namaDivisi.keys) {
+      if (!grup.containsKey('divisi-$k') && [1, 2, 3].any((ke) => NamaPegawai.cari(k, ke) != null)) grup['divisi-$k'] = [];
+    }
+    final urut = <(String, List<(String, int)>, int, bool)>[];
+    for (final e in grup.entries) {
+      final orang = _orangDivisi(e.key, e.value);
+      urut.add((e.key, orang ?? [(e.key, e.value.fold(0, (s, x) => s + x.$2))], e.value.fold(0, (s, x) => s + x.$2), orang != null));
+    }
+    urut.sort((a, b) => b.$3 != a.$3 ? b.$3.compareTo(a.$3) : _namaAgen(a.$1).compareTo(_namaAgen(b.$1)));
+    final maks = urut.isEmpty ? 0 : urut.first.$3;
+    final jumlahBaris = urut.fold(0, (n, g) => n + g.$2.length);
 
     return ListView(padding: pad, children: [
       Segmen<bool>(
@@ -120,7 +128,7 @@ class _LayarRekapState extends State<LayarRekap> {
           ),
         ]),
         const SizedBox(height: 10),
-        KartuAngka(label: 'Agen aktif', nilai: '${perAgen.where((t) => t > 0).length}', sub: 'jenis agen dengan token > 0'),
+        KartuAngka(label: 'Agen aktif', nilai: '${perAgen.where((t) => t > 0).length}', sub: 'agen / orang dengan token > 0'),
         Padding(
           padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
           child: Text('Perkiraan biaya ≈ US\$${(sen / 100).toStringAsFixed(2).replaceAll('.', ',')} (tabel harga di Mac, bukan tagihan)',
@@ -135,17 +143,25 @@ class _LayarRekapState extends State<LayarRekap> {
             semantik: semantikGrafik(judulGrafik, grafikLabel, grafikNilai),
           ),
         ),
-        JudulBagian(bulanan ? 'PER DIVISI · BULAN INI' : 'PER DIVISI · 7 HARI'),
+        JudulBagian('PER AGEN · $jumlahBaris AGEN · ${bulanan ? 'BULAN INI' : '7 HARI'}'),
         Kartu(
           anak: Column(children: [
-            for (final e in tampil)
-              BarisBatang(
-                awal: AvatarDivisi(nama: _orang(e.key) ?? _namaKelompok(e.key), ukuran: 28),
-                nama: _namaKelompok(e.key),
-                nilai: e.value,
-                maks: maks,
-              ),
-            if (sisa > 0) BarisBatang(awal: const AvatarDivisi(nama: '…', ukuran: 28), nama: 'Lainnya', nilai: sisa, maks: maks),
+            for (final (kunci, anggota, total, perOrang) in urut)
+              if (!perOrang)
+                BarisBatang(
+                  awal: AvatarDivisi(nama: _orang(kunci) ?? _namaAgen(kunci), ukuran: 28),
+                  nama: _namaAgen(kunci),
+                  nilai: total,
+                  maks: maks,
+                )
+              else ...[
+                BarisBatang(awal: AvatarDivisi(nama: _namaAgen(kunci), ukuran: 28), nama: _namaAgen(kunci), nilai: total, maks: maks),
+                for (final (a, t) in anggota)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 20),
+                    child: BarisBatang(awal: AvatarDivisi(nama: _namaOrang(a), ukuran: 22), nama: _namaOrang(a), nilai: t, maks: maks),
+                  ),
+              ],
           ]),
         ),
       ],
@@ -157,11 +173,36 @@ class _LayarRekapState extends State<LayarRekap> {
     ]);
   }
 
-  static String _namaKelompok(String k) => switch (k) {
-        'kepala' => 'Kepala',
-        'pendukung' => 'Pendukung',
-        _ => DivisiAlur(k).nama,
+  /// 'kepala' → "Nerro (Kepala)" · 'divisi-qa' → "QA" · 'lainnya' → "Lainnya" · agen lain → nama dirapikan ("General purpose").
+  static String _namaAgen(String a) => switch (RekapAgen.kelompok(a)) {
+        'kepala' => '${NamaPegawai.cari('kepala') ?? 'Nerro'} (Kepala)',
+        'pendukung' => a == 'lainnya' ? 'Lainnya' : DivisiAlur(a).nama,
+        final k => DivisiAlur(k).nama,
       };
 
-  static String? _orang(String k) => k == 'pendukung' ? null : NamaPegawai.cari(k);
+  /// Baris orang sebuah divisi: kunci `divisi-x#1..#3` (3 baris, token 0 bila tak ada di rekap). null = bukan divisi / divisi tak dikenal tanpa `#` → satu baris.
+  static List<(String, int)>? _orangDivisi(String kunci, List<(String, int)> anggota) {
+    if (!kunci.startsWith('divisi-')) return null;
+    final dikenal = namaDivisi.containsKey(kunci.substring(7)) || [1, 2, 3].any((ke) => NamaPegawai.cari(kunci, ke) != null);
+    if (!dikenal && !anggota.any((x) => x.$1.contains('#'))) return null;
+    int per(int ke) => anggota.where((x) => RekapAgen.orang(x.$1).$2 == ke).fold(0, (s, x) => s + x.$2);
+    return [for (final ke in [1, 2, 3]) if (dikenal || anggota.any((x) => RekapAgen.orang(x.$1).$2 == ke)) ('$kunci#$ke', per(ke))];
+  }
+
+  /// Kunci baris divisi: 'divisi-x#2' → 'divisi-x'; kepala & pendukung → kuncinya sendiri.
+  static String _kunciGrup(String a) {
+    final k = RekapAgen.kelompok(a);
+    return k == 'kepala' || k == 'pendukung' ? a : 'divisi-$k';
+  }
+
+  /// Nama orang dari aset pegawai; belum ada → "Programmer #2".
+  static String _namaOrang(String a) {
+    final (peran, ke) = RekapAgen.orang(a);
+    return NamaPegawai.cari(peran, ke) ?? '${_namaAgen(a)} #$ke';
+  }
+
+  static String? _orang(String a) {
+    final k = RekapAgen.kelompok(a);
+    return a == 'lainnya' ? null : NamaPegawai.cari(k == 'pendukung' ? a : k);
+  }
 }
