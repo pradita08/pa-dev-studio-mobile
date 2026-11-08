@@ -1,5 +1,6 @@
 // Uji F1b: kabar `keputusan` → model, jawab (pilihan dicek `boleh`), dan kartu keputusan (tombol & jawaban pertanyaan).
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:padev_studio/kunci/kunci.dart';
 import 'package:padev_studio/layar/data.dart';
@@ -242,5 +243,55 @@ void main() {
       expect(find.text('Dari pesan HP Anda'), findsNothing);
       await t.pumpWidget(const SizedBox());
     });
+  });
+
+  // G7 §10.12: status Mac `bebas` → "Izinkan selalu" tampil lagi pada kartu izin biasa (mode sesi kerjakanPin menyembunyikannya).
+  group('mode bebas', () {
+    const kanal = MethodChannel('pro.padeveloper.studio/kunci');
+    void pasang({required bool bebas}) =>
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(kanal, (c) async {
+          if (c.method != 'statusPasang') return null;
+          return {
+            'status': 'aktif', 'namaMac': 'Mac', 'macId': '0' * 16, 'perangkatId': '1' * 16, 'relay': 'https://r/',
+            'kerjakanPin': true, 'bebas': bebas, 'macBebas': bebas,
+          };
+        });
+    tearDown(() => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(kanal, null));
+
+    test('perintah baca ditolak kerjakan_perlu_pasang_ulang (bebas dimatikan) → ajakan pasang ulang di tab Sesi', () {
+      final s = _SumberUji();
+      s.kabarMasuk({
+        'jenis': 'tanda_terima',
+        'tanda_terima': {'perintah_id': 'c' * 32, 'hasil': 'ditolak', 'alasan': 'kerjakan_perlu_pasang_ulang'},
+      });
+      expect(s.galatDaftar, 'kerjakan_perlu_pasang_ulang');
+      expect(pesanCermin(s.galatDaftar!), contains('Pasang ulang HP'));
+    });
+
+    test('status bebas → macBebas (teks PIN sekali per sesi di lembar Kerjakan)', () {
+      final s = _SumberUji();
+      Map<String, Object?> st(bool bebas) => {
+            'jenis': 'status',
+            'status': {'proyek': [], 'versi': '1', if (bebas) 'bebas': true},
+          };
+      s.kabarMasuk(st(true));
+      expect(s.macBebas, isTrue);
+      s.kabarMasuk(st(false));
+      expect(s.macBebas, isFalse);
+    });
+
+    for (final bebas in [false, true]) {
+      testWidgets('kerjakanPin${bebas ? ' + bebas' : ''}: Izinkan selalu ${bebas ? 'tampil' : 'tersembunyi'}', (t) async {
+        pasang(bebas: bebas);
+        final s = _SumberUji();
+        s.kabarMasuk(_kabar(1, [_butir(_idA)]));
+        await t.pumpWidget(_app(LayarKeputusan(sumber: s)));
+        await t.pump();
+        await t.pump();
+        expect(find.text('Izinkan selalu'), bebas ? findsOneWidget : findsNothing);
+        expect(find.text('Izinkan sekali'), findsOneWidget);
+        await t.pumpWidget(const SizedBox());
+      });
+    }
   });
 }

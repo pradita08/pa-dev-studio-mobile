@@ -51,7 +51,7 @@ class GalatKunci implements Exception {
     // G2: Kerjakan pakai PIN
     'push_hanya_dari_mac': 'Push dari HP ditutup selama Kerjakan pakai PIN. Push dari Mac/VS Code.',
     'izinkan_selalu_hanya_dari_mac': 'Izinkan selalu dari HP ditutup selama mode sesi. Pakai Izinkan sekali, atau atur dari Mac/VS Code.',
-    'kerjakan_perlu_pasang_ulang': 'Setelan Kerjakan di Mac berubah. Pasang ulang HP ini.',
+    'kerjakan_perlu_pasang_ulang': 'Setelan HP di Mac berubah. Pasang ulang HP ini: Pengaturan → Lepas perangkat, lalu pindai QR baru.',
     'proyek_sedang_bekerja': 'Claude masih bekerja di proyek ini. Tunggu tugasnya selesai.',
     // roadmap 2b/2c: pratinjau langsung (pelaksana-pratinjau.js)
     'pratinjau_mati': 'Pratinjau belum menyala. Nyalakan dulu.',
@@ -102,7 +102,9 @@ class StatusPasang {
         idEHp = m['idEHp'] as String?,
         kunciUtuh = m['kunciUtuh'] == true,
         perluPasangUlang = m['perluPasangUlang'] == true,
-        kerjakanPin = m['kerjakanPin'] == true;
+        kerjakanPin = m['kerjakanPin'] == true,
+        bebas = m['bebas'] == true,
+        macBebas = m['macBebas'] == true;
 
   /// 'menunggu' (kode 6 digit tampil, tunggu `ya` di Mac) | 'aktif' | 'ditolak' | 'dicabut'
   final String status;
@@ -120,6 +122,12 @@ class StatusPasang {
 
   /// G3: kunci Kerjakan HP ini memakai mode sesi (buka aplikasi sekali, ±5 menit tanpa prompt per perintah).
   final bool kerjakanPin;
+
+  /// G7 §10.12: kunci HP ini mode bebas — PIN/sidik jari sekali per sesi (ditegakkan Kotlin), bukan per perintah.
+  final bool bebas;
+
+  /// G7 §10.12: status Mac terakhir `bebas:true` → "Izinkan selalu" & push dari HP diterima Mac.
+  final bool macBebas;
 }
 
 class HasilPasang {

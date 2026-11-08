@@ -15,6 +15,8 @@ class DataQr(
     val kedaluwarsa: Long,
     /** G2: petunjuk Mac `kerjakanPin` → K_kerjakan sidik jari ATAU PIN layar (Mac tetap memutuskan dari atestasi). */
     val kerjakanPin: Boolean = false,
+    /** G7 §10.12: penawaran `bebas` → K_rencana & K_kerjakan tanpa autentikasi per pakai (Mac menerimanya hanya saat bebas). */
+    val bebas: Boolean = false,
 ) {
     val sMacId: String get() = Kripto.idKunciEcdsa(sMacSpki)
     val eMacId: String get() = Kripto.idKunciX25519(eMacRaw)
@@ -22,6 +24,7 @@ class DataQr(
 
 object Pasang {
     private val FIELD_QR = setOf("v", "relay", "mac_id", "nama_mac", "kode_daftar", "rahasia", "s_mac", "e_mac", "kedaluwarsa")
+    private val FIELD_OPSIONAL = setOf("kerjakan_pin", "bebas")
     private const val QR_MAKS_DEPAN = 10 * 60_000L // QR berlaku 5 mnt; toleransi selisih jam HP–Mac
 
     /**
@@ -31,9 +34,10 @@ object Pasang {
     fun uraiQr(teks: String, sekarang: Long, relayDiizinkan: String?): DataQr {
         if (teks.length > 4096) throw GalatKunci("qr_tidak_sah")
         val o = try { JsonKetat.objek(teks) } catch (e: JsonSalah) { throw GalatKunci("qr_tidak_sah") }
-        // G2: `kerjakan_pin` opsional (Mac hanya mengirimnya bila true); field lain tetap ditolak
-        if ((o.keys != FIELD_QR && o.keys != FIELD_QR + "kerjakan_pin") || o["v"] != 1L) throw GalatKunci("qr_tidak_sah")
+        // G2: `kerjakan_pin` opsional (Mac hanya mengirimnya bila true); G7: `bebas` opsional; field lain tetap ditolak
+        if (!o.keys.containsAll(FIELD_QR) || !FIELD_OPSIONAL.containsAll(o.keys - FIELD_QR) || o["v"] != 1L) throw GalatKunci("qr_tidak_sah")
         val pin = o["kerjakan_pin"]?.let { it as? Boolean ?: throw GalatKunci("qr_tidak_sah") } ?: false
+        val bebas = o["bebas"]?.let { it as? Boolean ?: throw GalatKunci("qr_tidak_sah") } ?: false
         val relay = o["relay"] as? String ?: throw GalatKunci("qr_tidak_sah")
         if (!relay.startsWith("https://") || relay.contains('@') || !relay.endsWith("/") || relay.length > 200) throw GalatKunci("qr_tidak_sah")
         if (relayDiizinkan != null && relay != relayDiizinkan) throw GalatKunci("qr_tidak_sah")
@@ -47,14 +51,17 @@ object Pasang {
         val kd = o["kedaluwarsa"] as? Long ?: throw GalatKunci("qr_tidak_sah")
         if (sekarang > kd) throw GalatKunci("qr_kedaluwarsa")
         if (kd > sekarang + QR_MAKS_DEPAN) throw GalatKunci("qr_tidak_sah")
-        return DataQr(relay, macId, nama, kode, rahasia, sMac, eMac, kd, pin)
+        return DataQr(relay, macId, nama, kode, rahasia, sMac, eMac, kd, pin, bebas)
     }
 
     /**
      * G2 KF-07: kunci Kerjakan HP tidak sesuai setelan Mac saat ini → "Pasang ulang agar PIN berlaku".
      * [macPin] = petunjuk `kerjakanPin` di status terverifikasi terakhir (null = status belum ada → tidak diketahui).
+     * G7 §10.12: kunci bebas hanya diterima Mac saat bebas → pasang ulang bila Mac tidak bebas; Mac bebas + kunci lama → pasang ulang
+     * agar PIN sekali per sesi berlaku. [macBebas] null = status belum ada.
      */
-    fun perluPasangUlang(macPin: Boolean?, kunciPin: Boolean): Boolean = macPin != null && macPin != kunciPin
+    fun perluPasangUlang(macPin: Boolean?, kunciPin: Boolean, macBebas: Boolean? = null, kunciBebas: Boolean = false): Boolean =
+        if (kunciBebas) macBebas == false else (macPin != null && macPin != kunciPin) || macBebas == true
 
     /** Badan `POST hp/daftar` (kontrak v1.1 §4/§7): kode_daftar + mac_id dari QR. */
     fun badanDaftar(qr: DataQr): Map<String, Any> = linkedMapOf("kode_daftar" to qr.kodeDaftar, "mac_id" to qr.macId)

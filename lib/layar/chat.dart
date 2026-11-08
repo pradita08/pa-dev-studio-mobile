@@ -256,9 +256,16 @@ class _LayarChatState extends State<LayarChat> {
         ),
         const SizedBox(height: 12),
         Row(children: [
-          Icon(Simbol.sidikJari, size: 16, color: w.muted),
+          Icon(s.macBebas ? Simbol.gembok : Simbol.sidikJari, size: 16, color: w.muted),
           const SizedBox(width: 6),
-          Expanded(child: Text('Berikutnya HP meminta sidik jari (wajib, tanpa PIN).', style: TeksPadev.redup(w, ukuran: 12))),
+          Expanded(
+            child: Text(
+              s.macBebas
+                  ? 'HP meminta sidik jari atau PIN layar sekali untuk sesi ini; pesan berikutnya ke sesi yang sama tanpa prompt (12 jam).'
+                  : 'Berikutnya HP meminta sidik jari (wajib, tanpa PIN).',
+              style: TeksPadev.redup(w, ukuran: 12),
+            ),
+          ),
         ]),
         const SizedBox(height: 14),
         FilledButton(
@@ -813,13 +820,18 @@ class _ButirTugas extends StatelessWidget {
       case TahapTugas.diterima:
         baris(const _StatusKecil(ikon: Simbol.pasir, teks: 'Diterima Mac, menunggu mulai…'));
       case TahapTugas.antre:
-        final sebab = t.alasan?.replaceFirst('menunggu limit akun pulih: ', '');
+        const awalLimit = 'menunggu limit akun pulih: ';
+        final limit = t.alasan?.startsWith(awalLimit) ?? false;
+        final sebab = limit ? t.alasan!.substring(awalLimit.length) : null;
         baris(_Kotak(
           fg: w.warnt,
           bg: w.warnb,
           ikon: Simbol.pasir,
-          teks: 'Antre: limit akun hampir habis. Mac menjalankannya sendiri saat limit pulih'
-              '${t.antreSampai == null ? '' : ' (sekitar ${jamMenit(t.antreSampai!)})'} — tidak perlu kirim ulang.',
+          // sambung G5 ('menunggu giliran sesi di Mac'): panel sesi masih bekerja, pesan masuk ke panel saat gilirannya selesai
+          teks: limit
+              ? 'Antre: limit akun hampir habis. Mac menjalankannya sendiri saat limit pulih'
+                  '${t.antreSampai == null ? '' : ' (sekitar ${jamMenit(t.antreSampai!)})'} — tidak perlu kirim ulang.'
+              : 'Antre: Claude di Mac masih bekerja. Pesan masuk ke panel sesi itu begitu gilirannya selesai — tidak perlu kirim ulang.',
           mono: sebab == null || sebab.isEmpty ? null : sebab,
         ));
       default:

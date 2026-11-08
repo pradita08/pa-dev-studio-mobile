@@ -27,6 +27,9 @@ object Biometrik {
     /** Buka aplikasi / otentikasi K_rencana: sidik jari ATAU kredensial layar (PIN/pola/sandi sistem). */
     fun bukaKunci(aktivitas: FragmentActivity, teks: Teks): Boolean = tampil(aktivitas, teks, BUKA, null) != null
 
+    /** G7 §10.12: PIN sekali per sesi (pasangan bebas) — BIOMETRIC_STRONG | DEVICE_CREDENTIAL, tanpa CryptoObject; teks dari Kotlin (SEC-51). */
+    fun konfirmasiPinSesi(aktivitas: FragmentActivity, teks: Teks): Boolean = tampil(aktivitas, teks, BUKA, null) != null
+
     /**
      * Konfirmasi Kerjakan (kunci sidik jari tiap perintah): BIOMETRIC_STRONG + CryptoObject(Signature K_kerjakan) per pemakaian.
      * Mengembalikan Signature yang sudah dibuka. Kunci mode sesi (G3) memakai [bukaKunci] lewat Inti.tandaKerjakan.

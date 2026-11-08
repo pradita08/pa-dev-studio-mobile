@@ -36,6 +36,8 @@ class Inti(context: Context) {
         val status get() = o["status"] as String
         /** G3: K_kerjakan dibuat mode sesi (petunjuk QR saat pasang, S-G3-5); pasangan lama tanpa field = sidik jari tiap perintah. */
         val kerjakanPin get() = o["kerjakan_pin"] == true
+        /** G7 §10.12: kedua kunci dibuat tanpa autentikasi per pakai (QR `bebas`); PIN sekali per sesi lewat [gerbangSesi]. */
+        val bebas get() = o["bebas"] == true
     }
 
     fun pasangan(): Pasangan? = brankas.baca(K_PASANG)?.let { Pasangan(JsonKetat.objek(it)) }
@@ -61,7 +63,10 @@ class Inti(context: Context) {
             "idEHp" to if (ehp.ada()) ehp.pasangan().id.substring(0, 8) else null,
             "kunciUtuh" to (kr != null && kk != null && ehp.ada()),
             // G2 KF-07: jenis kunci Kerjakan + petunjuk untuk Pengaturan ("Pasang ulang agar PIN berlaku")
-            "kerjakanPin" to p.kerjakanPin, "perluPasangUlang" to Pasang.perluPasangUlang(macKerjakanPin(), p.kerjakanPin),
+            "kerjakanPin" to p.kerjakanPin,
+            "perluPasangUlang" to (Pasang.perluPasangUlang(macKerjakanPin(), p.kerjakanPin, macBebas(), p.bebas) || p.o["perlu_pasang_ulang"] == true),
+            // G7 §10.12: kunci HP ini bebas (PIN sekali per sesi) + mode bebas Mac di status terakhir (tombol "Izinkan selalu")
+            "bebas" to p.bebas, "macBebas" to (macBebas() == true),
         )
     }
 
@@ -69,6 +74,68 @@ class Inti(context: Context) {
     private fun macKerjakanPin(): Boolean? {
         val st = brankas.baca(K_STATUS)?.let { runCatching { JsonKetat.objek(it) }.getOrNull() } ?: return null
         return (st["status"] as? Map<*, *>)?.get("kerjakanPin") == true
+    }
+
+    /** Petunjuk `bebas` dari status Mac terverifikasi terakhir (§10.12); null bila status belum ada. */
+    private fun macBebas(): Boolean? {
+        val st = brankas.baca(K_STATUS)?.let { runCatching { JsonKetat.objek(it) }.getOrNull() } ?: return null
+        return (st["status"] as? Map<*, *>)?.get("bebas") == true
+    }
+
+    // ------------------------------------------------------------------ PIN sekali per sesi (G7 §10.12, hanya pasangan bebas)
+
+    private val kunciIzin = Any()
+
+    private fun izinSesi(): IzinSesi = IzinSesi.dari(runCatching { brankas.baca(K_IZIN_SESI) }.getOrNull())
+
+    private fun ubahIzin(f: (IzinSesi) -> Unit) = synchronized(kunciIzin) {
+        val iz = izinSesi()
+        f(iz)
+        brankas.simpan(K_IZIN_SESI, if (iz.kosong()) null else iz.keJson())
+    }
+
+    /**
+     * Gerbang sebelum Balas / Lanjutkan / Kerjakan / izinkan ke sesi: pasangan bebas & sesi belum berizin (atau Kerjakan baru) →
+     * [Biometrik.konfirmasiPinSesi] dengan [teks] perintah itu. Mengembalikan kunci izin (dicatat sesudah terkirim); null = pasangan lama.
+     */
+    private fun gerbangSesi(aktivitas: FragmentActivity?, p: Pasangan, proyek: String, akun: String, sesi: String?, baru: Boolean, teks: Biometrik.Teks): String? {
+        if (!p.bebas) return null
+        val iz = izinSesi()
+        val k = iz.kunci(proyek, akun, sesi, baru)
+        if (baru || !iz.berlaku(k, System.currentTimeMillis())) {
+            val a = aktivitas ?: throw GalatKunci("perlu_otentikasi")
+            if (!Biometrik.konfirmasiPinSesi(a, teks)) throw GalatKunci("dibatalkan")
+        }
+        return k
+    }
+
+    private fun catatIzin(k: String?, perintahId: String, proyek: String, akun: String, baru: Boolean) {
+        if (k != null) ubahIzin { it.catat(k, System.currentTimeMillis(), perintahId, proyek, akun, baru) }
+    }
+
+    /** Kabar yang mengakhiri izin sesi (§10.12): sesi `selesai`, tanda terima `sambung_berakhir`, kabar Chat selesai + `sessionId`. */
+    private fun ikutIzinKabar(isi: Map<String, Any>) {
+        if (pasangan()?.bebas != true) return
+        when (isi["jenis"]) {
+            "tanda_terima" -> (isi["tanda_terima"] as? Map<*, *>)?.let { t ->
+                val id = t["perintah_id"] as? String
+                if (id != null && t["hasil"] == "ditolak" && t["alasan"] == "sambung_berakhir") ubahIzin { it.hapusPerintah(id) }
+                // bebas dimatikan di Mac: semua perintah kunci bebas (juga baca/K_rencana) ditolak → izin hilang + ajakan pasang ulang
+                if (t["hasil"] == "ditolak" && t["alasan"] == "kerjakan_perlu_pasang_ulang") {
+                    synchronized(kunciIzin) { brankas.simpan(K_IZIN_SESI, null) }
+                    ubahPasangan { it["perlu_pasang_ulang"] = true }
+                }
+            }
+            "kabar" -> (isi["kabar"] as? Map<*, *>)?.let { k ->
+                val id = k["perintah_id"] as? String; val se = k["sessionId"] as? String
+                if (id != null && se != null && k["tahap"] == "selesai") ubahIzin { it.pindah(id, se) }
+            }
+            "cermin_sesi" -> {
+                val selesai = ((isi["cermin_sesi"] as? Map<*, *>)?.get("sesi") as? List<*> ?: emptyList<Any?>())
+                    .mapNotNull { b -> (b as? Map<*, *>)?.takeIf { it["status"] == "selesai" }?.get("sesi") as? String }
+                if (selesai.isNotEmpty()) ubahIzin { iz -> selesai.forEach { iz.hapusSesi(it) } }
+            }
+        }
     }
 
     // ------------------------------------------------------------------ penandatanganan
@@ -102,7 +169,7 @@ class Inti(context: Context) {
      * Hanya dari aksi pengguna (aktivitas non-null), tidak pernah dari notifikasi/latar.
      */
     private fun tandaKerjakan(aktivitas: FragmentActivity, p: Pasangan, teks: Biometrik.Teks, data: ByteArray): ByteArray {
-        if (p.kerjakanPin) return tandaRencana(aktivitas, data, KunciKeystore.KERJAKAN, teks)
+        if (p.kerjakanPin || p.bebas) return tandaRencana(aktivitas, data, KunciKeystore.KERJAKAN, teks)   // bebas: kunci tanpa auth → tanpa prompt
         val sig = Biometrik.konfirmasiKerjakan(aktivitas, teks, KunciKeystore.signature(KunciKeystore.KERJAKAN)) ?: throw GalatKunci("dibatalkan")
         sig.update(data)
         return sig.sign()
@@ -125,8 +192,8 @@ class Inti(context: Context) {
         // REV-40: gagal sesudah hp/daftar (hp/kirim, sidik jari dibatalkan, …) → DELETE hp/perangkat dengan token itu (agar tidak
         // memakan batas perangkat; gagal → abaikan), lalu bersihkanLokal(): pemasangan setengah jalan tidak meninggalkan kunci/token.
         return Pasang.batalkanBilaGagal({ terdaftar }, { m, j -> klien.panggil(m, j) }, ::bersihkanLokal) {
-            val kr = KunciKeystore.buat(ctx, KunciKeystore.RENCANA, kerjakan = false, tantangan = tantangan)
-            val kk = KunciKeystore.buat(ctx, KunciKeystore.KERJAKAN, kerjakan = true, tantangan = tantangan, pin = qr.kerjakanPin)
+            val kr = KunciKeystore.buat(ctx, KunciKeystore.RENCANA, kerjakan = false, tantangan = tantangan, bebas = qr.bebas)
+            val kk = KunciKeystore.buat(ctx, KunciKeystore.KERJAKAN, kerjakan = true, tantangan = tantangan, pin = qr.kerjakanPin, bebas = qr.bebas)
             val e = ehp.buatBaru()
             val daftar = klien.panggil("POST", "hp/daftar", Pasang.badanDaftar(qr), pakaiToken = false).data
                 ?: throw GalatKunci("relay_jawaban_rusak")
@@ -147,7 +214,7 @@ class Inti(context: Context) {
                 linkedMapOf(
                     "relay" to qr.relay, "mac_id" to qr.macId, "nama_mac" to qr.namaMac, "s_mac" to B64u.enk(qr.sMacSpki),
                     "e_mac" to B64u.enk(qr.eMacRaw), "perangkat_id" to perangkatId, "status" to "menunggu", "sas" to sas,
-                    "dipasang" to sekarang, "kerjakan_pin" to qr.kerjakanPin,
+                    "dipasang" to sekarang, "kerjakan_pin" to qr.kerjakanPin, "bebas" to qr.bebas,
                 ),
             )
             mapOf<String, Any?>("kodeSas" to sas, "namaMac" to qr.namaMac, "perangkatId" to perangkatId)
@@ -167,7 +234,7 @@ class Inti(context: Context) {
     /** Perintah selain Kerjakan: ditandatangani K_rencana. Mengembalikan {id, kode}. */
     fun kirimPerintah(aktivitas: FragmentActivity?, jenis: String, tambahan: Map<String, Any>): Map<String, Any?> {
         require(jenis != "jalankan" || tambahan["mode"] == "rencana") { "Kerjakan wajib lewat kirimKerjakan" }
-        if (jenis == "jalankan") cekProyek(tambahan["proyek"] as? String, tambahan["akun"] as? String, "rencana")
+        val namaProyek = if (jenis == "jalankan") cekProyek(tambahan["proyek"] as? String, tambahan["akun"] as? String, "rencana") else null
         val p = pasanganAktif()
         val kr = KunciKeystore.info(KunciKeystore.RENCANA) ?: throw GalatKunci("kunci_tidak_ada")
         val sekarang = System.currentTimeMillis()
@@ -175,8 +242,15 @@ class Inti(context: Context) {
         val kd = Perintah.kedaluwarsa(jenis, tambahan["mode"] as? String, sekarang)
         val isi = Perintah.isi(jenis, p.macId, p.perangkatId, id, urutBerikut(), sekarang, kd, tambahan)
         val draf = AmplopV1.siapkan("perintah", kr.id, p.eMac, isi, kd, id)
+        val izin = if (namaProyek == null) null else {
+            val pesan = (tambahan["pesan"] as? String ?: "").replace(Regex("\\s+"), " ").trim().let { if (it.length > 200) it.take(200) + "…" else it }
+            gerbangSesi(
+                aktivitas, p, tambahan["proyek"] as String, tambahan["akun"] as String, tambahan["sesi"] as? String, tambahan["baru"] == true,
+                Biometrik.Teks("Rencana di ${namaProyek.take(40)}", "PIN sekali untuk sesi ini (berlaku 12 jam)", pesan.ifEmpty { null }),
+            )
+        }
         val amplop = draf.selesaikan(tandaRencana(aktivitas, draf.inputTanda))
-        return kirimAmplop(p, id, amplop)
+        return kirimAmplop(p, id, amplop).also { catatIzin(izin, id, tambahan["proyek"] as? String ?: "", tambahan["akun"] as? String ?: "", tambahan["baru"] == true) }
     }
 
     /**
@@ -209,8 +283,9 @@ class Inti(context: Context) {
             subjudul = (if (otomatis) "Akun: otomatis (mulai dari ${akun.take(30)})" else "Akun: ${akun.take(40)}") + " · Model: ${(model ?: "bawaan").take(30)}",
             keterangan = (if (sambung) "Balasan ke sesi yang menunggu\n" else if (sesi != null) "Lanjutan sesi (cabang)\n" else "") + "$potongan\n(${pesan.length} karakter)",   // SEC-51: sesi ikut ditandatangani → disebut di prompt
         )
+        val izin = gerbangSesi(aktivitas, p, proyek, akun, sesi, baru, teks)   // G7 §10.12: pasangan bebas → PIN sekali per sesi
         val amplop = draf.selesaikan(tandaKerjakan(aktivitas, p, teks, draf.inputTanda))
-        return kirimAmplop(p, id, amplop)
+        return kirimAmplop(p, id, amplop).also { catatIzin(izin, id, proyek, akun, baru) }
     }
 
     private fun kirimAmplop(p: Pasangan, id: String, amplop: Map<String, Any>): Map<String, Any?> {
@@ -270,7 +345,10 @@ class Inti(context: Context) {
                 h.isi["jenis"] in Pratinjau.JENIS_KABAR) &&
             !BuildConfig.CERMIN_NYATA
         ) return null
-        if (catat) terapkanKabar(h.isi)
+        if (catat) {
+            terapkanKabar(h.isi)
+            runCatching { ikutIzinKabar(h.isi) }
+        }
         return h.isi
     }
 
@@ -323,7 +401,7 @@ class Inti(context: Context) {
         if ((butir["sampai"] as? Long ?: 0L) < System.currentTimeMillis()) throw GalatKunci("keputusan_kedaluwarsa")
         if ((butir["boleh"] as? List<*>)?.contains(pilih) != true) throw GalatKunci("pilihan_tidak_diizinkan")
         // G3 SEC-120: Mac menolak "izinkan selalu" dari HP selama kerjakanPin (dari Mac/VS Code) — tolak dini tanpa meminta sidik jari/PIN
-        if (pilih == "izinkan_selalu" && macKerjakanPin() == true) throw GalatKunci("izinkan_selalu_hanya_dari_mac")
+        if (pilih == "izinkan_selalu" && macKerjakanPin() == true && macBebas() != true) throw GalatKunci("izinkan_selalu_hanya_dari_mac")
         val tambahan = linkedMapOf<String, Any>("keputusan" to keputusan, "pilih" to pilih)
         jawaban?.let { tambahan["jawaban"] = it }
         pesan?.trim()?.takeIf { it.isNotEmpty() }?.let { tambahan["pesan"] = it }
@@ -348,8 +426,11 @@ class Inti(context: Context) {
             subjudul = if (pilih == "izinkan_selalu") "Izinkan SELALU untuk input yang sama persis" else "Sekali ini saja",
             keterangan = ringkas.ifEmpty { null },
         )
+        val proyek = butir["proyek"] as? String ?: ""
+        val akunButir = butir["akun"] as? String ?: ""
+        val izin = (butir["sesi"] as? String)?.let { gerbangSesi(aktivitas, p, proyek, akunButir, it, false, teks) }   // §10.12: izin = perintah ke sesi
         val amplop = draf.selesaikan(tandaKerjakan(aktivitas, p, teks, draf.inputTanda))
-        return kirimAmplop(p, id, amplop)
+        return kirimAmplop(p, id, amplop).also { catatIzin(izin, id, proyek, akunButir, false) }
     }
 
     // ---------------------------------------------------------------- review hasil Kerjakan (roadmap 2, pelaksana-review.js)
@@ -392,7 +473,7 @@ class Inti(context: Context) {
         if ((butir["boleh"] as? List<*>)?.contains(aksi) != true) throw GalatKunci("aksi_tidak_diizinkan")
         val tambahan = linkedMapOf<String, Any>("review" to review, "aksi" to aksi)
         // G2 S-2: Mac menolak push dari HP selama kerjakanPin (push dari Mac/VS Code) — tolak dini tanpa meminta PIN/sidik jari
-        if (aksi == "push" && macKerjakanPin() == true) throw GalatKunci("push_hanya_dari_mac")
+        if (aksi == "push" && macKerjakanPin() == true && macBebas() != true) throw GalatKunci("push_hanya_dari_mac")   // G7: bebas → push boleh (Q5)
         if (aksi == "commit") tambahan["pesan"] = pesan?.trim()?.takeIf { Review.pesanSah(it) } ?: throw GalatKunci("pesan_tidak_sah")
         try {
             Perintah.isi("review_aksi", NOL16, NOL16, NOL32, 0, 1, 2, tambahan)
@@ -457,7 +538,11 @@ class Inti(context: Context) {
 
     private fun simpanStatus(isi: Map<String, Any>) {
         val lama = brankas.baca(K_STATUS)?.let { JsonKetat.objek(it)["urut_mac"] as? Long } ?: -1L
-        if ((isi["urut_mac"] as Long) > lama) brankas.simpan(K_STATUS, Jcs.teks(isi))
+        if ((isi["urut_mac"] as Long) > lama) {
+            brankas.simpan(K_STATUS, Jcs.teks(isi))
+            // §10.12: status tanpa `bebas` → semua izin PIN sesi dihapus
+            if ((isi["status"] as? Map<*, *>)?.get("bebas") != true) synchronized(kunciIzin) { brankas.simpan(K_IZIN_SESI, null) }
+        }
     }
 
     /** POST hp/halo → status Mac + status proyek terbaru (amplop status diverifikasi tanpa anti-replay, tetapi tidak boleh mundur). */
@@ -472,6 +557,7 @@ class Inti(context: Context) {
         val perangkat = (d["perangkat"] as? Map<String, Any>)?.get("status") as? String
         if (perangkat == "dicabut") {
             ubahPasangan { it["status"] = "dicabut" }
+            synchronized(kunciIzin) { brankas.simpan(K_IZIN_SESI, null) }   // §10.12: dicabut/darurat → izin PIN sesi hilang
             hapusRiwayatLokal() // K-06: dicabut (termasuk kode darurat) → riwayat lokal dihapus
         }
         AmplopV1.teks(st?.get("amplop"))?.let { a ->
@@ -733,6 +819,7 @@ class Inti(context: Context) {
         private const val K_KABAR_SETELAH = "kabar_setelah"
         private const val K_TIDAK_SAH = "tidak_sah"
         private const val K_FCM = "fcm"
+        private const val K_IZIN_SESI = "izin_sesi"
         private const val MASA_PASANG = 5 * 60_000L
         private const val NOL16 = "0000000000000000"
         private const val NOL32 = "00000000000000000000000000000000"

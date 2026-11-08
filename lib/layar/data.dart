@@ -647,6 +647,9 @@ abstract class SumberData extends ChangeNotifier {
   /// G5: Mac menjembatani HP ↔ sesi panel yang sama (`jalankan` + `sambung`). Mac lama → tombol "Balas di sesi ini" tidak tampil.
   bool get sambungDidukung => fiturMac.contains('sambung_sesi');
 
+  /// G7 §10.12: status Mac `bebas:true` (PIN/sidik jari sekali per sesi untuk pasangan bebas).
+  bool macBebas = false;
+
   /// G5 `status.sambung` (kontrak §10.2): sesi proyek bertanda yang menunggu pesan HP. Entri rusak dibuang per butir.
   List<SesiSambung> sambung = const [];
   SesiSambung? sambungSesi(String sesi) => sambung.where((x) => x.sesi == sesi).firstOrNull;
@@ -1402,6 +1405,7 @@ abstract class SumberData extends ChangeNotifier {
       ];
     }
     fiturMac = {for (final f in _daftar(st['fitur']).take(20)) if (f is String && f.length <= 40) f};
+    macBebas = st['bebas'] == true;
     sambung = [for (final b in _daftar(st['sambung']).take(50)) ?SesiSambung.dari(_peta(b))];
     antreLimit = _daftar(st['antre']).length;
     pemakaian = _ringkasPemakaian(_peta(st['pemakaian']));
@@ -1662,6 +1666,9 @@ abstract class SumberData extends ChangeNotifier {
 
   void _tandaTerima(Map<String, Object?>? m) {
     if (m == null) return;
+    // G7 §10.12: kunci bebas setelah mode bebas dimatikan → perintah baca (cermin/status) juga ditolak; ajak pasang ulang di tab Sesi
+    // (Kotlin menghapus izin sesi & menandai Pengaturan "Pasang ulang"). Tugas Chat tetap menampilkan alasannya di kartu tugas.
+    if (m['hasil'] == 'ditolak' && m['alasan'] == 'kerjakan_perlu_pasang_ulang') galatDaftar = 'kerjakan_perlu_pasang_ulang';
     final idP = _teks(m['perintah_id']);
     final ap = idP == null ? null : _aksiPratinjau[idP];
     if (ap != null) {   // pratinjau: ditolak → alasan di kartu (mis. tailscale belum tersambung, server gagal)

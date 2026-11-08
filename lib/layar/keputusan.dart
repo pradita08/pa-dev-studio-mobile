@@ -115,6 +115,7 @@ class _KartuKeputusanState extends State<KartuKeputusan> {
   late final List<TextEditingController> _lain = [for (final _ in widget.k.pertanyaan) TextEditingController()];
   bool _kirim = false;
   bool _sesi = false; // G3: mode sesi → tanpa "Izinkan selalu" & tanpa ikon sidik jari per perintah
+  bool _bebas = false; // G7 §10.12: status Mac bebas → "Izinkan selalu" tetap tampil (kartu izin biasa)
 
   @override
   void initState() {
@@ -125,7 +126,12 @@ class _KartuKeputusanState extends State<KartuKeputusan> {
   Future<void> _bacaMode() async {
     try {
       final p = await Kunci.statusPasang();
-      if (mounted && p?.kerjakanPin == true) setState(() => _sesi = true);
+      if (mounted && (p?.kerjakanPin == true || p?.bebas == true || p?.macBebas == true)) {
+        setState(() {
+          _sesi = p!.kerjakanPin || p.bebas;
+          _bebas = p.macBebas;
+        });
+      }
     } on GalatKunci {
       // tanpa data mode: tampilan lama (aman, Mac tetap menolak)
     }
@@ -276,7 +282,7 @@ class _KartuKeputusanState extends State<KartuKeputusan> {
                   k.jenis == 'rencana' ? 'Setujui rencana' : (k.giliranHp ? 'Izinkan' : 'Izinkan sekali'),
                 ),
               ),
-            if (k.bisa('izinkan_selalu') && !_sesi)
+            if (k.bisa('izinkan_selalu') && (!_sesi || _bebas)) // bisa(): kartu giliran HP tetap tanpa izinkan selalu
               TextButton(onPressed: sibuk ? null : _izinkanSelalu, child: const Text('Izinkan selalu')),
           ]),
       ]),

@@ -206,6 +206,22 @@ void main() {
     await t.pumpWidget(const SizedBox());
   });
 
+  testWidgets('chat: antre giliran sesi (sambung) → teks "Claude masih bekerja", bukan limit', (t) async {
+    final s = _SumberUji()..kabarMasuk(_status());
+    await t.pumpWidget(_app(ListenableBuilder(listenable: s, builder: (_, _) => LayarChat(sumber: s, proyekId: 'simpeg'))));
+    await t.enterText(find.byType(TextField), 'lanjut');
+    await t.pump();
+    await t.tap(find.byIcon(Simbol.kirim));
+    await t.pump();
+    s.kabarMasuk(_kabar(s.dikirim.single, 'antre', 0, {'alasan': 'menunggu giliran sesi di Mac'}));
+    await t.pump();
+    expect(find.textContaining('Antre: Claude di Mac masih bekerja', findRichText: true), findsOneWidget);
+    expect(find.textContaining('limit akun', findRichText: true), findsNothing);
+    expect(find.textContaining('menunggu giliran sesi', findRichText: true), findsNothing); // tanpa baris mono sebab
+    await t.pump(const Duration(seconds: 2)); // simpan riwayat chat (tunda 1 dtk)
+    await t.pumpWidget(const SizedBox());
+  });
+
   testWidgets('chat: Mac lama (tanpa fitur) → tanpa pilihan Otomatis', (t) async {
     final s = _SumberUji()..kabarMasuk(_status(fitur: false));
     await t.pumpWidget(_app(ListenableBuilder(listenable: s, builder: (_, _) => LayarChat(sumber: s, proyekId: 'simpeg'))));
