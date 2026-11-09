@@ -53,7 +53,7 @@ String _tgl(DateTime w) => '${w.year}-${w.month.toString().padLeft(2, '0')}-${w.
 
 Map<String, Object?> _rekap({bool kosong = false, bool bulan = true}) {
   final kini = DateTime.now();
-  final agen = ['kepala', 'divisi-programmer', 'divisi-ui'];
+  final agen = ['kepala', 'divisi-programmer#1', 'divisi-programmer#2', 'divisi-ui#1'];
   return {
     'v': 1,
     'dibuat': kini.millisecondsSinceEpoch,
@@ -62,18 +62,18 @@ Map<String, Object?> _rekap({bool kosong = false, bool bulan = true}) {
     'agen': agen,
     'hari': [
       for (var i = 6; i >= 0; i--)
-        {'tgl': _tgl(kini.subtract(Duration(days: i))), 't': kosong ? [0, 0, 0] : [1000 * (i + 1), 2000, 500000], 'n': kosong ? [0, 0, 0] : [1, 1, 2], 'c': [0, 0, 0]},
+        {'tgl': _tgl(kini.subtract(Duration(days: i))), 't': kosong ? [0, 0, 0, 0] : [1000 * (i + 1), 2000, 3000, 500000], 'n': kosong ? [0, 0, 0, 0] : [1, 1, 1, 2], 'c': [0, 0, 0, 0]},
     ],
     'bulan': bulan
         ? [
-            {'bln': '2026-10', 't': [100, 200, 300], 'n': [1, 2, 3], 'c': [1, 2, 3]},
-            {'bln': '2026-11', 't': [200, 400, 600], 'n': [2, 2, 2], 'c': [2, 4, 6]},
+            {'bln': '2026-10', 't': [100, 200, 250, 300], 'n': [1, 2, 2, 3], 'c': [1, 2, 2, 3]},
+            {'bln': '2026-11', 't': [200, 400, 500, 600], 'n': [2, 2, 2, 2], 'c': [2, 4, 4, 6]},
           ]
         : [],
   };
 }
 
-_SumberUji _sumber({Map<String, Object?>? rekap, bool kantor = true}) => _SumberUji()
+_SumberUji _sumber({Map<String, Object?>? rekap, bool kantor = true, List<Map<String, Object?>> tambah = const []}) => _SumberUji()
   ..muat({
     'jenis': 'status',
     'status': {
@@ -90,6 +90,7 @@ _SumberUji _sumber({Map<String, Object?>? rekap, bool kantor = true}) => _Sumber
           _ev(4, 'tool', tool: 'Agent', sub: 'divisi-ui'),
           _ev(5, 'agent_start', who: 'divisi-ui', agentId: 'u1'),
           _ev(6, 'notify', who: 'divisi-ui', agentId: 'u1', type: 'permission_prompt'),
+          ...tambah,
         ],
       'rekap': ?rekap,
     },
@@ -119,7 +120,7 @@ void main() {
     final kartu = t.widgetList<KartuAgen>(find.byType(KartuAgen)).toList();
     expect([for (final k in kartu) k.d.kunci], ['ui', 'programmer']);
     expect(find.textContaining('Mengubah berkas · app/Models/Pegawai.php'), findsOneWidget);
-    expect(find.text('3,5 jt token 7 hari · divisi ini'), findsOneWidget);
+    expect(find.text('3,5 jt token 7 hari · orang ini'), findsOneWidget); // ui#1 saja, bukan jumlah divisi
     expect(find.textContaining('Alur kerja divisi'), findsOneWidget);
     await t.tap(find.byType(KartuAgen).last);
     await t.pump();
@@ -165,7 +166,7 @@ void main() {
     await t.pump();
     expect(find.text('Token 7 hari'), findsOneWidget);
     expect(find.text('Agen aktif'), findsOneWidget);
-    expect(find.text('3'), findsOneWidget); // 3 agen dengan token > 0
+    expect(find.text('4'), findsOneWidget); // 4 agen/orang dengan token > 0
     expect(find.byType(GrafikBatang), findsOneWidget);
     expect(find.text('UI/UX'), findsOneWidget);
     expect(find.textContaining('vs bulan lalu'), findsNothing); // 7 hari tanpa selisih
@@ -173,6 +174,29 @@ void main() {
     await t.pump();
     expect(find.text('Token bulan ini'), findsOneWidget);
     expect(find.text('▲ 100% vs bulan lalu'), findsOneWidget);
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('G9b Agen per ORANG: 2 programmer paralel → 2 kartu bernama + token masing-masing; pendukung tetap per jenis', (t) async {
+    t.view.physicalSize = const Size(390, 1800);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    NamaPegawai.atur(const {'div:programmer#1': 'Pradita', 'div:programmer#2': 'Zaenal', 'div:ui#1': 'Dinda'});
+    final sumber = _sumber(rekap: _rekap(), tambah: [
+      _ev(7, 'agent_start', who: 'divisi-programmer', agentId: 'p2'),
+      _ev(8, 'tool', who: 'divisi-programmer', agentId: 'p2', tool: 'Bash'),
+      _ev(9, 'agent_start', who: 'Explore', agentId: 'x1'),
+    ]);
+    await t.pumpWidget(_app(sumber));
+    final kartu = t.widgetList<KartuAgen>(find.byType(KartuAgen)).toList();
+    expect([for (final k in kartu) (k.d.kunci, k.d.ke)], unorderedEquals([('ui', 1), ('programmer', 1), ('programmer', 2), ('Explore', 0)]));
+    expect(kartu.where((k) => k.d.kunci == 'programmer').length, 2);
+    expect(find.text('Pradita'), findsWidgets);
+    expect(find.text('Zaenal'), findsWidgets);
+    // token orang ini: p#1 = 2 rb × 7 hari, p#2 = 3 rb × 7 hari (kunci tepat, bukan jumlah divisi 5 rb × 7)
+    expect(find.text('14 rb token 7 hari · orang ini'), findsOneWidget);
+    expect(find.text('21 rb token 7 hari · orang ini'), findsOneWidget);
+    expect(find.text('Explore'), findsWidgets); // pendukung satu kartu per jenis
     expect(t.takeException(), isNull);
   });
 }

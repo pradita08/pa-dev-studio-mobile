@@ -85,10 +85,14 @@ class _LayarKantorState extends State<LayarKantor> {
     final id = (_pilih != null && daftar.any((p) => p.id == _pilih)) ? _pilih : (AlurKerja.proyekTerbaru(kejadian) ?? daftar.firstOrNull?.id);
     final p = id == null ? null : s.cariProyek(id);
     final alur = id == null ? null : AlurKerja.dari(kejadian, id);
-    // urutan kartu: menunggu izin → bekerja → ditugaskan
+    // urutan kartu: menunggu izin → bekerja → ditugaskan. G9b: satu kartu per ORANG (divisi); pendukung per jenis agen;
+    // divisi yang baru "ditugaskan" (belum ada orangnya) tampil sebagai kartu divisi sampai agent_start.
     const urut = [StatusAlur.menungguIzin, StatusAlur.bekerja, StatusAlur.ditugaskan];
-    final aktif = [for (final d in alur?.divisi.values ?? const <DivisiAlur>[]) if (urut.contains(d.status)) d]
-      ..sort((a, b) => urut.indexOf(a.status).compareTo(urut.indexOf(b.status)));
+    final aktif = [
+      for (final d in alur?.orang.values ?? const <DivisiAlur>[]) if (urut.contains(d.status)) d,
+      for (final d in alur?.divisi.values ?? const <DivisiAlur>[])
+        if (urut.contains(d.status) && (!d.divisi || (d.status == StatusAlur.ditugaskan && !alur!.orangDivisi(d.kunci).any((o) => urut.contains(o.status))))) d,
+    ]..sort((a, b) => urut.indexOf(a.status).compareTo(urut.indexOf(b.status)));
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
@@ -143,7 +147,7 @@ class _LayarKantorState extends State<LayarKantor> {
           JudulBagian('Alur kerja divisi${alur.aktif > 0 ? ' · ${alur.aktif} bekerja' : ''}'),
           Kartu(anak: Column(children: [
             for (final (i, (judul, kunci)) in tahapAlur.indexed)
-              _BarisTahap(judul: judul, divisi: [for (final k in kunci) alur.divisi[k] ?? DivisiAlur(k)], terakhir: i == tahapAlur.length - 1, w: w),
+              _BarisTahap(judul: judul, alur: alur, divisi: [for (final k in kunci) alur.divisi[k] ?? DivisiAlur(k)], terakhir: i == tahapAlur.length - 1, w: w),
           ])),
           if (alur.pendukung.isNotEmpty) ...[
             const SizedBox(height: 14),
@@ -187,7 +191,7 @@ class _LayarKantorState extends State<LayarKantor> {
               padding: const EdgeInsets.only(top: 4),
               child: Text('Mulai ${_jam(d.mulai!)} · ${d.jumlahAlat} langkah', style: TeksPadev.redup(w, ukuran: 12)),
             ),
-          JudulBagian('TOKEN 7 HARI · ${d.divisi ? 'DIVISI INI' : 'JENIS AGEN INI'}'),
+          JudulBagian('TOKEN 7 HARI · ${_cakupToken(d).toUpperCase()}'),
           if (rekap == null)
             Text('Token 7 hari belum tersedia (butuh pelaksana terbaru di Mac).', style: TeksPadev.redup(w))
           else ...[
@@ -216,16 +220,18 @@ class _LayarKantorState extends State<LayarKantor> {
       });
 }
 
-/// Kunci agen di `status.rekap`: divisi `p` → 'divisi-p' (token per JENIS agen, bukan per pegawai); pendukung → nama agennya.
-String _kunciRekap(DivisiAlur d) => d.divisi ? 'divisi-${d.kunci}' : d.kunci.toLowerCase();
+/// Kunci agen di `status.rekap`: orang `ke` → 'divisi-p#ke' (token per ORANG, G9b); baris divisi gabungan → 'divisi-p' (jumlah semua orang); pendukung → nama agennya.
+String _kunciRekap(DivisiAlur d) => d.ke > 0 ? 'divisi-${d.kunci}#${d.ke}' : d.divisi ? 'divisi-${d.kunci}' : d.kunci.toLowerCase();
 
-/// (judul kartu, peran): nama pegawai bila dikenal.
+String _cakupToken(DivisiAlur d) => d.ke > 0 ? 'orang ini' : d.divisi ? 'divisi ini' : 'jenis agen ini';
+
+/// (judul kartu, peran): nama orang menurut `ke` bila dikenal ("Programmer #2" bila belum ada namanya).
 (String, String) _namaAgen(DivisiAlur d) {
-  final orang = d.divisi ? NamaPegawai.cari(d.kunci) : null;
-  return (orang ?? (d.divisi ? 'Divisi ${d.nama}' : d.nama), d.divisi ? d.nama : 'Agen pendukung');
+  if (d.ke > 0) return (NamaPegawai.cari(d.kunci, d.ke) ?? '${d.nama} #${d.ke}', d.nama);
+  return (d.divisi ? 'Divisi ${d.nama}' : d.nama, d.divisi ? d.nama : 'Agen pendukung');
 }
 
-/// Kartu agen yang sedang bekerja (Kantor › Agen): nama, divisi, status, sedang apa, token 7 hari jenis agen ini. Ketuk = lembar detail.
+/// Kartu agen yang sedang bekerja (Kantor › Agen): nama, divisi, status, sedang apa, token 7 hari orang ini. Ketuk = lembar detail.
 class KartuAgen extends StatelessWidget {
   const KartuAgen({super.key, required this.d, required this.rekap, required this.onTap});
   final DivisiAlur d;
@@ -240,7 +246,7 @@ class KartuAgen extends StatelessWidget {
     final apa = [?d.aktivitas, ?d.detail].join(' · ');
     final kunci = _kunciRekap(d);
     final r = rekap;
-    final teksToken = r == null ? 'Token 7 hari belum tersedia' : '${tokenBaca(r.token7Hari(kunci))} token 7 hari · ${d.divisi ? 'divisi ini' : 'jenis agen ini'}';
+    final teksToken = r == null ? 'Token 7 hari belum tersedia' : '${tokenBaca(r.token7Hari(kunci))} token 7 hari · ${_cakupToken(d)}';
     final chip = ChipPadev(ikon: g.ikon, label: g.label, fg: g.fg, bg: g.bg);
     return Kartu(
       onTap: onTap,
@@ -329,8 +335,9 @@ class _KartuKepala extends StatelessWidget {
 }
 
 class _BarisTahap extends StatelessWidget {
-  const _BarisTahap({required this.judul, required this.divisi, required this.terakhir, required this.w});
+  const _BarisTahap({required this.judul, required this.alur, required this.divisi, required this.terakhir, required this.w});
   final String judul;
+  final AlurKerja alur;
   final List<DivisiAlur> divisi;
   final bool terakhir;
   final WarnaPadev w;
@@ -364,7 +371,7 @@ class _BarisTahap extends StatelessWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(judul, style: TextStyle(color: aktif || selesai ? w.ink : w.muted, fontSize: 13.5, fontWeight: FontWeight.w800)),
               const SizedBox(height: 6),
-              for (final d in divisi) _BarisDivisi(d: d, w: w, ringkas: true),
+              for (final d in divisi) _BarisDivisi(d: d, w: w, ringkas: true, orang: [for (final o in alur.orangDivisi(d.kunci)) NamaPegawai.cari(o.kunci, o.ke) ?? '#${o.ke}']),
             ]),
           ),
         ),
@@ -374,18 +381,21 @@ class _BarisTahap extends StatelessWidget {
 }
 
 class _BarisDivisi extends StatelessWidget {
-  const _BarisDivisi({required this.d, required this.w, this.ringkas = false});
+  const _BarisDivisi({required this.d, required this.w, this.ringkas = false, this.orang = const []});
   final DivisiAlur d;
   final WarnaPadev w;
   final bool ringkas;
 
+  /// Nama orang divisi ini yang terlibat di putaran (G9b); kosong → nama pertama divisi dari aset.
+  final List<String> orang;
+
   @override
   Widget build(BuildContext context) {
     final g = _gaya(d.status, w);
-    final orang = d.divisi ? NamaPegawai.cari(d.kunci) : null;
+    final nama = orang.isNotEmpty ? orang.join(', ') : d.divisi ? NamaPegawai.cari(d.kunci) : null;
     final redup = d.status == StatusAlur.belum;
     final sub = [
-      ?orang,
+      ?nama,
       if (d.aktivitas != null && !redup) d.aktivitas!,
       if (d.status == StatusAlur.selesai && d.mulai != null && d.selesai != null) _durasi(d.selesai!.difference(d.mulai!)),
     ].join(' · ');
@@ -395,7 +405,7 @@ class _BarisDivisi extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: ringkas ? 4 : 10, horizontal: ringkas ? 0 : 12),
         child: Row(children: [
-          Opacity(opacity: redup ? .45 : 1, child: AvatarDivisi(nama: orang ?? d.nama, aktif: d.status == StatusAlur.bekerja, ukuran: 32)),
+          Opacity(opacity: redup ? .45 : 1, child: AvatarDivisi(nama: nama ?? d.nama, aktif: d.status == StatusAlur.bekerja, ukuran: 32)),
           const SizedBox(width: 10),
           Expanded(
             child: Opacity(

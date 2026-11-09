@@ -26,10 +26,13 @@ const namaDivisi = {
 enum StatusAlur { belum, ditugaskan, bekerja, menungguIzin, selesai, gagal }
 
 class DivisiAlur {
-  DivisiAlur(this.kunci);
+  DivisiAlur(this.kunci, {this.ke = 0});
 
   /// 'programmer' (divisi) atau nama agen pendukung ('general-purpose', 'Explore', …).
   final String kunci;
+
+  /// G9b: urutan dipanggil 1..3 bila ini satu ORANG (satu agentId) dari divisi [kunci]; 0 = baris gabungan divisi / agen pendukung.
+  final int ke;
   StatusAlur status = StatusAlur.belum;
   String? aktivitas;
 
@@ -64,6 +67,12 @@ class AlurKerja {
 
   /// Divisi & agen pendukung yang terlibat di putaran ini (urut pertama kali muncul).
   final Map<String, DivisiAlur> divisi = {};
+
+  /// G9b: satu entri per ORANG (agentId) divisi, urut pertama kali muncul. [divisi] tetap gabungan per peran (alur tahap).
+  final Map<String, DivisiAlur> orang = {};
+
+  /// Orang-orang divisi [kunci] (urut ke).
+  List<DivisiAlur> orangDivisi(String kunci) => [for (final o in orang.values) if (o.kunci == kunci) o];
 
   /// Linimasa tonggak (terbaru di atas), maks 30.
   final List<ButirLinimasa> linimasa = [];
@@ -100,8 +109,18 @@ class AlurKerja {
       }
     }
     final agen = <String, String>{}; // agentId → kunci divisi
+    // G9b: ke = urutan agentId pertama kali muncul per peran, dari SELURUH ev (sama dengan Rekap, KONTRAK §10.14); ke-3 dst → 3.
+    // shortcut: buffer `status.kantor` terbatas, sesi panjang bisa kehilangan agentId awal → ke bisa bergeser; Rekap tetap benar karena dihitung Mac.
+    final urutan = <String, List<String>>{}; // peran → agentId urut muncul
+    for (final e in ev) {
+      final id = e['agentId'];
+      final k = _kunciAgen(e['who'] is String ? e['who'] as String : null);
+      if (id is String && namaDivisi.containsKey(k) && !(urutan[k] ??= []).contains(id)) urutan[k]!.add(id);
+    }
     String kunciDari(Object? who) => _kunciAgen(who is String ? who : null);
     DivisiAlur div(String k) => a.divisi.putIfAbsent(k, () => DivisiAlur(k));
+    DivisiAlur? orangDari(String k, String id) =>
+        namaDivisi.containsKey(k) ? a.orang.putIfAbsent(id, () => DivisiAlur(k, ke: (urutan[k]!.indexOf(id) + 1).clamp(1, 3))) : null;
 
     for (final e in ev.skip(awal)) {
       final w = DateTime.fromMillisecondsSinceEpoch(e['ts'] as int);
@@ -134,7 +153,7 @@ class AlurKerja {
             a._catat(w, 'Kepala: ${labelAlat(tool)} gagal', 'gagal');
           case 'notify' when e['type'] == 'permission_prompt' || e['type'] == 'elicitation_dialog':
             a.kepala = StatusAlur.menungguIzin;
-            for (final d in a.divisi.values) {
+            for (final d in [...a.divisi.values, ...a.orang.values]) {
               if (d.status == StatusAlur.bekerja) d.status = StatusAlur.menungguIzin;
             }
             a._catat(w, 'Menunggu izin Anda di laptop', 'izin');
@@ -150,38 +169,50 @@ class AlurKerja {
       }
       // ---- divisi / agen pendukung (sub agent)
       final k = agen[agentId] ??= kunciDari(e['who']);
-      final d = div(k);
-      switch (kind) {
-        case 'agent_start':
-          d
-            ..status = StatusAlur.bekerja
-            ..mulai = w
-            ..aktivitas = 'Mulai bekerja';
-          a._catat(w, '${d.nama} mulai bekerja', 'mulai');
-        case 'tool':
-          if (d.status != StatusAlur.selesai) d.status = StatusAlur.bekerja;
-          d
-            ..mulai ??= w
-            ..jumlahAlat += 1
-            ..aktivitas = labelAlat(tool)
-            ..detail = detail;
-        case 'tool_done':
-          if (d.status == StatusAlur.menungguIzin) d.status = StatusAlur.bekerja;
-        case 'tool_fail':
-          d.aktivitas = '${labelAlat(tool)} gagal';
-          a._catat(w, '${d.nama}: ${labelAlat(tool)} gagal', 'gagal');
-        case 'notify' when e['type'] == 'permission_prompt':
-          d.status = StatusAlur.menungguIzin;
-          a.kepala = StatusAlur.menungguIzin;
-          a._catat(w, '${d.nama} menunggu izin Anda di laptop', 'izin');
-        case 'agent_stop':
-          d
-            ..status = StatusAlur.selesai
-            ..selesai = w
-            ..aktivitas = 'Selesai, melapor ke Kepala';
-          a._catat(w, '${d.nama} selesai', 'selesai');
-        default:
-          break;
+      final gabungan = div(k);
+      // orang diproses dulu, lalu gabungan divisi (dicatat ke linimasa sekali; status akhirnya bergantung orang lain)
+      for (final d in [?orangDari(k, agentId), gabungan]) {
+        final utama = identical(d, gabungan);
+        void catat(String teks, String jenis) {
+          if (utama) a._catat(w, teks, jenis);
+        }
+
+        final lain = a.orang.values.any((o) => o.kunci == k && !identical(o, d) && (o.status == StatusAlur.bekerja || o.status == StatusAlur.menungguIzin));
+        switch (kind) {
+          case 'agent_start':
+            d
+              ..status = StatusAlur.bekerja
+              ..mulai = w
+              ..aktivitas = 'Mulai bekerja';
+            catat('${gabungan.nama} mulai bekerja', 'mulai');
+          case 'tool':
+            if (d.status != StatusAlur.selesai) d.status = StatusAlur.bekerja;
+            d
+              ..mulai ??= w
+              ..jumlahAlat += 1
+              ..aktivitas = labelAlat(tool)
+              ..detail = detail;
+          case 'tool_done':
+            if (d.status == StatusAlur.menungguIzin) d.status = StatusAlur.bekerja;
+          case 'tool_fail':
+            d.aktivitas = '${labelAlat(tool)} gagal';
+            catat('${gabungan.nama}: ${labelAlat(tool)} gagal', 'gagal');
+          case 'notify' when e['type'] == 'permission_prompt':
+            d.status = StatusAlur.menungguIzin;
+            if (utama) a.kepala = StatusAlur.menungguIzin;
+            catat('${gabungan.nama} menunggu izin Anda di laptop', 'izin');
+          case 'agent_stop':
+            // gabungan baru "selesai" bila tak ada orang lain di divisi itu yang masih bekerja
+            if (!utama || !lain) {
+              d
+                ..status = StatusAlur.selesai
+                ..selesai = w
+                ..aktivitas = 'Selesai, melapor ke Kepala';
+            }
+            catat('${gabungan.nama} selesai', 'selesai');
+          default:
+            break;
+        }
       }
     }
     return a;

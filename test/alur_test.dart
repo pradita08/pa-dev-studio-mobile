@@ -83,4 +83,40 @@ void main() {
     expect(a.divisi.keys.single, 'code-reviewer');
     expect(a.divisi.values.single.nama, 'Code reviewer');
   });
+
+  test('G9b per orang: 2 programmer paralel → 2 orang ke 1,2; 4 panggilan → ke 3 menampung; gabungan divisi tetap satu', () {
+    final a = AlurKerja.dari([
+      ev(0, 'prompt'),
+      ev(1, 'agent_start', who: 'divisi-programmer', agentId: 'p1'),
+      ev(2, 'agent_start', who: 'divisi-programmer', agentId: 'p2'),
+      ev(3, 'tool', who: 'divisi-programmer', agentId: 'p2', tool: 'Edit'),
+      ev(4, 'agent_start', who: 'divisi-programmer', agentId: 'p3'),
+      ev(5, 'agent_start', who: 'divisi-programmer', agentId: 'p4'),
+      ev(6, 'agent_start', who: 'Explore', agentId: 'x1'),
+      ev(7, 'agent_stop', who: 'divisi-programmer', agentId: 'p1'),
+    ], 'simpeg');
+    expect([for (final o in a.orang.values) o.ke], [1, 2, 3, 3]);
+    expect(a.orang['p2']!.jumlahAlat, 1);
+    expect(a.orang['p1']!.status, StatusAlur.selesai);
+    expect(a.orang['p2']!.status, StatusAlur.bekerja);
+    expect(a.divisi['programmer']!.status, StatusAlur.bekerja, reason: 'gabungan: masih ada orang yang bekerja');
+    expect(a.divisi.keys.where((k) => k == 'programmer').length, 1);
+    expect(a.orang.containsKey('x1'), isFalse, reason: 'pendukung tetap per jenis agen');
+    expect(a.orangDivisi('programmer').length, 4);
+    final b = AlurKerja.dari([...[ev(0, 'prompt'), ev(1, 'agent_start', who: 'divisi-programmer', agentId: 'p1'), ev(2, 'agent_stop', who: 'divisi-programmer', agentId: 'p1')]], 'simpeg');
+    expect(b.divisi['programmer']!.status, StatusAlur.selesai);
+  });
+
+  test('G9b ke dihitung dari SELURUH event (sebelum prompt terakhir ikut urutan, seperti Rekap)', () {
+    final a = AlurKerja.dari([
+      ev(0, 'prompt'),
+      ev(1, 'agent_start', who: 'divisi-ui', agentId: 'u1'),
+      ev(2, 'agent_stop', who: 'divisi-ui', agentId: 'u1'),
+      ev(3, 'stop'),
+      ev(10, 'prompt'),
+      ev(11, 'agent_start', who: 'divisi-ui', agentId: 'u2'),
+    ], 'simpeg');
+    expect(a.orang.keys, ['u2']);
+    expect(a.orang['u2']!.ke, 2);
+  });
 }
